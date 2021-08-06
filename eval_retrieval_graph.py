@@ -47,7 +47,7 @@ def main():
     for k in k_lst:
         correct_retr_dict[k] = []
     f_o = open('./output/open_qa_preds_graph_%s.json' % args.mode, 'w')
-    for query_info in tqdm(query_info_lst[:30]): 
+    for query_info in tqdm(query_info_lst): 
         batch_queries = [query_info] 
         qry_ret_lst = open_qa.search(batch_queries, ir_retr_num=100, pr_retr_num=30, top_num=5)
         for qry_ret in qry_ret_lst:
