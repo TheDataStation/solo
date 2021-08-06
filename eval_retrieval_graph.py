@@ -4,6 +4,25 @@ import os
 from predictor import OpenQA
 from tqdm import tqdm
 import numpy as np
+import logging
+
+def set_logger(args):
+    global logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    console = logging.StreamHandler()
+    logger.addHandler(console)
+    expt_path = os.path.join(args.out_dir)
+    if os.path.isdir(expt_path):
+        print('[%s] already exists, please use a different value for [--expt_dir].\nThe full path [%s]\n'
+              % (args.out_dir, expt_path))
+        return None
+    os.makedirs(expt_path)
+    log_path = os.path.join(expt_path, 'log.txt')
+    file_hander = logging.FileHandler(log_path, 'w')
+    logger.addHandler(file_hander)
+    return True
 
 def get_open_qa():
     open_qa = OpenQA(
@@ -17,6 +36,7 @@ def get_open_qa():
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type=str)
+    parser.add_argument('--out_dir', type=str)
     args = parser.parse_args()
     return args
 
@@ -37,6 +57,7 @@ def table_found(top_k_table_id_lst, gold_table_id_lst):
 
 def main():
     args = get_args()
+    set_logger(args)
     open_qa = get_open_qa()
     query_info_lst = get_questions(args.mode)
     query_info_dict = {}
@@ -46,8 +67,9 @@ def main():
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
-    f_o = open('./output/open_qa_preds_graph_%s.json' % args.mode, 'w')
-    for query_info in tqdm(query_info_lst): 
+    out_file = os.path.join(args.out_dir, 'preds_%s.json' % args.mode)
+    f_o = open(out_file, 'w')
+    for query_info in tqdm(query_info_lst[:10]): 
         batch_queries = [query_info] 
         qry_ret_lst = open_qa.search(batch_queries, ir_retr_num=100, pr_retr_num=30, top_num=5)
         for qry_ret in qry_ret_lst:
@@ -62,7 +84,7 @@ def main():
 
     for k in correct_retr_dict:
         precision = np.mean(correct_retr_dict[k]) * 100
-        print('p@%d = %.2f' % (k, precision))
+        logger.info('p@%d = %.2f' % (k, precision))
 
     f_o.close()
 
