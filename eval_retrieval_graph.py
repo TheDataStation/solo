@@ -69,7 +69,7 @@ def main():
         correct_retr_dict[k] = []
     out_file = os.path.join(args.out_dir, 'preds_%s.json' % args.mode)
     f_o = open(out_file, 'w')
-    for query_info in tqdm(query_info_lst[:10]): 
+    for query_info in tqdm(query_info_lst): 
         batch_queries = [query_info] 
         qry_ret_lst = open_qa.search(batch_queries, ir_retr_num=100, pr_retr_num=30, top_num=5)
         for qry_ret in qry_ret_lst:
