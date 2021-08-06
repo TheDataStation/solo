@@ -4,18 +4,7 @@ from tqdm import tqdm
 import numpy as np
 import random
 from multiprocessing import Pool as ProcessPool
-
-def read_table_file(table_lst, data_file):
-    with open(data_file) as f:
-        for line in tqdm(f):
-            table = json.loads(line)
-            table_lst.append(table)
-    return table_lst
-
-def read_tables():
-    table_lst = []
-    read_table_file(table_lst, '/home/cc/data/nq/tables/tables.jsonl')
-    return table_lst
+from table2graph import read_tables
 
 def process_table(table):
     columns = table['columns']
@@ -53,7 +42,7 @@ def write_table_info(table_info, f_o_tables):
     f_o_tables.write(json.dumps(out_data) + '\n')
   
 def main():
-    out_table_file = os.path.join('output', 'table_raw_text.json')
+    out_table_file = os.path.join('output', 'raw_text', 'table_raw_text_small.json')
     f_o_tables = open(out_table_file, 'w')
 
     table_lst = read_tables()

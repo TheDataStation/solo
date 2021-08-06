@@ -10,16 +10,30 @@ MAX_COL_SIZE = 20
 MAX_TUPLE_SIZE = 123
 MAX_GRAPH_SIZE = 150
 
-def read_table_file(table_lst, data_file):
+def read_table_file(table_lst, data_file, table_id_set):
     with open(data_file) as f:
         for line in tqdm(f):
             table = json.loads(line)
+            if table_id_set is not None:
+                if table['tableId'] not in table_id_set:
+                    continue
             table_lst.append(table)
     return table_lst
 
+def get_small_tables():
+    table_id_lst = []
+    data_file = '/home/cc/data/nq/tables/tables_small.jsonl'
+    with open(data_file) as f:
+        for line in f:
+            table_id = line.rstrip()
+            table_id_lst.append(table_id)
+    table_id_set = set(table_id_lst)
+    return table_id_set
+
 def read_tables():
     table_lst = []
-    read_table_file(table_lst, '/home/cc/data/nq/tables/tables.jsonl')
+    table_id_set = get_small_tables()
+    read_table_file(table_lst, '/home/cc/data/nq/tables/tables.jsonl', table_id_set)
     return table_lst
 
 def process_table(table):
@@ -53,11 +67,11 @@ def process_table(table):
     return (table, table_graph_lst)
     
 def main():
-    out_file_src = './output/test_unseen.source'
-    out_file_tar = './output/test_unseen.target'
+    out_file_src = './output/graph/small/test_unseen.source'
+    out_file_tar = './output/graph/small/test_unseen.target'
     f_o_src = open(out_file_src, 'w')
     f_o_tar = open(out_file_tar, 'w')
-    out_row_table_file = os.path.join('output', 'graph_row_table.json')
+    out_row_table_file = os.path.join('output', 'graph', 'small', 'graph_row_table_small.txt')
     f_o_table = open(out_row_table_file, 'w')
 
     table_lst = read_tables()
