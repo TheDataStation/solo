@@ -1,0 +1,118 @@
+import json
+import argparse
+import os
+from tqdm import tqdm
+import numpy as np
+import logging
+import csv
+from eval_retrieval_graph import table_found
+
+def set_logger(args):
+    global logger
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    console = logging.StreamHandler()
+    logger.addHandler(console)
+    return True
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', type=str)
+    parser.add_argument('--out_dir', type=str)
+    args = parser.parse_args()
+    return args
+
+def get_questions(mode):
+    q_item_lst = []
+    qas_file = '/home/cc/code/open_table_qa/qas/nq_%s_qas.json' % mode
+    with open(qas_file) as f:
+        for line in f:
+            q_item = json.loads(line)
+            q_item_lst.append(q_item)
+    return q_item_lst
+
+def read_qry_result(mode):
+    data_file = '/home/cc/code/open_table_qa/output/graph_%s/preds_%s.json' % (mode, mode)
+    ret_dict = {}
+    with open(data_file) as f:
+        for line in f:
+            item = json.loads(line)
+            ret_dict[item['qid']] = item
+    return ret_dict
+
+def list2str(data_lst):
+    data_str = '\n'.join([str(a) for a in data_lst])
+    return data_str
+
+def main():
+    args = get_args()
+    set_logger(args)
+    query_info_lst = get_questions(args.mode)
+    query_info_dict = {}
+    for query_info in query_info_lst:
+        query_info_dict[query_info['qid']] = query_info 
+    k_lst = [1, 5]
+    correct_retr_dict = {}
+    for k in k_lst:
+        correct_retr_dict[k] = []
+    out_file = os.path.join(args.out_dir, 'graph_preds_log_%s.csv' % args.mode)
+    f_o = open(out_file, 'w')
+    writer = csv.writer(f_o, delimiter='\t')
+    col_name_lst = ['qid', 'question', 'order', 'passage', 'gold (retrieved) table', 'table correct ?', 'answers']
+    writer.writerow(col_name_lst)
+
+    qry_result = read_qry_result(args.mode)
+
+    for query_info in tqdm(query_info_lst):
+        batch_queries = [query_info] 
+        qry_ret = qry_result[query_info['qid']]
+        qid = qry_ret['qid']
+        query_info = query_info_dict[qid]
+        gold_table_id_lst = query_info['table_id_lst']
+        q_correct_dict = {}
+        for k in k_lst:
+            top_k_table_id_lst = qry_ret['passage_tags'][:k]
+            correct = table_found(top_k_table_id_lst, gold_table_id_lst)
+            q_correct_dict[k] = correct
+            correct_retr_dict[k].append(correct)
+        
+        if q_correct_dict[1]:
+            continue 
+
+        csv_q_info = [
+            query_info['qid'],
+            query_info['question'],
+            '',
+            '',
+            list2str(query_info['table_id_lst']),
+            '',
+            list2str(query_info['answers'])
+        ]
+        writer.writerow(csv_q_info)
+
+        passage_lst = qry_ret['passages']
+        passage_table_lst = qry_ret['passage_tags']
+        answer_lst = qry_ret['answers']
+
+        for idx, passage in enumerate(passage_lst):
+            table_correct = ('Y' if passage_table_lst[idx] in gold_table_id_lst else '')
+            csv_passage_info = [
+                '',
+                '',
+                (idx + 1),
+                passage,
+                passage_table_lst[idx],
+                table_correct,
+                answer_lst[idx]['answer']
+            ]
+            writer.writerow(csv_passage_info) 
+
+    for k in correct_retr_dict:
+        precision = np.mean(correct_retr_dict[k]) * 100
+        logger.info('p@%d = %.2f' % (k, precision))
+
+    f_o.close()
+
+if __name__ == '__main__':
+    main()
