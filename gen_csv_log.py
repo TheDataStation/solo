@@ -64,6 +64,8 @@ def main():
 
     qry_result = read_qry_result(args.mode)
 
+    out_script_file = './output/cp_ref_tables.sh'
+    f_o_script = open(out_script_file, 'w')
     for query_info in tqdm(query_info_lst):
         batch_queries = [query_info] 
         qry_ret = qry_result[query_info['qid']]
@@ -95,6 +97,12 @@ def main():
         passage_table_lst = qry_ret['passage_tags']
         answer_lst = qry_ret['answers']
 
+        all_ref_table_lst = gold_table_id_lst + passage_table_lst
+        for ref_table_id in all_ref_table_lst:
+            if '/' in ref_table_id:
+                ref_table_id = ref_table_id.replace('/', '[left-slash]')
+            f_o_script.write('cp ./tables_csv/"%s.csv" ./tables_ref \n' % ref_table_id)
+         
         for idx, passage in enumerate(passage_lst):
             table_correct = ('Y' if passage_table_lst[idx] in gold_table_id_lst else '')
             csv_passage_info = [
@@ -113,6 +121,7 @@ def main():
         logger.info('p@%d = %.2f' % (k, precision))
 
     f_o.close()
+    f_o_script.close()
 
 if __name__ == '__main__':
     main()
