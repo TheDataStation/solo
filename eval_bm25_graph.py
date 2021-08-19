@@ -55,6 +55,21 @@ def table_found(top_k_table_id_lst, gold_table_id_lst):
             return 1
     return 0 
 
+def search(open_qa, query):
+    question = open_qa.process_question(query['question'])
+    qry_question = open_qa.get_qry_question(question)
+    sub_entity = None
+    if 'subject' in query:
+        sub_entity = query['subject']
+    retr_source_data = open_qa.ir_ranker.search(index_name=open_qa.ir_index,
+                                                    question=qry_question,
+                                                    entity=sub_entity,
+                                                    k=30,
+                                                    ret_src=True)
+    top_ir_passages = [a['body'] for a in retr_source_data]
+    passage_tags = [a['tag'] for a in retr_source_data]
+    return (top_ir_passages, passage_tags)
+
 def main():
     args = get_args()
     set_logger(args)
@@ -67,18 +82,17 @@ def main():
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
-    out_file = os.path.join(args.out_dir, 'preds_%s.json' % args.mode)
-    f_o = open(out_file, 'w')
+    #out_file = os.path.join(args.out_dir, 'preds_%s.json' % args.mode)
+    #f_o = open(out_file, 'w')
     for query_info in tqdm(query_info_lst): 
-        batch_queries = [query_info] 
-        qry_ret_lst = open_qa.search(batch_queries, ir_retr_num=100, pr_retr_num=30, top_num=5)
-        for qry_ret in qry_ret_lst:
-            f_o.write(json.dumps(qry_ret) + '\n')
-            qid = qry_ret['qid']
+        top_ir_passages, passage_tags = search(open_qa, query_info)
+        for p_id, passage in enumerate(top_ir_passages):
+            #f_o.write(json.dumps(qry_ret) + '\n')
+            qid = query_info['qid']
             query_info = query_info_dict[qid]
             gold_table_id_lst = query_info['table_id_lst']
             for k in k_lst:
-                top_k_table_id_lst = qry_ret['passage_tags'][:k]
+                top_k_table_id_lst = passage_tags[:k]
                 correct = table_found(top_k_table_id_lst, gold_table_id_lst)
                 correct_retr_dict[k].append(correct)
 
@@ -86,7 +100,7 @@ def main():
         precision = np.mean(correct_retr_dict[k]) * 100
         logger.info('p@%d = %.2f' % (k, precision))
 
-    f_o.close()
+    #f_o.close()
 
 if __name__ == '__main__':
     main()
