@@ -25,7 +25,7 @@ def get_args():
 
 def get_questions(mode):
     q_item_lst = []
-    qas_file = '/home/cc/code/open_table_qa/qas/nq_%s_qas.json' % mode
+    qas_file = '/home/cc/code/open_table_discovery/qas/nq_%s_qas.json' % mode
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)
@@ -33,7 +33,7 @@ def get_questions(mode):
     return q_item_lst
 
 def read_qry_result(mode):
-    data_file = '/home/cc/code/open_table_qa/output/graph_%s/preds_%s.json' % (mode, mode)
+    data_file = '/home/cc/code/open_table_discovery/output/graph_table_name_%s/preds_%s.json' % (mode, mode)
     ret_dict = {}
     with open(data_file) as f:
         for line in f:
@@ -71,13 +71,12 @@ def main():
     out_file = os.path.join(args.out_dir, 'graph_preds_log_%s.csv' % args.mode)
     f_o = open(out_file, 'w')
     writer = csv.writer(f_o, delimiter='\t')
-    col_name_lst = ['qid', 'question', 'order', 'passage', 'gold (retrieved) table', 'OpenTableQA table', 'table correct ?', 'answers']
+    col_name_lst = ['qid', 'question', 'order', 'passage', 
+                    'gold (graph2txt)', 'graph2txt correct?', 
+                    'OpenTableQA', 'OpenTableQA correct?', 'answers']
     writer.writerow(col_name_lst)
-
     qry_result = read_qry_result(args.mode)
-
     tapas_ret = read_tapas_retrieval(args.mode)
-
     out_script_file = './output/cp_ref_tables.sh'
     f_o_script = open(out_script_file, 'w')
     for query_info in tqdm(query_info_lst):
@@ -93,8 +92,12 @@ def main():
             q_correct_dict[k] = correct
             correct_retr_dict[k].append(correct)
         
-        if q_correct_dict[1]:
+        if q_correct_dict[1]: # ignore questions whose retrievaled top 1 table is correct. 
             continue 
+
+        tapas_table_id_lst = tapas_ret[query_info['qid']]
+        if tapas_table_id_lst[0] not in gold_table_id_lst:
+            continue
 
         csv_q_info = [
             query_info['qid'],
@@ -102,6 +105,7 @@ def main():
             '',
             '',
             list2str(query_info['table_id_lst']),
+            '',
             '',
             '',
             list2str(query_info['answers'])
@@ -118,17 +122,18 @@ def main():
                 ref_table_id = ref_table_id.replace('/', '[left-slash]')
             f_o_script.write('cp ./tables_csv/"%s.csv" ./tables_ref \n' % ref_table_id)
         
-        tapas_table_id_lst = tapas_ret[query_info['qid']] 
         for idx, passage in enumerate(passage_lst):
-            table_correct = ('Y' if passage_table_lst[idx] in gold_table_id_lst else '')
+            graph2txt_correct = ('Y' if passage_table_lst[idx] in gold_table_id_lst else '')
+            open_table_qa_correct = ('Y' if tapas_table_id_lst[idx] in gold_table_id_lst else '') 
             csv_passage_info = [
                 '',
                 '',
                 (idx + 1),
                 passage,
                 passage_table_lst[idx],
+                graph2txt_correct,
                 tapas_table_id_lst[idx],
-                table_correct,
+                open_table_qa_correct,
                 answer_lst[idx]['answer']
             ]
             writer.writerow(csv_passage_info) 
