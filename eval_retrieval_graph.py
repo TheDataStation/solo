@@ -15,9 +15,9 @@ def set_logger(args):
     logger.addHandler(console)
     expt_path = os.path.join(args.out_dir)
     if os.path.isdir(expt_path):
-        print('[%s] already exists, please use a different value for [--expt_dir].\nThe full path [%s]\n'
+        err_msg = ('[%s] already exists, please use a different value for [--expt_dir].\nThe full path [%s]\n'
               % (args.out_dir, expt_path))
-        return None
+        raise ValueError(err_msg)
     os.makedirs(expt_path)
     log_path = os.path.join(expt_path, 'log.txt')
     file_hander = logging.FileHandler(log_path, 'w')
@@ -42,7 +42,7 @@ def get_args():
 
 def get_questions(mode):
     q_item_lst = []
-    qas_file = '/home/cc/code/open_table_qa/qas/nq_%s_qas.json' % mode
+    qas_file = '/home/cc/code/open_table_discovery/qas/nq_%s_qas.json' % mode
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)
@@ -54,6 +54,28 @@ def table_found(top_k_table_id_lst, gold_table_id_lst):
         if table_id in gold_table_id_lst:
             return 1
     return 0 
+
+def get_top_k_tables(table_name_lst, K):
+    top_tables = []
+    table_dict = {}
+    N = len(table_name_lst)
+    for idx, table_name in enumerate(table_name_lst):
+        if table_name not in table_dict:
+            table_info = {
+                'name':table_name,
+                'start_idx':idx,
+                'end_idx':idx
+            }
+            top_tables.append(table_info)
+            table_dict[table_name] = table_info
+        else:
+            table_dict[table_name]['end_idx'] = idx
+
+    #if len(top_tables) < K:
+    #    raise ValueError('Not enough tables')
+    
+    top_k_tables = top_tables[:K]
+    return top_k_tables
 
 def main():
     args = get_args()
@@ -69,24 +91,33 @@ def main():
         correct_retr_dict[k] = []
     out_file = os.path.join(args.out_dir, 'preds_%s.json' % args.mode)
     f_o = open(out_file, 'w')
-    for query_info in tqdm(query_info_lst): 
+    for query_info in tqdm(query_info_lst):
         batch_queries = [query_info] 
-        qry_ret_lst = open_qa.search(batch_queries, ir_retr_num=100, pr_retr_num=30, top_num=5)
+        qry_ret_lst = open_qa.search(batch_queries, ir_retr_num=100, pr_retr_num=30, top_num=30)
         for qry_ret in qry_ret_lst:
-            f_o.write(json.dumps(qry_ret) + '\n')
             qid = qry_ret['qid']
             query_info = query_info_dict[qid]
             gold_table_id_lst = query_info['table_id_lst']
             for k in k_lst:
-                top_k_table_id_lst = qry_ret['passage_tags'][:k]
+                top_k_table_info_lst = get_top_k_tables(qry_ret['passage_tags'], k)
+                if k == 5:
+                    qry_ret['top_5_tables'] = top_k_table_info_lst
+                top_k_table_id_lst = [a['name'] for a in top_k_table_info_lst] 
                 correct = table_found(top_k_table_id_lst, gold_table_id_lst)
                 correct_retr_dict[k].append(correct)
+           
+            show_precison(correct_retr_dict) 
+            f_o.write(json.dumps(qry_ret) + '\n')
 
+
+    show_precison(correct_retr_dict)
+    f_o.close()
+
+def show_precison(correct_retr_dict):
     for k in correct_retr_dict:
         precision = np.mean(correct_retr_dict[k]) * 100
         logger.info('p@%d = %.2f' % (k, precision))
-
-    f_o.close()
+    
 
 if __name__ == '__main__':
     main()
