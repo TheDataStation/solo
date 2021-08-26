@@ -15,9 +15,9 @@ def set_logger(args):
     logger.addHandler(console)
     expt_path = os.path.join(args.out_dir)
     if os.path.isdir(expt_path):
-        print('[%s] already exists, please use a different value for [--expt_dir].\nThe full path [%s]\n'
+        err_msg = ('[%s] already exists, please use a different value for [--expt_dir].\nThe full path [%s]\n'
               % (args.out_dir, expt_path))
-        return None
+        raise ValueError(err_msg)
     os.makedirs(expt_path)
     log_path = os.path.join(expt_path, 'log.txt')
     file_hander = logging.FileHandler(log_path, 'w')
@@ -42,7 +42,7 @@ def get_args():
 
 def get_questions(mode):
     q_item_lst = []
-    qas_file = '/home/cc/code/open_table_qa/qas/nq_%s_qas.json' % mode
+    qas_file = '/home/cc/code/open_table_discovery/qas/nq_%s_qas.json' % mode
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)
@@ -78,23 +78,30 @@ def main():
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
-    k_lst = [1, 5]
+    k_lst = [1, 5, 100]
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
-    #out_file = os.path.join(args.out_dir, 'preds_%s.json' % args.mode)
-    #f_o = open(out_file, 'w')
+    out_file = os.path.join(args.out_dir, 'preds_%s.json' % args.mode)
+    f_o = open(out_file, 'w')
     for query_info in tqdm(query_info_lst): 
         top_ir_passages, passage_tags = search(open_qa, query_info)
-        for p_id, passage in enumerate(top_ir_passages):
-            #f_o.write(json.dumps(qry_ret) + '\n')
-            qid = query_info['qid']
-            query_info = query_info_dict[qid]
-            gold_table_id_lst = query_info['table_id_lst']
-            for k in k_lst:
-                top_k_table_id_lst = passage_tags[:k]
-                correct = table_found(top_k_table_id_lst, gold_table_id_lst)
-                correct_retr_dict[k].append(correct)
+        qid = query_info['qid']
+        query_info = query_info_dict[qid]
+        gold_table_id_lst = query_info['table_id_lst']
+        
+        correct_info = {}
+        for k in k_lst:
+            top_k_table_id_lst = passage_tags[:k]
+            correct = table_found(top_k_table_id_lst, gold_table_id_lst)
+            correct_info[k] = correct
+            correct_retr_dict[k].append(correct)
+
+        correct_log = {
+            'qid':qid,
+            'found_top_100':correct_info[100]
+        }
+        f_o.write(json.dumps(correct_log) + '\n')
 
     for k in correct_retr_dict:
         precision = np.mean(correct_retr_dict[k]) * 100
