@@ -6,6 +6,7 @@ import numpy as np
 import logging
 import csv
 from eval_retrieval_graph import table_found
+import random
 
 def set_logger(args):
     global logger
@@ -18,22 +19,21 @@ def set_logger(args):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', type=str)
-    parser.add_argument('--out_dir', type=str)
+    parser.add_argument('--out_dir', type=str, default='output')
     args = parser.parse_args()
     return args
 
-def get_questions(mode):
+def get_questions():
     q_item_lst = []
-    qas_file = '/home/cc/code/open_table_discovery/qas/nq_%s_qas.json' % mode
+    qas_file = '/home/cc/data/FeTaQA/data/tf_records/interactions/dev_qas.jsonl'
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)
             q_item_lst.append(q_item)
     return q_item_lst
 
-def read_qry_result(mode):
-    data_file = '/home/cc/code/open_table_discovery/output/graph_table_name_%s/preds_%s.json' % (mode, mode)
+def read_qry_result():
+    data_file = '/home/cc/code/open_table_discovery/output/fetaqa_retrieval_graph_dev/preds_dev.json'
     ret_dict = {}
     with open(data_file) as f:
         for line in f:
@@ -60,7 +60,7 @@ def read_tapas_retrieval(mode):
 def main():
     args = get_args()
     set_logger(args)
-    query_info_lst = get_questions(args.mode)
+    query_info_lst = get_questions()
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
@@ -68,17 +68,21 @@ def main():
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
-    out_file = os.path.join(args.out_dir, 'graph_preds_log_%s.csv' % args.mode)
+    out_file = os.path.join(args.out_dir, 'fetaqa_preds_log.csv')
     f_o = open(out_file, 'w')
     writer = csv.writer(f_o, delimiter='\t')
+    '''
     col_name_lst = ['qid', 'question', 'order', 'passage', 
                     'gold (graph2txt)', 'graph2txt correct?', 
                     'OpenTableQA', 'OpenTableQA correct?', 'answers']
+    '''
+    col_name_lst = ['qid', 'question', 'order', 'passage', 'gold (graph2txt)', 'table correct?', 'answers']
     writer.writerow(col_name_lst)
-    qry_result = read_qry_result(args.mode)
-    tapas_ret = read_tapas_retrieval(args.mode)
-    out_script_file = './output/cp_ref_tables.sh'
+    qry_result = read_qry_result()
+    #tapas_ret = read_tapas_retrieval(args.mode)
+    out_script_file = './output/fetaqa_cp_ref_tables.sh'
     f_o_script = open(out_script_file, 'w')
+    log_qid_lst = []
     for query_info in tqdm(query_info_lst):
         batch_queries = [query_info] 
         qry_ret = qry_result[query_info['qid']]
@@ -94,19 +98,14 @@ def main():
         
         if q_correct_dict[1]: # ignore questions whose retrievaled top 1 table is correct. 
             continue 
-
-        tapas_table_id_lst = tapas_ret[query_info['qid']]
-        if tapas_table_id_lst[0] not in gold_table_id_lst:
-            continue
-
+    
+        log_qid_lst.append(query_info['qid'])    
         csv_q_info = [
             query_info['qid'],
             query_info['question'],
             '',
             '',
             list2str(query_info['table_id_lst']),
-            '',
-            '',
             '',
             list2str(query_info['answers'])
         ]
@@ -116,15 +115,19 @@ def main():
         passage_table_lst = qry_ret['passage_tags']
         answer_lst = qry_ret['answers']
 
-        all_ref_table_lst = gold_table_id_lst + passage_table_lst
+        all_ref_table_lst = gold_table_id_lst + passage_table_lst[:5]
+
         for ref_table_id in all_ref_table_lst:
             if '/' in ref_table_id:
                 ref_table_id = ref_table_id.replace('/', '[left-slash]')
-            f_o_script.write('cp ./tables_csv/"%s.csv" ./tables_ref \n' % ref_table_id)
-        
-        for idx, passage in enumerate(passage_lst):
+            if '"' in ref_table_id:
+                f_o_script.write("cp ./fetaqa_tables_csv/'%s.csv' ./fetaqa_tables_ref \n" % ref_table_id)
+            else: 
+                f_o_script.write('cp ./fetaqa_tables_csv/"%s.csv" ./fetaqa_tables_ref \n' % ref_table_id)
+
+        top_5_passage_lst = passage_lst[:5] 
+        for idx, passage in enumerate(top_5_passage_lst):
             graph2txt_correct = ('Y' if passage_table_lst[idx] in gold_table_id_lst else '')
-            open_table_qa_correct = ('Y' if tapas_table_id_lst[idx] in gold_table_id_lst else '') 
             csv_passage_info = [
                 '',
                 '',
@@ -132,8 +135,6 @@ def main():
                 passage,
                 passage_table_lst[idx],
                 graph2txt_correct,
-                tapas_table_id_lst[idx],
-                open_table_qa_correct,
                 answer_lst[idx]['answer']
             ]
             writer.writerow(csv_passage_info) 
@@ -141,6 +142,12 @@ def main():
     for k in correct_retr_dict:
         precision = np.mean(correct_retr_dict[k]) * 100
         logger.info('p@%d = %.2f' % (k, precision))
+
+    sample_qid_lst = random.sample(log_qid_lst, 100)
+    qid_file_name = os.path.join(args.out_dir, 'fetaqa_sample_qid_lst.txt')
+    with open(qid_file_name, 'w') as f_o_qid:
+        for sample_qid in sample_qid_lst:
+            f_o_qid.write(sample_qid + '\n')
 
     f_o.close()
     f_o_script.close()
