@@ -24,17 +24,18 @@ def set_logger(args):
     logger.addHandler(file_hander)
     return True
 
-def get_open_qa():
+def get_open_qa(args):
     open_qa = OpenQA(
         ir_host='127.0.0.1',
         ir_port=9200,
-        ir_index='nq_tables_graph_table_name_txt',
+        ir_index=args.index_name,
         model_dir='/home/cc/code/fabric_qa/model',
         cuda=0)
     return open_qa
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--index_name', type=str)
     parser.add_argument('--mode', type=str)
     parser.add_argument('--out_dir', type=str)
     args = parser.parse_args()
@@ -42,7 +43,7 @@ def get_args():
 
 def get_questions(mode):
     q_item_lst = []
-    qas_file = '/home/cc/code/open_table_discovery/qas/nq_%s_qas.json' % mode
+    qas_file = '/home/cc/data/FeTaQA/data/tf_records/interactions/%s_qas.jsonl' % mode
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)
@@ -64,7 +65,7 @@ def search(open_qa, query):
     retr_source_data = open_qa.ir_ranker.search(index_name=open_qa.ir_index,
                                                     question=qry_question,
                                                     entity=sub_entity,
-                                                    k=30,
+                                                    k=100,
                                                     ret_src=True)
     top_ir_passages = [a['body'] for a in retr_source_data]
     passage_tags = [a['tag'] for a in retr_source_data]
@@ -73,7 +74,7 @@ def search(open_qa, query):
 def main():
     args = get_args()
     set_logger(args)
-    open_qa = get_open_qa()
+    open_qa = get_open_qa(args)
     query_info_lst = get_questions(args.mode)
     query_info_dict = {}
     for query_info in query_info_lst:
@@ -99,6 +100,10 @@ def main():
 
         correct_log = {
             'qid':qid,
+            'question':query_info['question'],
+            'passages':top_ir_passages[:5],
+            'passage_tags':passage_tags[:5],
+            'answers':[{'answer':''} for a in range(5)],
             'found_top_100':correct_info[100]
         }
         f_o.write(json.dumps(correct_log) + '\n')
@@ -107,7 +112,7 @@ def main():
         precision = np.mean(correct_retr_dict[k]) * 100
         logger.info('p@%d = %.2f' % (k, precision))
 
-    #f_o.close()
+    f_o.close()
 
 if __name__ == '__main__':
     main()

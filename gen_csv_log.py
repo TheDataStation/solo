@@ -33,7 +33,7 @@ def get_questions():
     return q_item_lst
 
 def read_qry_result():
-    data_file = '/home/cc/code/open_table_discovery/output/fetaqa_retrieval_graph_dev/preds_dev.json'
+    data_file = '/home/cc/code/open_table_discovery/output/bm25_fetaqa_retrieval_graph_dev/preds_dev.json'
     ret_dict = {}
     with open(data_file) as f:
         for line in f:
@@ -80,7 +80,7 @@ def main():
     writer.writerow(col_name_lst)
     qry_result = read_qry_result()
     #tapas_ret = read_tapas_retrieval(args.mode)
-    out_script_file = './output/fetaqa_cp_ref_tables.sh'
+    out_script_file = os.path.join(args.out_dir, 'fetaqa_cp_ref_tables.sh')
     f_o_script = open(out_script_file, 'w')
     log_qid_lst = []
     for query_info in tqdm(query_info_lst):

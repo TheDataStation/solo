@@ -1,4 +1,4 @@
 python eval_retrieval.py \
---index_name nq_tables_raw_txt \
---qas_file ./qas/nq_test_qas.json \
---out_dir ./output/test
+--index_name fetaqa_table_token_text \
+--qas_file ~/data/FeTaQA/data/tf_records/interactions/test_qas.jsonl \
+--out_dir ./output/fetaQA_table_tokens_test

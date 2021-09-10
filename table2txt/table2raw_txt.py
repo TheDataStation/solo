@@ -42,7 +42,7 @@ def write_table_info(table_info, f_o_tables):
     f_o_tables.write(json.dumps(out_data) + '\n')
   
 def main():
-    out_table_file = os.path.join('output', 'raw_text', 'table_raw_text_small.json')
+    out_table_file = os.path.join('output', 'fetaQA', 'table_tokens', 'table_token_text.json')
     f_o_tables = open(out_table_file, 'w')
 
     table_lst = read_tables()

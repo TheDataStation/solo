@@ -28,7 +28,7 @@ def get_open_qa():
     open_qa = OpenQA(
         ir_host='127.0.0.1',
         ir_port=9200,
-        ir_index='nq_tables_graph_table_name_txt',
+        ir_index='fetaqa_tables',
         model_dir='/home/cc/code/fabric_qa/model',
         cuda=0)
     return open_qa
@@ -42,7 +42,7 @@ def get_args():
 
 def get_questions(mode):
     q_item_lst = []
-    qas_file = '/home/cc/code/open_table_discovery/qas/nq_%s_qas.json' % mode
+    qas_file = '/home/cc/data/FeTaQA/data/tf_records/interactions/%s_qas.jsonl' % mode
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)

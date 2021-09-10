@@ -32,8 +32,9 @@ def get_small_tables():
 
 def read_tables():
     table_lst = []
-    table_id_set = get_small_tables()
-    read_table_file(table_lst, '/home/cc/data/nq/tables/tables.jsonl', table_id_set)
+    #table_id_set = get_small_tables()
+    table_id_set = None
+    read_table_file(table_lst, '/home/cc/data/FeTaQA/data/tf_records/tables/tables.jsonl', table_id_set)
     return table_lst
 
 def process_table(table):
@@ -67,11 +68,11 @@ def process_table(table):
     return (table, table_graph_lst)
     
 def main():
-    out_file_src = './output/graph/small/test_unseen.source'
-    out_file_tar = './output/graph/small/test_unseen.target'
+    out_file_src = './output/fetaQA/graph/test_unseen.source'
+    out_file_tar = './output/fetaQA/graph/test_unseen.target'
     f_o_src = open(out_file_src, 'w')
     f_o_tar = open(out_file_tar, 'w')
-    out_row_table_file = os.path.join('output', 'graph', 'small', 'graph_row_table_small.txt')
+    out_row_table_file = os.path.join('output', 'fetaQA',  'graph', 'graph_row_table.txt')
     f_o_table = open(out_row_table_file, 'w')
 
     table_lst = read_tables()

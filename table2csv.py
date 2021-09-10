@@ -14,14 +14,14 @@ def read_small_table_set():
     return table_set
 
 def read_table():
-    data_file = '/home/cc/data/nq/tables/tables.jsonl'
-    small_table_set = read_small_table_set()
+    data_file = '/home/cc/data/FeTaQA/data/tf_records/tables/tables.jsonl'
+    #small_table_set = read_small_table_set()
     with open(data_file) as f:
         for line in f:
             table_data = json.loads(line)
             table_id = table_data['tableId']
-            if table_id not in small_table_set:
-                continue
+            #if table_id not in small_table_set:
+            #    continue
             yield table_data
 
 def main():
@@ -31,7 +31,7 @@ def main():
         if '/' in table_id:
             table_id = table_id.replace('/', '[left-slash]')
 
-        out_file = os.path.join('./output/tables_csv', '%s.csv' % table_id)
+        out_file = os.path.join('./output/fetaqa_tables_csv', '%s.csv' % table_id)
         with open(out_file, 'w') as f_o:
             columns = table['columns']
             writer = csv.writer(f_o)
