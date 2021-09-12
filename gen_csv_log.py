@@ -5,7 +5,7 @@ from tqdm import tqdm
 import numpy as np
 import logging
 import csv
-from eval_retrieval_graph import table_found
+from eval_graph_fabricqa import table_found
 import random
 
 def set_logger(args):
@@ -19,7 +19,7 @@ def set_logger(args):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--out_dir', type=str, default='output')
+    parser.add_argument('--out_dir', type=str, default='./dataset/fetaqa/analysis_log')
     args = parser.parse_args()
     return args
 
@@ -33,7 +33,7 @@ def get_questions():
     return q_item_lst
 
 def read_qry_result():
-    data_file = '/home/cc/code/open_table_discovery/output/bm25_fetaqa_retrieval_graph_dev/preds_dev.json'
+    data_file = './dataset/fetaqa/graph2txt_fabricqa/dev/preds_dev.json'
     ret_dict = {}
     with open(data_file) as f:
         for line in f:
@@ -45,16 +45,14 @@ def list2str(data_lst):
     data_str = '\n'.join([str(a) for a in data_lst])
     return data_str
 
-def read_tapas_retrieval(mode):
-    data_file = '/home/cc/code/tapas/models/tapas_nq_hn_retriever_large/%s_knn_small.jsonl' % mode
+def read_bm25_retrieval():
+    data_file = './dataset/fetaqa/graph2txt_bm25/dev/preds_dev.json'
     ret_dict = {}
     with open(data_file) as f:
         for line in f:
             item = json.loads(line)
-            qid = item['query_id']
-            table_info_lst = item['table_scores'][:5]
-            top_table_id_lst = [a['table_id'] for a in table_info_lst]
-            ret_dict[qid] = top_table_id_lst
+            qid = item['qid']
+            ret_dict[qid] = item
     return ret_dict
 
 def main():
@@ -71,15 +69,13 @@ def main():
     out_file = os.path.join(args.out_dir, 'fetaqa_preds_log.csv')
     f_o = open(out_file, 'w')
     writer = csv.writer(f_o, delimiter='\t')
-    '''
-    col_name_lst = ['qid', 'question', 'order', 'passage', 
-                    'gold (graph2txt)', 'graph2txt correct?', 
-                    'OpenTableQA', 'OpenTableQA correct?', 'answers']
-    '''
-    col_name_lst = ['qid', 'question', 'order', 'passage', 'gold (graph2txt)', 'table correct?', 'answers']
+    col_name_lst = ['qid', 'question', 'order', 'fabricqa passage', 
+                    'gold (fabricqa) table', 'fabricqa correct?', 'gold (fabricqa) answer',
+                    'bm25 passage', 'bm25 table', 'bm25 correct?',
+                    'found in top 100 of bm25']
     writer.writerow(col_name_lst)
     qry_result = read_qry_result()
-    #tapas_ret = read_tapas_retrieval(args.mode)
+    em25_ret = read_bm25_retrieval()
     out_script_file = os.path.join(args.out_dir, 'fetaqa_cp_ref_tables.sh')
     f_o_script = open(out_script_file, 'w')
     log_qid_lst = []
@@ -98,7 +94,8 @@ def main():
         
         if q_correct_dict[1]: # ignore questions whose retrievaled top 1 table is correct. 
             continue 
-    
+   
+        found_top_100 = ('Y' if em25_ret[query_info['qid']]['found_top_100'] > 0 else 'N')
         log_qid_lst.append(query_info['qid'])    
         csv_q_info = [
             query_info['qid'],
@@ -107,7 +104,11 @@ def main():
             '',
             list2str(query_info['table_id_lst']),
             '',
-            list2str(query_info['answers'])
+            list2str(query_info['answers']),
+            '',
+            '',
+            '',
+            found_top_100
         ]
         writer.writerow(csv_q_info)
 
@@ -125,17 +126,24 @@ def main():
             else: 
                 f_o_script.write('cp ./fetaqa_tables_csv/"%s.csv" ./fetaqa_tables_ref \n' % ref_table_id)
 
+        top_em25_passages = em25_ret[query_info['qid']]['passages']
+        top_em25_table_lst = em25_ret[query_info['qid']]['passage_tags']
         top_5_passage_lst = passage_lst[:5] 
         for idx, passage in enumerate(top_5_passage_lst):
-            graph2txt_correct = ('Y' if passage_table_lst[idx] in gold_table_id_lst else '')
+            fabricqa_correct = ('Y' if passage_table_lst[idx] in gold_table_id_lst else '')
+            em25_correct = ('Y' if top_em25_table_lst[idx] in gold_table_id_lst else '') 
             csv_passage_info = [
                 '',
                 '',
                 (idx + 1),
                 passage,
                 passage_table_lst[idx],
-                graph2txt_correct,
-                answer_lst[idx]['answer']
+                fabricqa_correct,
+                answer_lst[idx]['answer'],
+                top_em25_passages[idx],
+                top_em25_table_lst[idx],
+                em25_correct,
+                ''
             ]
             writer.writerow(csv_passage_info) 
 
