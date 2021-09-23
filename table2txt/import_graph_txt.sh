@@ -1,6 +1,13 @@
+if [ "$#" -ne 2 ]; then
+    echo "Usage: ./import_graph_txt.sh <dataset> <experiment>"
+    exit
+fi
+dataset=$1
+exptr=$2
+index_name=${dataset}_${exptr}
+data_dir="./dataset/${dataset}/${exptr}/passage_parts"
 python ~/code/fabric_qa/src/data_process/indexer/data_indexer.py \
---index_name fetaqa_tables_topic_entity \
---input_dir ./output/fetaqa/graph_topic_entity/passage_parts \
+--index_name ${index_name} \
+--input_dir ${data_dir} \
 --file_pattern '*.json_part_*'
-
 
