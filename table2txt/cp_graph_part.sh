@@ -4,7 +4,7 @@ if [ "$#" -ne 3 ]; then
 fi
 dataset=$1
 expt_name=$2
-part_name=$1
+part_name=part_$3
 expt_dir="/home/cc/code/plms_graph2text/webnlg/data/webnlg/${dataset}/${expt_name}"
 mkdir -p ${expt_dir}
 rm -rf ${expt_dir}/${part_name}
