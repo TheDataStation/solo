@@ -24,17 +24,18 @@ def set_logger(args):
     logger.addHandler(file_hander)
     return True
 
-def get_open_qa():
+def get_open_qa(args):
     open_qa = OpenQA(
         ir_host='127.0.0.1',
         ir_port=9200,
-        ir_index='fetaqa_tables',
+        ir_index=args.index_name,
         model_dir='/home/cc/code/fabric_qa/model',
         cuda=0)
     return open_qa
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--index_name', type=str)
     parser.add_argument('--mode', type=str)
     parser.add_argument('--out_dir', type=str)
     args = parser.parse_args()
@@ -80,7 +81,7 @@ def get_top_k_tables(table_name_lst, K):
 def main():
     args = get_args()
     set_logger(args)
-    open_qa = get_open_qa()
+    open_qa = get_open_qa(args)
     query_info_lst = get_questions(args.mode)
     query_info_dict = {}
     for query_info in query_info_lst:

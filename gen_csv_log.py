@@ -92,8 +92,8 @@ def main():
             q_correct_dict[k] = correct
             correct_retr_dict[k].append(correct)
         
-        if q_correct_dict[1]: # ignore questions whose retrievaled top 1 table is correct. 
-            continue 
+        #if q_correct_dict[1]: # ignore questions whose retrievaled top 1 table is correct. 
+        #    continue 
    
         found_top_100 = ('Y' if em25_ret[query_info['qid']]['found_top_100'] > 0 else 'N')
         log_qid_lst.append(query_info['qid'])    
