@@ -136,11 +136,14 @@ def gen_graph_with_topic_entity(row_info, url, topic_entity):
                 'url':url
             }
             tuple_info_lst.append(tuple_info)
+    
+    table_tuple_lst = get_table_tuples(row_info, url)
+    all_tuple_lst = tuple_info_lst + table_tuple_lst
 
-    graph_lst = tuple2graph(tuple_info_lst)
+    graph_lst = tuple2graph(all_tuple_lst)
     return graph_lst
 
-def gen_graph(row_info, url):
+def get_table_tuples(row_info, url):
     N = len(row_info)
     tuple_dict = {}
     tuple_info_lst = []
@@ -168,8 +171,9 @@ def gen_graph(row_info, url):
                 }
                 tuple_info_lst.append(tuple_info)
 
-    graph_lst = tuple2graph(tuple_info_lst)
-    return graph_lst
+    return tuple_info_lst
+    #graph_lst = tuple2graph(tuple_info_lst)
+    #return graph_lst
 
 def tuple2graph(tuple_info_lst):
     graph_lst = []
