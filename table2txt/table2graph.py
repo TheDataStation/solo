@@ -148,6 +148,7 @@ def get_table_tuples(row_info, url):
     tuple_dict = {}
     tuple_info_lst = []
     for idx_1 in range(0, N):
+        e_s_class = row_info[idx_1]['name'].strip()
         e_s = row_info[idx_1]['value'].strip()
         if e_s == '':
             continue
@@ -158,7 +159,7 @@ def get_table_tuples(row_info, url):
             e_o = row_info[idx_2]['value'].strip()
             if e_o == '':
                 continue
-            tuple_text = '<H> %s <R> %s <T> %s ' % (e_s, rel, e_o)
+            tuple_text = '<H> %s <R> %s <T> %s ' % (e_s_class + ' ' + e_s, rel, e_o)
             tuple_code = tuple_text.lower()
             if tuple_code not in tuple_dict:
                 tuple_dict[tuple_code] = 1

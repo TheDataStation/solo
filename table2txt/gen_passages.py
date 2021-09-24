@@ -14,8 +14,8 @@ def get_passage_tables(part_name, args):
     return table_id_lst
 
 def get_passage(table_id, graph_text):
-    #table_id_updated = table_id.replace('_', ' ').replace('-', ' ')
-    passage = table_id + '. ' + graph_text
+    table_id_updated = table_id.replace('_', ' ').replace('-', ' ')
+    passage = table_id_updated + '. ' + graph_text
     return passage
 
 def main():
@@ -33,8 +33,8 @@ def main():
             for row, text in enumerate(f):
                 graph_text = text.rstrip()
                 table_id = passage_tables[row]
-                #passage = get_passage(table_id, graph_text)
-                passage = graph_text
+                passage = get_passage(table_id, graph_text)
+                #passage = graph_text
                 out_item = {
                     'id': part_name,
                     'p_id': row,
