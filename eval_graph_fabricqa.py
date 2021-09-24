@@ -35,15 +35,16 @@ def get_open_qa(args):
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--query_dir', type=str)
     parser.add_argument('--index_name', type=str)
     parser.add_argument('--mode', type=str)
     parser.add_argument('--out_dir', type=str)
     args = parser.parse_args()
     return args
 
-def get_questions(mode):
+def get_questions(query_dir, mode):
     q_item_lst = []
-    qas_file = '/home/cc/data/FeTaQA/data/tf_records/interactions/%s_qas.jsonl' % mode
+    qas_file = os.path.join(query_dir,  '%s_qas.jsonl' % mode)
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)
@@ -82,7 +83,7 @@ def main():
     args = get_args()
     set_logger(args)
     open_qa = get_open_qa(args)
-    query_info_lst = get_questions(args.mode)
+    query_info_lst = get_questions(args.query_dir, args.mode)
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
