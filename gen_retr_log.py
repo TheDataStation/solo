@@ -20,6 +20,7 @@ def set_logger(args):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str)
+    parser.add_argument('--open_table_qa_retr', type=str)
     parser.add_argument('--experiment', type=str)
 
     args = parser.parse_args()
@@ -57,6 +58,17 @@ def read_bm25_retrieval(args):
             ret_dict[qid] = item
     return ret_dict
 
+def read_open_table_qa_retr(args):
+    retr_dict = {}
+    with open(args.open_table_qa_retr) as f:
+        for line in f:
+            item = json.loads(line)
+            qid = item['query_id']
+            top_lst = item['table_scores'][:5]  
+            top_table_lst = [a['table_id'] for a in top_lst]
+            retr_dict[qid] = top_table_lst
+    return retr_dict 
+     
 def main():
     args = get_args()
     set_logger(args)
@@ -78,11 +90,13 @@ def main():
     writer = csv.writer(f_o, delimiter='\t')
     col_name_lst = ['qid', 'question', 'order', 'fabricqa passage', 
                     'gold (fabricqa) table', 'fabricqa correct?', 'gold (fabricqa) answer',
+                    'open_table_qa table', 'open_table_qa correct?',
                     'bm25 passage', 'bm25 table', 'bm25 correct?',
                     'found in top 100 of bm25']
     writer.writerow(col_name_lst)
     qry_result = read_qry_result(args)
     em25_ret = read_bm25_retrieval(args)
+    open_table_qa_ret = read_open_table_qa_retr(args)
     log_qid_lst = []
     for query_info in tqdm(query_info_lst):
         batch_queries = [query_info] 
@@ -97,8 +111,12 @@ def main():
             q_correct_dict[k] = correct
             correct_retr_dict[k].append(correct)
         
+        top_open_table_qa_table_lst = open_table_qa_ret[query_info['qid']]
         if q_correct_dict[1]: # ignore questions whose retrievaled top 1 table is correct. 
             continue 
+
+        if top_open_table_qa_table_lst[0] not in gold_table_id_lst:
+            continue
    
         found_top_100 = ('Y' if em25_ret[query_info['qid']]['found_top_100'] > 0 else 'N')
         log_qid_lst.append(query_info['qid'])    
@@ -113,6 +131,8 @@ def main():
             '',
             '',
             '',
+            '',
+            '',
             found_top_100
         ]
         writer.writerow(csv_q_info)
@@ -123,10 +143,11 @@ def main():
 
         top_em25_passages = em25_ret[query_info['qid']]['passages']
         top_em25_table_lst = em25_ret[query_info['qid']]['passage_tags']
-        top_5_passage_lst = passage_lst[:5] 
+        top_5_passage_lst = passage_lst[:5]
         for idx, passage in enumerate(top_5_passage_lst):
-            fabricqa_correct = ('Y' if passage_table_lst[idx] in gold_table_id_lst else '')
-            em25_correct = ('Y' if top_em25_table_lst[idx] in gold_table_id_lst else '') 
+            fabricqa_correct = ('Y' if passage_table_lst[idx] in gold_table_id_lst else 'N')
+            em25_correct = ('Y' if top_em25_table_lst[idx] in gold_table_id_lst else 'N') 
+            open_table_qa_correct = ('Y' if top_open_table_qa_table_lst[idx] in gold_table_id_lst else 'N') 
             csv_passage_info = [
                 '',
                 '',
@@ -135,6 +156,8 @@ def main():
                 passage_table_lst[idx],
                 fabricqa_correct,
                 answer_lst[idx]['answer'],
+                top_open_table_qa_table_lst[idx],
+                open_table_qa_correct,
                 top_em25_passages[idx],
                 top_em25_table_lst[idx],
                 em25_correct,
