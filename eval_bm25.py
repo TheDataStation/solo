@@ -43,7 +43,7 @@ def get_args():
 
 def get_questions(mode):
     q_item_lst = []
-    qas_file = '/home/cc/data/FeTaQA/data/tf_records/interactions/%s_qas.jsonl' % mode
+    qas_file = '/home/cc/data/nq_tables/interactions/%s_qas.jsonl' % mode
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)
