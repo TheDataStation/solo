@@ -218,7 +218,7 @@ def get_args():
     parser.add_argument('--input_tables', type=str)
     parser.add_argument('--table_filter', type=str)
     parser.add_argument('--out_dir', type=str)
-    parser.add_argument('--debug', type=int)
+    parser.add_argument('--debug', type=int, default=0)
     args = parser.parse_args()
     return args
 
