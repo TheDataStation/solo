@@ -18,7 +18,7 @@ def get_passage(table_id, graph_text, graph_tokens):
 
     graph_tokens_updated = graph_tokens.replace('<H>', ' ').replace('<R>', ' ').replace('<T>', ' , ')
 
-    passage = table_id_updated + ' . ' + graph_tokens_updated + ' . ' + graph_text
+    passage = table_id_updated + ' . ' + graph_tokens_updated + ' (). ' + graph_text
     return passage
 
 def get_graph_tokens(data_file):
