@@ -87,7 +87,7 @@ def main():
         correct_retr_dict[k] = []
     out_file = os.path.join(out_dir, 'retr_log_%s_%s.csv' % (args.dataset, args.experiment))
     f_o = open(out_file, 'w')
-    writer = csv.writer(f_o, delimiter='\t')
+    writer = csv.writer(f_o, delimiter=',')
     col_name_lst = ['qid', 'question', 'order', 'fabricqa passage', 
                     'gold (fabricqa) table', 'fabricqa correct?', 'gold (fabricqa) answer',
                     'open_table_qa table', 'open_table_qa correct?',

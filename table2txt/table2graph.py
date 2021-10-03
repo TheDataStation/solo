@@ -188,7 +188,7 @@ def tuple2graph(tuple_info_lst):
     buffer_graphs = []
     buffer_size = 0
     N = len(tuple_info_lst)
-    stride = 3
+    stride = 2
     pos_1 = 0
     while (pos_1 < N):
         pos_2 = pos_1
@@ -209,7 +209,11 @@ def tuple2graph(tuple_info_lst):
         if pos_2 >= N:
             break
 
-        pos_1 = max(pos_1 + 1, pos_2 - 1)
+        next_pos = min(pos_1 + stride, pos_2 - 1)
+        if next_pos > pos_1:
+            pos_1 = next_pos
+        else:
+            pos_1 += 1
 
     return graph_lst
 
