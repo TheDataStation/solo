@@ -11,6 +11,8 @@ MAX_COL_SIZE = 20
 MAX_TUPLE_SIZE = 123
 MAX_GRAPH_SIZE = 150
 
+from table2txt.graph_strategy.complete_graph import CompleteGraph
+
 def read_table_file(table_lst, data_file, table_filter_set):
     with open(data_file) as f:
         for line in tqdm(f):
@@ -44,6 +46,10 @@ def get_topic_entity(table):
     return topic_entity
 
 def process_table(table):
+    strategy = CompleteGraph()
+    return strategy.generate(table)
+
+def process_table_2(table):
     topic_entity = get_topic_entity(table)
     columns = table['columns']
     col_name_lst = []
