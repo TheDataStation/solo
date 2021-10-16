@@ -76,22 +76,26 @@ def process_table(table):
     
 def main():
     args = get_args()
-    if os.path.isdir(args.out_dir):
+    table2txt_dir = '/home/cc/code/open_table_discovery/table2txt'
+    out_dir = os.path.join(table2txt_dir, 'dataset', args.dataset, args.experiment)
+    if os.path.isdir(out_dir):
         err_msg = ('[%s] already exists, please use a different value for [--out_dir].\n'
-              % (args.out_dir))
+              % (out_dir))
         print(err_msg)
         return
 
-    os.makedirs(args.out_dir)
+    os.makedirs(out_dir)
 
-    out_file_src = os.path.join(args.out_dir, 'test_unseen.source')
-    out_file_tar = os.path.join(args.out_dir, 'test_unseen.target')
+    out_file_src = os.path.join(out_dir, 'test_unseen.source')
+    out_file_tar = os.path.join(out_dir, 'test_unseen.target')
     f_o_src = open(out_file_src, 'w')
     f_o_tar = open(out_file_tar, 'w')
-    out_row_table_file = os.path.join(args.out_dir, 'graph_row_table.txt')
+    out_row_table_file = os.path.join(out_dir, 'graph_row_table.txt')
     f_o_table = open(out_row_table_file, 'w')
 
-    table_lst = read_tables(args.input_tables, args.table_filter)
+    input_tables = os.path.join('/home/cc/data', args.dataset, 'tables', 'tables.jsonl')
+    table_filter_file = os.path.join('/home/cc/data', args.dataset, 'tables', args.table_filter)
+    table_lst = read_tables(input_tables, table_filter_file)
 
     if not args.debug:
         N = len(table_lst)
@@ -219,9 +223,9 @@ def tuple2graph(tuple_info_lst):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_tables', type=str)
+    parser.add_argument('--dataset', type=str)
     parser.add_argument('--table_filter', type=str)
-    parser.add_argument('--out_dir', type=str)
+    parser.add_argument('--experiment', type=str)
     parser.add_argument('--debug', type=int, default=0)
     args = parser.parse_args()
     return args
