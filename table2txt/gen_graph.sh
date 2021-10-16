@@ -7,5 +7,4 @@ exptr=$2
 python ./table2graph.py \
 --dataset ${dataset} \
 --table_filter table_id_small.jsonl \
---experiment ${exptr} \
---debug 1
+--experiment ${exptr} 

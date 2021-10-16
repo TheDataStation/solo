@@ -103,27 +103,14 @@ def main():
     table_filter_file = os.path.join('/home/cc/data', args.dataset, 'tables', args.table_filter)
     table_lst = read_tables(input_tables, table_filter_file)
 
-    if not args.debug:
-        N = len(table_lst)
-        work_pool = ProcessPool()
-        for graph_info in tqdm(work_pool.imap_unordered(process_table, table_lst), total=N):
-            table = graph_info[0]
-            table_id = table['tableId']
-            graph_lst = graph_info[1]
-            for graph in graph_lst:
-                f_o_src.write(graph + '\n')
-                f_o_tar.write('a\n')
-                f_o_table.write(table_id + '\n')
-     
-    else:
-        for table in tqdm(table_lst):
-            _, graph_lst = process_table(table)
-            table_id = table['tableId']
-            for graph in graph_lst:
-                f_o_src.write(graph + '\n')
-                f_o_tar.write('a\n')
-                f_o_table.write(table_id + '\n')
-            
+    for table in tqdm(table_lst):
+        _, graph_lst = process_table(table)
+        table_id = table['tableId']
+        for graph in graph_lst:
+            f_o_src.write(graph + '\n')
+            f_o_tar.write('a\n')
+            f_o_table.write(table_id + '\n')
+        
     f_o_src.close()
     f_o_tar.close()
     f_o_table.close()  
