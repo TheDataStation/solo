@@ -1,0 +1,17 @@
+python -m pdb ./main.py \
+--input_tables ~/data/nq_tables/tables/table_example.jsonl \
+--data_dir=${ROOT_DIR}/data/webnlg/${DATASET}/${EXPT_NAME}/${DATA_PART} \
+--task graph2text \
+--model_name_or_path=${MODEL} \
+--eval_batch_size=8 \
+--gpus 1 \
+--output_dir=$OUTPUT_DIR \
+--checkpoint=$CHECK_POINT \
+--max_source_length=384 \
+--max_target_length=384 \
+--val_max_target_length=384 \
+--test_max_target_length=384 \
+--eval_max_gen_length=384 \
+--do_predict \
+--eval_beams 3 \
+--out_dir ./output
