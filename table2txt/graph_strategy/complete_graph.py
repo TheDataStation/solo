@@ -6,6 +6,9 @@ MAX_GRAPH_SIZE = 150
 from table2txt.graph_strategy.strategy import Strategy 
 
 class CompleteGraph(Strategy):
+    def __init__(self):
+        super(CompleteGraph, self).__init__()
+
     def get_topic_entity(self, table):
         topic_entity = table['documentTitle']
         return topic_entity
@@ -23,7 +26,7 @@ class CompleteGraph(Strategy):
 
         row_data = table['rows']
         table_graph_lst = []
-        for row_item in row_data:
+        for row_idx, row_item in enumerate(row_data):
             cell_lst = row_item['cells']
             row_info = []
             for col_idx, cell in enumerate(cell_lst):
@@ -38,7 +41,10 @@ class CompleteGraph(Strategy):
                 }
                 row_info.append(cell_info)
             graph_lst = self.gen_graph_with_topic_entity(row_info, table['documentUrl'], topic_entity)
-            table_graph_lst.extend(graph_lst)
+            
+            graph_info_lst = [{'graph':a, 'row':row_idx} for a in graph_lst]
+
+            table_graph_lst.extend(graph_info_lst)
         return (table, table_graph_lst)
 
         

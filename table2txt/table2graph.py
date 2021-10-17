@@ -106,8 +106,8 @@ def main():
     for table in tqdm(table_lst):
         _, graph_lst = process_table(table)
         table_id = table['tableId']
-        for graph in graph_lst:
-            f_o_src.write(graph + '\n')
+        for graph_info in graph_lst:
+            f_o_src.write(graph_info['graph'] + '\n')
             f_o_tar.write('a\n')
             f_o_table.write(table_id + '\n')
         
