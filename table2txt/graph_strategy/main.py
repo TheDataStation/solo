@@ -183,11 +183,11 @@ def main():
 
     for table in table_lst:
         qa_lst = q_generator.generate(table)
-        for stg_idx, stg in enumerate(stg_lst):
+        for stg_idx, stg in tqdm(enumerate(stg_lst), total=len(stg_lst)):
             graph_file_info = graph_file_info_lst[stg_idx]
             mean_f1 = evaluate_strategy(reader, qa_lst, table, stg, args, graph_file_info)
             report_item =  [table['tableId'], stg.name, round(mean_f1 * 100, 2)]
-            report_data.append(report_item)  
+            report_data.append(report_item) 
     
     print('\n')
     report_cols = ['Table', 'Strategy', 'F1']
