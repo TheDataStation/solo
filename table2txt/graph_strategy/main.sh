@@ -1,6 +1,16 @@
+if [ "$#" -ne 1 ]; then
+    echo "Usage: ./main.sh <debug>"
+    exit
+fi
+debug=$1
+if [ $debug = "1" ]; then
+    opt="-m pdb"
+else
+    opt=""
+fi
 export OMP_NUM_THREADS=10
 export CUDA_VISIBLE_DEVICES=0
-python -m pdb ./main.py \
+python ${opt} main.py \
 --input_tables /home/cc/data/nq_tables/tables/table_example.jsonl \
 --dataset_in_dir=/home/cc/code/plms_graph2text/webnlg/data/webnlg/nq_tables \
 --data_dir=default \

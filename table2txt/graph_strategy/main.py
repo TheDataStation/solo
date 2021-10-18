@@ -4,7 +4,6 @@ import random
 import argparse
 import shutil
 from table2txt.graph_strategy.strategy import Strategy
-from table2txt.graph_strategy.complete_graph import CompleteGraph
 from table2txt.graph_strategy.question_generator import QG
 import pytorch_lightning as pl
 from webnlg.finetune import main as generate_text_from_graph, SummarizationModule
@@ -13,6 +12,8 @@ from fabric_qa.reader.forward_reader.albert.qa_data import data_to_examples
 from tqdm import tqdm
 from fabric_qa import utils
 import numpy as np
+from strategy_constructor import get_strategy_lst 
+import pandas as pd
 
 def read_tables(data_file):
     table_lst = []
@@ -38,23 +39,18 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def get_strategy_lst():
-    stg_lst = []
-    stg_1 = CompleteGraph()
-    stg_lst.append(stg_1)
-    return stg_lst
 
 def evaluate_strategy(reader, qa_lst, table, stg, args, graph_file_info):
     generate_graph(table, stg, args, graph_file_info)
 
+    args.data_dir = graph_file_info['data_dir']
     args.output_dir = os.path.join(args.dataset_out_dir, stg.name) 
     generate_text_from_graph(args)
     
     table_passage_dict = read_passages(args, stg, graph_file_info)
     table_id = table['tableId']
     mean_f1 = evaluate_question(reader, qa_lst, table_id, table_passage_dict)    
-    
-    print('(table=%s strategy=%s f1=%.2f)' % (table_id, stg.name, mean_f1 * 100))
+    return mean_f1
 
 def evaluate_question(reader, qa_lst, table_id, table_passage_dict):
     pred_f1_lst = []
@@ -136,7 +132,6 @@ def prepare_graph_file(stg, args):
     graph_folder = os.path.join(args.dataset_in_dir, stg.name)
     if os.path.exists(graph_folder):
        raise ValueError('[%s] already exists.' % graph_folder)
-    args.data_dir = graph_folder
     shutil.copytree('/home/cc/code/plms_graph2text/webnlg/data/webnlg/template', graph_folder)
     source_file = os.path.join(graph_folder, 'test_unseen.source')
     target_file = os.path.join(graph_folder, 'test_unseen.target')
@@ -147,7 +142,8 @@ def prepare_graph_file(stg, args):
     graph_file_info = {
         'f_o_src':f_o_src,
         'f_o_tgt':f_o_tgt,
-        'f_o_meta':f_o_meta
+        'f_o_meta':f_o_meta,
+        'data_dir':graph_folder
     }
     return graph_file_info
 
@@ -182,12 +178,24 @@ def main():
     reader = get_reader('albert', '/home/cc/code/fabric_qa/model/reader/forward_reader/model', 0)
     q_generator = QG()
     graph_file_info_lst = create_graph_file(stg_lst, args)
+
+    report_data = []
+
     for table in table_lst:
         qa_lst = q_generator.generate(table)
         for stg_idx, stg in enumerate(stg_lst):
             graph_file_info = graph_file_info_lst[stg_idx]
-            evaluate_strategy(reader, qa_lst, table, stg, args, graph_file_info)
+            mean_f1 = evaluate_strategy(reader, qa_lst, table, stg, args, graph_file_info)
+            report_item =  [table['tableId'], stg.name, round(mean_f1 * 100, 2)]
+            report_data.append(report_item)  
     
+    print('\n')
+    report_cols = ['Table', 'Strategy', 'F1']
+    pd.set_option('display.max_colwidth', None)
+    df = pd.DataFrame(report_data, columns=report_cols)
+    print(df)
+    print('\n')
+
     close_graph_file(graph_file_info_lst)        
 
 if __name__ == '__main__':
