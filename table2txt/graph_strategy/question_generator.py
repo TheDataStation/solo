@@ -30,7 +30,7 @@ class QG:
          
             questions = self.gen_row_questions(row_info)
             qa_lst.append(questions)
-            return qa_lst
+        return qa_lst
          
     def gen_row_questions(self, row_info):
         N = len(row_info)
