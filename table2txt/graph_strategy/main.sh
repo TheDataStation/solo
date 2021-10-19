@@ -1,8 +1,9 @@
-if [ "$#" -ne 1 ]; then
-    echo "Usage: ./main.sh <debug>"
+if [ "$#" -ne 2 ]; then
+    echo "Usage: ./main.sh <debug> <example>"
     exit
 fi
 debug=$1
+example=$2
 if [ $debug = "1" ]; then
     opt="-m pdb"
 else
@@ -11,7 +12,7 @@ fi
 export OMP_NUM_THREADS=10
 export CUDA_VISIBLE_DEVICES=0
 python -W ignore ${opt} main.py \
---input_tables /home/cc/data/nq_tables/tables/table_example.jsonl \
+--input_tables /home/cc/data/nq_tables/tables/table_example_${example}.jsonl \
 --dataset_in_dir=/home/cc/code/plms_graph2text/webnlg/data/webnlg/nq_tables \
 --data_dir=default \
 --task graph2text \
@@ -28,4 +29,4 @@ python -W ignore ${opt} main.py \
 --eval_max_gen_length=384 \
 --do_predict \
 --eval_beams 3 \
---show_progress_bar 0
+--show_progress_bar 1

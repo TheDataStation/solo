@@ -18,7 +18,7 @@ from predictor import OpenQA
 
 def read_tables(data_file):
     table_lst = []
-    M = 6
+    M = 3
     with open(data_file) as f:
         for line in f:
             table = json.loads(line)
@@ -64,25 +64,28 @@ def evaluate_strategy(open_qa, qa_lst, table, stg, args, graph_file_info):
 
 def evaluate_question(open_qa, qa_lst, table_id, table_passage_dict, stg_name):
     pred_f1_lst = []
-    for row, row_questions in enumerate(qa_lst):
+    for row, row_questions in tqdm(enumerate(qa_lst), total=len(qa_lst)):
         pasage_key = '%s-%d' % (table_id, row)
         row_passages = table_passage_dict[pasage_key]
         passage_num = len(row_passages)
         p_id_lst = [a for a in range(passage_num)]
-        for sub_idx, question_info in enumerate(row_questions):
+        for sub_idx, question_info in tqdm(enumerate(row_questions), total=len(row_questions)):
             
             qid = '%s-%d-%d' % (table_id, row, sub_idx)
             question = question_info['question']
             reader_result = open_qa.read_passages(qid, question, row_passages)
-            pred_info = open_qa.ar_predict(qid, question, reader_result, 1) 
-            
-            pred_answer = pred_info['answers'][0]['answer']
+            #pred_info = open_qa.ar_predict(qid, question, reader_result, 1) 
+
+            answer_info_lst = reader_result['answers']
+            answer_lst = [a['answer'] for a in answer_info_lst]
             gold_answer = question_info['answer']
             
-            _, f1s = utils.compute_em_f1([pred_answer], [gold_answer])
-            best_f1 = f1s[0]
-            
-            best_passage = pred_info['passages'][0]
+            _, f1s = utils.compute_em_f1(answer_lst, [gold_answer])
+            best_idx = np.argmax(f1s)
+            best_f1 = f1s[best_idx]
+             
+            best_passage = reader_result['passages'][best_idx]
+            best_answer = answer_lst[best_idx]
 
             log_info = {
                 'table':table_id,
@@ -91,7 +94,7 @@ def evaluate_question(open_qa, qa_lst, table_id, table_passage_dict, stg_name):
                 'gold answer':gold_answer,
                 'strategy':stg_name,
                 'passage':best_passage,
-                'pred answer':pred_answer,
+                'pred answer':best_answer,
                 'f1':best_f1
             }
             
@@ -110,6 +113,22 @@ def read_meta_info(meta_file):
             meta_info_lst.append(meta_info)
     return meta_info_lst    
 
+def get_passage(table_title, graph_text, graph_tokens):
+    #table_id_updated = table_id.replace('_', ' ').replace('-', ' ')
+
+    graph_tokens_updated = graph_tokens.replace('<H>', ' ').replace('<R>', ' ').replace('<T>', ' , ')
+
+    passage = table_title + ' . ' + graph_tokens_updated + ' (). ' + graph_text
+    return passage
+
+def get_graph_tokens(data_file):
+    graph_tokens_lst = []
+    with open(data_file) as f:
+        for row, line in enumerate(f):
+            graph_tokens = line.rstrip()
+            graph_tokens_lst.append(graph_tokens)
+    return graph_tokens_lst
+
 def read_passages(args, stg, graph_file_info):
     out_passage_file = os.path.join(args.output_dir, 'val_outputs/test_unseen_predictions.txt.debug')
     table_passage_dict = {}
@@ -117,17 +136,23 @@ def read_passages(args, stg, graph_file_info):
     f_o_meta = graph_file_info['f_o_meta']
     meta_info_lst = read_meta_info(f_o_meta.name)
 
+    graph_tokens_lst = get_graph_tokens(graph_file_info['f_o_src'].name)
+
     with open(out_passage_file) as f:
         for row, text in enumerate(f):
             meta_info = meta_info_lst[row]
-            table_id = meta_info['table']
+            table_id = meta_info['table_id']
+            table_title = meta_info['table_title']
             table_row = meta_info['row']
 
             passage_key = '%s-%d' % (table_id, table_row)
             if passage_key not in table_passage_dict:
                 table_passage_dict[passage_key] = []
             passage_lst = table_passage_dict[passage_key]
-            passage_lst.append(text.rstrip())
+            graph_text = text.rstrip()
+            graph_tokens = graph_tokens_lst[row]
+            passage = get_passage(table_title, graph_text, graph_tokens)
+            passage_lst.append(passage)
     return table_passage_dict
      
 def generate_graph(table, stg, args, graph_file_info):
@@ -140,7 +165,8 @@ def generate_graph(table, stg, args, graph_file_info):
         f_o_tgt.write('a' + '\n')
 
         meta_info = {
-            'table':table['tableId'],
+            'table_id':table['tableId'],
+            'table_title':table['documentTitle'],
             'row':graph_info['row']
         }
         f_o_meta.write(json.dumps(meta_info) + '\n')
@@ -189,7 +215,7 @@ def close_graph_file(graph_file_info_lst):
         graph_file_info['f_o_meta'].close()
  
 def main():
-    random.seed(10)
+    #random.seed(10)
     args = get_args()
     global log_info_lst
     log_info_lst = []
@@ -226,7 +252,7 @@ def main():
     print('\n')
 
     for log_info in log_info_lst:
-        log_info['row'] = sample_row_dict[log_info['table']][log_info['row']]
+        log_info['row'] = sample_row_dict[log_info['table']][log_info['row']] + 1
     df_log = pd.DataFrame(log_info_lst)
     df_log.to_csv('./output/strategy_log.csv')
 

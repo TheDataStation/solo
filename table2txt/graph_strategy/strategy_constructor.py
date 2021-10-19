@@ -10,7 +10,4 @@ def get_strategy_lst():
     stg_2 = GraphNoCaption()
     stg_lst.append(stg_2)
     
-    stg_3 = SimpleGraph()
-    stg_lst.append(stg_3)
-
     return stg_lst

@@ -1,7 +1,9 @@
 from table2txt.graph_strategy.complete_graph import MAX_COL_SIZE, MAX_ENTITY_SIZE
+import random
 
 class QG:
     def generate(self, table):
+        M = 3
         qa_lst = []
         columns = table['columns']
         col_name_lst = []
@@ -28,11 +30,13 @@ class QG:
                 }
                 row_info.append(cell_info)
          
-            questions = self.gen_row_questions(row_info)
-            qa_lst.append(questions)
+            questions = self.gen_row_questions(row_info, table['documentTitle'])
+            num_samples = min(M, len(questions))
+            sample_questions = random.sample(questions, num_samples)
+            qa_lst.append(sample_questions)
         return qa_lst
          
-    def gen_row_questions(self, row_info):
+    def gen_row_questions(self, row_info, table_title):
         N = len(row_info)
         M = 3
         row_question_lst = []
@@ -50,11 +54,11 @@ class QG:
                     continue
                 
                 question_1 = {
-                    'question':'what is the %s of %s %s ?' % (rel, e_s_class, e_s),
+                    'question':'What is the %s of %s %s ?' % (rel, e_s_class, e_s),
                     'answer':e_o 
                 }
                 question_2 = {
-                    'question':'what is the %s of %s %s ?' % (e_s_class, rel, e_o),
+                    'question':'What is the %s of %s %s ?' % (e_s_class, rel, e_o),
                     'answer':e_o 
                 }
 
