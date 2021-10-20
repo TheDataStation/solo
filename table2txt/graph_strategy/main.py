@@ -63,7 +63,7 @@ def evaluate_strategy(reader, qa_lst, table, stg, args, graph_file_info):
     return mean_f1
 
 def get_answer_lst(reader, batch_examples):
-    batch_size = 6
+    batch_size = 2
     N = len(batch_examples)
     answer_lst = [] 
     for i in range(0, N, batch_size):
