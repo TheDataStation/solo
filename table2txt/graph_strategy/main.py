@@ -14,7 +14,6 @@ from fabric_qa import utils
 import numpy as np
 from strategy_constructor import get_strategy_lst 
 import pandas as pd
-from predictor import OpenQA
 
 def read_tables(data_file):
     table_lst = []
@@ -49,7 +48,7 @@ def get_args():
     return args
 
 
-def evaluate_strategy(open_qa, qa_lst, table, stg, args, graph_file_info):
+def evaluate_strategy(reader, qa_lst, table, stg, args, graph_file_info):
     generate_graph(table, stg, args, graph_file_info)
 
     args.data_dir = graph_file_info['data_dir']
@@ -58,11 +57,11 @@ def evaluate_strategy(open_qa, qa_lst, table, stg, args, graph_file_info):
     
     table_passage_dict = read_passages(args, stg, graph_file_info)
     table_id = table['tableId']
-    mean_f1 = evaluate_question(open_qa, qa_lst, table_id, table_passage_dict, stg.name)    
+    mean_f1 = evaluate_question(reader, qa_lst, table_id, table_passage_dict, stg.name)    
     return mean_f1
     
 
-def evaluate_question(open_qa, qa_lst, table_id, table_passage_dict, stg_name):
+def evaluate_question(reader, qa_lst, table_id, table_passage_dict, stg_name):
     pred_f1_lst = []
     for row, row_questions in tqdm(enumerate(qa_lst), total=len(qa_lst)):
         pasage_key = '%s-%d' % (table_id, row)
@@ -70,21 +69,27 @@ def evaluate_question(open_qa, qa_lst, table_id, table_passage_dict, stg_name):
         passage_num = len(row_passages)
         p_id_lst = [a for a in range(passage_num)]
         for sub_idx, question_info in tqdm(enumerate(row_questions), total=len(row_questions)):
-            
             qid = '%s-%d-%d' % (table_id, row, sub_idx)
             question = question_info['question']
-            reader_result = open_qa.read_passages(qid, question, row_passages)
-            #pred_info = open_qa.ar_predict(qid, question, reader_result, 1) 
+            passage_num = len(row_passages)
+            p_id_lst = [a for a in range(passage_num)]
+            q_p_batch = [
+                {'question':question, 'passages':row_passages, 'qid':qid, 'p_id_lst':p_id_lst}
+            ]
+            batch_examples = data_to_examples(q_p_batch)
+            reader_out = reader(batch_examples)
+            preds = reader_out['preds']
+            answer_lst = []
+            for example in batch_examples:
+                item = preds[example.qas_id]
+                answer = item['text']
+                answer_lst.append(answer)
 
-            answer_info_lst = reader_result['answers']
-            answer_lst = [a['answer'] for a in answer_info_lst]
             gold_answer = question_info['answer']
-            
             _, f1s = utils.compute_em_f1(answer_lst, [gold_answer])
             best_idx = np.argmax(f1s)
             best_f1 = f1s[best_idx]
-             
-            best_passage = reader_result['passages'][best_idx]
+            best_passage = row_passages[best_idx]
             best_answer = answer_lst[best_idx]
 
             log_info = {
@@ -97,9 +102,7 @@ def evaluate_question(open_qa, qa_lst, table_id, table_passage_dict, stg_name):
                 'pred answer':best_answer,
                 'f1':best_f1
             }
-            
             log_info_lst.append(log_info)
-
             pred_f1_lst.append(best_f1)
             
     mean_f1 = np.mean(pred_f1_lst)
@@ -215,7 +218,7 @@ def close_graph_file(graph_file_info_lst):
         graph_file_info['f_o_meta'].close()
  
 def main():
-    #random.seed(10)
+    random.seed(10)
     args = get_args()
     global log_info_lst
     log_info_lst = []
@@ -223,10 +226,9 @@ def main():
     stg_lst = get_strategy_lst()
     table_lst = read_tables(args.input_tables)
 
-    open_qa = OpenQA(ir_host='127.0.0.1',
-                     ir_port=9200,
-                     ir_index='wiki_2021_05_01', 
-                     model_dir='/home/cc/code/fabric_qa/model')
+    reader = get_reader('albert',
+                        '/home/cc/code/fabric_qa/model/reader/forward_reader/model',
+                        0)
      
     q_generator = QG()
     graph_file_info_lst = create_graph_file(stg_lst, args)
@@ -240,7 +242,7 @@ def main():
         qa_lst = q_generator.generate(table)
         for stg_idx, stg in tqdm(enumerate(stg_lst), total=len(stg_lst)):
             graph_file_info = graph_file_info_lst[stg_idx]
-            mean_f1 = evaluate_strategy(open_qa, qa_lst, table, stg, args, graph_file_info)
+            mean_f1 = evaluate_strategy(reader, qa_lst, table, stg, args, graph_file_info)
             report_item =  [table['tableId'], stg.name, round(mean_f1 * 100, 2)]
             report_data.append(report_item) 
     
