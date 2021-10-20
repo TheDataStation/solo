@@ -1,9 +1,12 @@
 from table2txt.graph_strategy.complete_graph import MAX_COL_SIZE, MAX_ENTITY_SIZE
-import random
 
 class QG:
+    
+    def __init__(self, rdm):
+        self.rdm = rdm
+
     def generate(self, table):
-        M = 3
+        M = 6
         qa_lst = []
         columns = table['columns']
         col_name_lst = []
@@ -31,8 +34,12 @@ class QG:
                 row_info.append(cell_info)
          
             questions = self.gen_row_questions(row_info, table['documentTitle'])
-            num_samples = min(M, len(questions))
-            sample_questions = random.sample(questions, num_samples)
+            N = len(questions)
+            num_samples = min(M, N)
+            question_idx_lst = [a for a in range(N)]
+            sample_idxes = self.rdm.sample(question_idx_lst, num_samples)
+            sample_questions = [questions[a] for a in sample_idxes]
+            
             qa_lst.append(sample_questions)
         return qa_lst
          
