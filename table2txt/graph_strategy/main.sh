@@ -18,7 +18,7 @@ python -W ignore ${opt} main.py \
 --data_dir=default \
 --task graph2text \
 --model_name_or_path=t5-base \
---eval_batch_size=8 \
+--eval_batch_size=2 \
 --gpus 1 \
 --dataset_out_dir=/home/cc/code/plms_graph2text/webnlg/outputs/test_model/nq_tables/${example} \
 --output_dir=default \
