@@ -49,17 +49,20 @@ def get_args():
     return args
 
 
-def evaluate_strategy(reader, qa_lst, table, stg, args, graph_file_info):
+def evaluate_strategy(reader, qa_lst, table, stg, args):
+    graph_file_info = prepare_graph_file(table, stg, args)
     generate_graph(table, stg, args, graph_file_info)
 
     args.data_dir = graph_file_info['data_dir']
-
-    args.output_dir = os.path.join(args.dataset_out_dir, stg.name) 
+    table_output_dir = os.path.join(args.dataset_out_dir, table['_table_code_'])
+    if not os.path.exists(table_output_dir):
+        os.makedirs(table_output_dir)
+    args.output_dir = os.path.join(table_output_dir, stg.name) 
+    
     generate_text_from_graph(args)
    
-    table_id = table['tableId'] 
     table_passage_dict = read_passages(args, stg, graph_file_info)
-    mean_f1 = evaluate_question(reader, qa_lst, table_id, table_passage_dict, stg.name)    
+    mean_f1 = evaluate_question(reader, qa_lst, table, table_passage_dict, stg.name)    
     return mean_f1
 
 def get_answer_lst(reader, batch_examples):
@@ -77,7 +80,9 @@ def get_answer_lst(reader, batch_examples):
     
     return answer_lst 
 
-def evaluate_question(reader, qa_lst, table_id, table_passage_dict, stg_name):
+def evaluate_question(reader, qa_lst, table, table_passage_dict, stg_name):
+    table_code = table['_table_code_']
+    table_id = table['tableId']
     pred_f1_lst = []
     for row, row_questions in tqdm(enumerate(qa_lst), total=len(qa_lst)):
         pasage_key = '%s-%d' % (table_id, row)
@@ -102,7 +107,8 @@ def evaluate_question(reader, qa_lst, table_id, table_passage_dict, stg_name):
             best_answer = answer_lst[best_idx]
 
             log_info = {
-                'table':table_id,
+                'table_code':table_code,
+                'table_id':table_id,
                 'row':row,
                 'question':question_info['question'],
                 'gold answer':gold_answer,
@@ -145,10 +151,9 @@ def read_passages(args, stg, graph_file_info):
     out_passage_file = os.path.join(args.output_dir, 'val_outputs/test_unseen_predictions.txt.debug')
     table_passage_dict = {}
     
-    f_o_meta = graph_file_info['f_o_meta']
-    meta_info_lst = read_meta_info(f_o_meta.name)
-
-    graph_tokens_lst = get_graph_tokens(graph_file_info['f_o_src'].name)
+    meta_info_lst = read_meta_info(graph_file_info['meta_file'])
+    
+    graph_tokens_lst = get_graph_tokens(graph_file_info['src_file'])
 
     with open(out_passage_file) as f:
         for row, text in enumerate(f):
@@ -168,14 +173,13 @@ def read_passages(args, stg, graph_file_info):
     return table_passage_dict
      
 def generate_graph(table, stg, args, graph_file_info):
-    f_o_src = graph_file_info['f_o_src']
-    f_o_tgt = graph_file_info['f_o_tgt']
-    f_o_meta = graph_file_info['f_o_meta']
+    f_o_src = open(graph_file_info['src_file'], 'w')
+    f_o_tgt = open(graph_file_info['tgt_file'], 'w')
+    f_o_meta = open(graph_file_info['meta_file'], 'w')
     _, graph_lst = stg.generate(table) 
     for graph_info in graph_lst:
         f_o_src.write(graph_info['graph'] + '\n')
         f_o_tgt.write('a' + '\n')
-
         meta_info = {
             'table_id':table['tableId'],
             'table_title':table['documentTitle'],
@@ -183,31 +187,24 @@ def generate_graph(table, stg, args, graph_file_info):
         }
         f_o_meta.write(json.dumps(meta_info) + '\n')
 
-    f_o_src.flush()
-    f_o_tgt.flush()
-    f_o_meta.flush()
+    f_o_src.close()
+    f_o_tgt.close()
+    f_o_meta.close()
 
-def prepare_graph_file(stg, args):
-    if not os.path.exists(args.dataset_in_dir):
-        os.makedirs(args.dataset_in_dir)
+def prepare_graph_file(table, stg, args):
+    table_input_dir = os.path.join(args.dataset_in_dir, table['_table_code_'])
+    if not os.path.exists(table_input_dir):
+        os.makedirs(table_input_dir)
     
-    if not os.path.exists(args.dataset_out_dir):
-        os.makedirs(args.dataset_out_dir)
-    
-    graph_folder = os.path.join(args.dataset_in_dir, stg.name)
-    if os.path.exists(graph_folder):
-       raise ValueError('[%s] already exists.' % graph_folder)
+    graph_folder = os.path.join(table_input_dir, stg.name)
     shutil.copytree('/home/cc/code/plms_graph2text/webnlg/data/webnlg/template', graph_folder)
     source_file = os.path.join(graph_folder, 'test_unseen.source')
     target_file = os.path.join(graph_folder, 'test_unseen.target')
     meta_file = os.path.join(graph_folder, 'test_unseen.table_meta')
-    f_o_src = open(source_file, 'w')
-    f_o_tgt = open(target_file, 'w')
-    f_o_meta = open(meta_file, 'w')
     graph_file_info = {
-        'f_o_src':f_o_src,
-        'f_o_tgt':f_o_tgt,
-        'f_o_meta':f_o_meta,
+        'src_file':source_file,
+        'tgt_file':target_file,
+        'meta_file':meta_file,
         'data_dir':graph_folder
     }
     return graph_file_info
@@ -218,50 +215,34 @@ def output_tables(table_lst):
         table_file = os.path.join(out_dir, table['tableId']+'.json')
         with open(table_file, 'w') as f_o:
             f_o.write(json.dumps(table))
-
-def create_graph_file(stg_lst, args):
-    graph_file_info_lst = []
-    for stg in stg_lst:
-        graph_file_info = prepare_graph_file(stg, args)
-        graph_file_info_lst.append(graph_file_info)
-    return graph_file_info_lst
-
-def close_graph_file(graph_file_info_lst):
-    for graph_file_info in graph_file_info_lst:
-        graph_file_info['f_o_src'].close()
-        graph_file_info['f_o_tgt'].close()
-        graph_file_info['f_o_meta'].close()
  
 def main():
     #random.seed(10)
     args = get_args()
+    if os.path.exists(args.dataset_in_dir):
+       raise ValueError('[%s] already exists.' % args.dataset_in_dir)
     global log_info_lst
     log_info_lst = []
-
     stg_lst = get_strategy_lst()
     table_lst = read_tables(args.input_tables)
-
     reader = get_reader('albert',
                         '/home/cc/code/fabric_qa/model/reader/forward_reader/model',
                         0)
-     
     q_generator = QG(random)
-    graph_file_info_lst = create_graph_file(stg_lst, args)
-
     report_data = []
-
     table_best_stg_file = './output/%s_best_stg.jsonl' % args.data_tag 
     f_o_best_stg = open(table_best_stg_file, 'w')
     sample_row_dict = {}
-    for table_info in tqdm(table_lst):
+    for table_no, table_info in tqdm(enumerate(table_lst), total=len(table_lst)):
         table = table_info['table']
+        table['_table_code_'] = 'table_%d' % (table_no + 1)
+        print('\n\n%s' % table['_table_code_'])
         sample_row_dict[table['tableId']] = table_info['row_idxes']
         qa_lst = q_generator.generate(table)
         
         stg_f1_lst = []
         for stg_idx, stg in tqdm(enumerate(stg_lst), total=len(stg_lst)):
-            graph_file_info = graph_file_info_lst[stg_idx]
-            mean_f1 = evaluate_strategy(reader, qa_lst, table, stg, args, graph_file_info)
+            mean_f1 = evaluate_strategy(reader, qa_lst, table, stg, args)
             stg_f1_lst.append(mean_f1)
             report_item =  [table['tableId'], stg.name, round(mean_f1 * 100, 2)]
             report_data.append(report_item)
@@ -282,11 +263,10 @@ def main():
     print('\n')
 
     for log_info in log_info_lst:
-        log_info['row'] = sample_row_dict[log_info['table']][log_info['row']] + 1
+        log_info['row'] = sample_row_dict[log_info['table_id']][log_info['row']] + 1
     df_log = pd.DataFrame(log_info_lst)
     df_log.to_csv('./output/%s_strategy_log.csv' % args.data_tag)
 
-    close_graph_file(graph_file_info_lst)        
 
 if __name__ == '__main__':
     main()

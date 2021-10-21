@@ -45,7 +45,7 @@ class QG:
          
     def gen_row_questions(self, row_info, table_title):
         N = len(row_info)
-        M = 3
+        M = min(3, N)
         row_question_lst = []
         for idx_1 in range(0, M):
             e_s_class = row_info[idx_1]['name'].strip()
@@ -61,15 +61,10 @@ class QG:
                     continue
                 
                 question_1 = {
-                    'question':'What is the %s of %s %s ?' % (rel, e_s_class, e_s),
-                    'answer':e_o 
-                }
-                question_2 = {
-                    'question':'What is the %s of %s %s ?' % (e_s_class, rel, e_o),
+                    'question':'%s %s is %s who or what ?' % (e_s_class, e_s, rel),
                     'answer':e_o 
                 }
 
                 row_question_lst.append(question_1)
-                row_question_lst.append(question_2)
 
         return row_question_lst

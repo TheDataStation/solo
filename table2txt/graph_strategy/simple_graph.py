@@ -81,7 +81,7 @@ class SimpleGraph(Strategy):
         return graph_lst
 
     def get_table_tuples(self, row_info, url):
-        N = len(row_info)
+        N = min(10, len(row_info))
         tuple_dict = {}
         tuple_info_lst = []
         for idx_1 in range(0, N):
