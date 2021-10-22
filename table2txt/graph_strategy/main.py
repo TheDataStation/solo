@@ -31,13 +31,13 @@ def read_tables(data_file):
         for line in f:
             table = json.loads(line)
             row_lst = table['rows']
-            num_rows = len(row_lst)
-            num_sample = min(M, num_rows)
            
             row_idx_lst = get_row_index_lst(row_lst)
             if len(row_idx_lst) < 1:
                 continue
              
+            num_rows = len(row_idx_lst)
+            num_sample = min(M, num_rows)
             sample_row_idxes = random.sample(row_idx_lst, num_sample)
             sample_rows = [row_lst[a] for a in sample_row_idxes]
             table['rows'] = sample_rows
