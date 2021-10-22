@@ -1,6 +1,5 @@
 from table2txt.graph_strategy.complete_graph import CompleteGraph
 from table2txt.graph_strategy.graph_no_caption import GraphNoCaption
-from table2txt.graph_strategy.simple_graph import SimpleGraph
 
 def get_strategy_lst():
     stg_lst = []
@@ -11,3 +10,12 @@ def get_strategy_lst():
     stg_lst.append(stg_2)
     
     return stg_lst
+
+def get_strategy(name):
+    if name == 'CompleteGraph':
+        return CompleteGraph()
+    elif name == 'GraphNoCaption':
+        return GraphNoCaption()
+    else:
+        raise ValueError('Stategy (%s) Not supported.' % name)
+
