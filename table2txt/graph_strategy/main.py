@@ -15,6 +15,15 @@ import numpy as np
 from strategy_constructor import get_strategy_lst 
 import pandas as pd
 
+def get_row_index_lst(row_lst):
+    row_idx_lst = []
+    for row_idx, row_data in enumerate(row_lst):
+        cell_lst = row_data['cells']
+        non_empty_cells =  [a for a in cell_lst if a['text'].strip() != '']
+        if len(non_empty_cells) > 1:
+            row_idx_lst.append(row_idx)
+    return row_idx_lst
+
 def read_tables(data_file):
     table_lst = []
     M = 3
@@ -25,7 +34,10 @@ def read_tables(data_file):
             num_rows = len(row_lst)
             num_sample = min(M, num_rows)
            
-            row_idx_lst = [a for a in range(num_rows)]
+            row_idx_lst = get_row_index_lst(row_lst)
+            if len(row_idx_lst) < 1:
+                continue
+             
             sample_row_idxes = random.sample(row_idx_lst, num_sample)
             sample_rows = [row_lst[a] for a in sample_row_idxes]
             table['rows'] = sample_rows
