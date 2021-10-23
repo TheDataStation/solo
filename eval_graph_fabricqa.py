@@ -6,6 +6,9 @@ from tqdm import tqdm
 import numpy as np
 import logging
 
+
+
+
 def set_logger(args):
     global logger
     logger = logging.getLogger(__name__)
@@ -44,7 +47,7 @@ def get_args():
 
 def get_questions(query_dir, mode):
     q_item_lst = []
-    qas_file = os.path.join(query_dir,  '%s_qas.jsonl' % mode)
+    qas_file = os.path.join(query_dir,  '%s_qas_example.jsonl' % mode)
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)
@@ -82,6 +85,7 @@ def get_top_k_tables(table_name_lst, K):
 def main():
     args = get_args()
     set_logger(args)
+    args.index_name = args.index_name.lower()
     open_qa = get_open_qa(args)
     query_info_lst = get_questions(args.query_dir, args.mode)
     query_info_dict = {}
