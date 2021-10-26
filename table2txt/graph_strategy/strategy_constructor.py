@@ -6,8 +6,8 @@ def get_strategy_lst():
     stg_1 = CompleteGraph()
     stg_lst.append(stg_1)
 
-    stg_2 = GraphNoCaption()
-    stg_lst.append(stg_2)
+    #stg_2 = GraphNoCaption()
+    #stg_lst.append(stg_2)
     
     return stg_lst
 
