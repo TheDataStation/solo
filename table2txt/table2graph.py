@@ -53,12 +53,9 @@ def main():
     f_o_src = open(out_file_src, 'w')
     f_o_tar = open(out_file_tar, 'w')
     out_row_table_file = os.path.join(out_dir, 'graph_row_table.txt')
-    f_o_table = open(out_row_table_file, 'w')
+    f_o_meta = open(out_row_table_file, 'w')
 
-    table_file_name = 'tables.jsonl'
-    if args.table_file is not None:
-        table_file_name = ('%s.jsonl' % args.table_file)
-
+    table_file_name = args.table_file
     input_tables = os.path.join('/home/cc/data', args.dataset, 'tables', table_file_name)
     table_lst = read_tables(input_tables, None)
 
@@ -69,11 +66,15 @@ def main():
         for graph_info in graph_lst:
             f_o_src.write(graph_info['graph'] + '\n')
             f_o_tar.write('a\n')
-            f_o_table.write(table_id + '\n')
+            meta_info = {
+                'table_id': table_id,
+                'row': graph_info['row']
+            }
+            f_o_meta.write(json.dumps(meta_info) + '\n')
         
     f_o_src.close()
     f_o_tar.close()
-    f_o_table.close()  
+    f_o_meta.close()  
 
 def get_args():
     parser = argparse.ArgumentParser()
