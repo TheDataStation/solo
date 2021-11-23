@@ -2,6 +2,7 @@ import json
 import os
 from tqdm import tqdm
 import argparse
+import re
 
 def get_passage_tables(part_name, args):
     table_id_lst = []
@@ -13,10 +14,28 @@ def get_passage_tables(part_name, args):
             table_id_lst.append(table_id)
     return table_id_lst
 
+def remove_tags(graph_tokens):
+    src_lst = ['\[E\d+\]', '\[R\]', '\[/E\d+\]']
+    target_replace = ' '
+    graph_tokens_updated = graph_tokens
+    for src in src_lst:
+        src_replace = re.compile(src)
+        graph_tokens_updated = src_replace.sub(target_replace, graph_tokens_updated)
+    
+    src_replace = re.compile('\[T\]')
+    graph_tokens_updated = src_replace.sub(',', graph_tokens_updated)
+    return graph_tokens_updated  
+
+def apply_template(graph_tokens, template_text):
+   
+   out_text = ''
+   return out_text  
+
 def get_passage(table_id, graph_text, graph_tokens):
     table_id_updated = table_id.replace('_', ' ').replace('-', ' ')
 
-    graph_tokens_updated = graph_tokens.replace('<H>', ' ').replace('<R>', ' ').replace('<T>', ' , ')
+    #graph_tokens_updated = graph_tokens.replace('<H>', ' ').replace('<R>', ' ').replace('<T>', ' , ')
+    graph_tokens_updated = remove_tags(graph_tokens)
 
     passage = table_id_updated + ' . ' + graph_tokens_updated + ' (). ' + graph_text
     return passage
