@@ -24,7 +24,7 @@ def remove_tags(graph_tokens):
         src_replace = re.compile(src)
         graph_tokens_updated = src_replace.sub(target_replace, graph_tokens_updated)
     
-    src_replace = re.compile(util.Tuple_Start_Tag)
+    src_replace = re.compile(utils.Tuple_Start_Tag)
     graph_tokens_updated = src_replace.sub(',', graph_tokens_updated)
     return graph_tokens_updated  
 
@@ -32,9 +32,9 @@ def remove_tags(graph_tokens):
 def get_table_text(table, template_text, graph_tokens):
     output_text_lst = apply_template(table, template_text)
     input_text_lst = apply_template(table, graph_tokens)
-    assert(len(generated_text_lst) == len(input_text_lst))
+    assert(len(output_text_lst) == len(input_text_lst))
     passage_text_lst = []
-    for idx in input_text in input_text_lst:
+    for idx, input_text in enumerate(input_text_lst):
         output_text = output_text_lst[idx]
         passage_text = get_passage(table['tableId'], output_text, input_text)
         passage_text_lst.append(passage_text)
@@ -52,7 +52,7 @@ def apply_template(table, template_text):
                 out_span_text_lst.append(span_info['text'])
             else:
                 ent_idx = span_info['ent_idx']
-                ent_text = cell_lst[ent_idx-1]
+                ent_text = cell_lst[ent_idx-1]['text']
                 out_span_text_lst.append(ent_text)
 
         out_item_text = ''.join(out_span_text_lst)
