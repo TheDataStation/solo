@@ -17,25 +17,48 @@ def get_passage_tables(part_name, args):
     return table_id_lst
 
 def remove_tags(graph_tokens):
-    src_lst = ['\[E\d+\]', '\[R\]', '\[/E\d+\]']
+    src_lst = [utils.Ent_Start_Tag, utils.Rel_Tag, utils.Ent_End_Tag]
     target_replace = ' '
     graph_tokens_updated = graph_tokens
     for src in src_lst:
         src_replace = re.compile(src)
         graph_tokens_updated = src_replace.sub(target_replace, graph_tokens_updated)
     
-    src_replace = re.compile('\[T\]')
+    src_replace = re.compile(util.Tuple_Start_Tag)
     graph_tokens_updated = src_replace.sub(',', graph_tokens_updated)
     return graph_tokens_updated  
 
 
-def apply_template(table, template_text, graph_tokens):
+def get_table_text(table, template_text, graph_tokens):
+    output_text_lst = apply_template(table, template_text)
+    input_text_lst = apply_template(table, graph_tokens)
+    assert(len(generated_text_lst) == len(input_text_lst))
+    passage_text_lst = []
+    for idx in input_text in input_text_lst:
+        output_text = output_text_lst[idx]
+        passage_text = get_passage(table['tableId'], output_text, input_text)
+        passage_text_lst.append(passage_text)
+    return passage_text_lst
+
+def apply_template(table, template_text):
+    span_info_lst = utils.read_template(template_text)
+    out_text_lst = []
     row_lst = table['rows']
-              
-     
-         
-    out_text = ''
-    return out_text  
+    for row_item in row_lst:
+        cell_lst = row_item['cells']
+        out_span_text_lst = []
+        for span_info in span_info_lst:
+            if not span_info['is_template']:
+                out_span_text_lst.append(span_info['text'])
+            else:
+                ent_idx = span_info['ent_idx']
+                ent_text = cell_lst[ent_idx-1]
+                out_span_text_lst.append(ent_text)
+
+        out_item_text = ''.join(out_span_text_lst)
+        out_text_lst.append(out_item_text) 
+
+    return out_text_lst 
 
 def get_passage(table_id, graph_text, graph_tokens):
     table_id_updated = table_id.replace('_', ' ').replace('-', ' ')
@@ -54,9 +77,9 @@ def get_graph_tokens(data_file):
     return graph_tokens_lst
 
 def read_tables(args):
-    table_data_file = os.path.join('/home/cc/data', args.dataset, 'tables', args.table_file)     
+    table_data_file = os.path.join('/home/cc/data', args.dataset, 'tables', 'tables.jsonl') 
     table_lst = []
-    table_utils.read_table_file(table_lst, table_data_file, None)
+    utils.read_table_file(table_lst, table_data_file, None)
     table_dict = {}
     for table in table_lst:
         table_id = table['tableId']
@@ -82,20 +105,22 @@ def main():
         passage_tables = get_passage_tables(part_name, args)
         preds_file = os.path.join(passage_dir, part_name, 'val_outputs/test_unseen_predictions.txt.debug')
         with open(preds_file) as f:
+            p_id = 0
             for row, text in enumerate(f):
                 template_graph_text = text.rstrip()
                 table_id = passage_tables[row]
                 graph_tokens = graph_tokens_lst[row]
                 table_data = table_dict[table_id]
-                passage = apply_template(table_data, template_graph_text, graph_tokens)
-                #passage = graph_text
-                out_item = {
-                    'id': part_name,
-                    'p_id': row,
-                    'passage': passage,
-                    'tag': table_id
-                }
-                f_o.write(json.dumps(out_item) + '\n')
+                table_passage_lst = get_table_text(table_data, template_graph_text, graph_tokens)
+                for passage in table_passage_lst:
+                    out_item = {
+                        'id': part_name,
+                        'p_id': p_id,
+                        'passage': passage,
+                        'tag': table_id
+                    }
+                    p_id += 1
+                    f_o.write(json.dumps(out_item) + '\n')
     f_o.close()
 
 def get_args():
