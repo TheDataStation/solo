@@ -91,7 +91,7 @@ def main():
     graph_parts_dir = os.path.join('dataset', args.dataset, args.experiment, 'graph_parts')
     model_out_dir = '/home/cc/code/plms_graph2text/webnlg/outputs/test_model'
     passage_dir = os.path.join(model_out_dir, args.dataset, args.experiment)
-    part_name_lst = os.listdir(passage_dir)
+    part_name_lst = sorted(os.listdir(passage_dir))
 
     out_passage_file = os.path.join('dataset', args.dataset, args.experiment, 'graph_passages.json') 
     f_o = open(out_passage_file, 'w')

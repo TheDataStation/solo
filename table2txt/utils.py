@@ -63,9 +63,17 @@ def get_entity_end_pos(start_match, template_text, max_pos, opts):
         return None
 
 def read_template(table_data, meta_info, template_text):
-    start_match_lst = get_match_lst(Ent_Start_Tag, template_text) 
-    
     span_info_lst = []
+    start_match_lst = get_match_lst(Ent_Start_Tag, template_text) 
+    if len(start_match_lst) == 0:
+        span_info = {
+            'is_template':False,
+            'text': template_text
+        }
+        span_info_lst.append(span_info)
+        remove_ent_tags(span_info_lst)
+        return span_info_lst
+            
     pos = start_match_lst[0]['span'][0]
     if pos > 0:
         span_text = template_text[:pos]
@@ -131,6 +139,10 @@ def read_template(table_data, meta_info, template_text):
         }
         span_info_lst.append(span_info)
    
+    remove_ent_tags(span_info_lst)
+    return span_info_lst
+   
+def remove_ent_tags(span_info_lst):
     for span_info in span_info_lst:
         if not span_info['is_template']:
             span_text = span_info['text']
@@ -138,8 +150,5 @@ def read_template(table_data, meta_info, template_text):
                 to_replace = re.compile(tag)
                 span_text = to_replace.sub(' ', span_text)
             span_info['text'] = span_text
-
-    return span_info_lst
-   
-   
+     
      

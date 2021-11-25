@@ -47,7 +47,7 @@ def get_args():
 
 def get_questions(query_dir, mode):
     q_item_lst = []
-    qas_file = os.path.join(query_dir,  '%s_qas_example.jsonl' % mode)
+    qas_file = os.path.join(query_dir,  '%s_qas.jsonl' % mode)
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)

@@ -4,7 +4,7 @@ if [ "$#" -ne 2 ]; then
 fi
 dataset=$1
 exptr=$2
-python -m pdb ./gen_passages.py \
+python ./gen_passages.py \
 --dataset ${dataset} \
 --experiment ${exptr}
 data_dir=./dataset/${dataset}/${exptr}
