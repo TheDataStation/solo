@@ -5,16 +5,15 @@ import argparse
 import re
 from table2txt import utils
 
-def get_passage_tables(part_name, args):
-    table_id_lst = []
+def get_template_meta(part_name, args):
+    meta_info_lst = []
     table2txt_dir = '/home/cc/code/open_table_discovery/table2txt'
     data_file = os.path.join('dataset', args.dataset, args.experiment, 'graph_parts/graph_row_table.txt_' + part_name)
     with open(data_file) as f:
         for line in f:
             item = json.loads(line)
-            table_id = item['table_id']
-            table_id_lst.append(table_id)
-    return table_id_lst
+            meta_info_lst.append(item)
+    return meta_info_lst
 
 def remove_tags(graph_tokens):
     src_lst = [utils.Ent_Start_Tag, utils.Rel_Tag, utils.Ent_End_Tag]
@@ -28,10 +27,9 @@ def remove_tags(graph_tokens):
     graph_tokens_updated = src_replace.sub(',', graph_tokens_updated)
     return graph_tokens_updated  
 
-
-def get_table_text(table, template_text, graph_tokens):
-    output_text_lst = apply_template(table, template_text)
-    input_text_lst = apply_template(table, graph_tokens)
+def get_table_text(table, meta_info, template_text, graph_tokens):
+    output_text_lst = apply_template(table, meta_info, template_text)
+    input_text_lst = apply_template(table, meta_info, graph_tokens)
     assert(len(output_text_lst) == len(input_text_lst))
     passage_text_lst = []
     for idx, input_text in enumerate(input_text_lst):
@@ -40,8 +38,8 @@ def get_table_text(table, template_text, graph_tokens):
         passage_text_lst.append(passage_text)
     return passage_text_lst
 
-def apply_template(table, template_text):
-    span_info_lst = utils.read_template(template_text)
+def apply_template(table, meta_info, template_text):
+    span_info_lst = utils.read_template(table, meta_info, template_text)
     out_text_lst = []
     row_lst = table['rows']
     for row_item in row_lst:
@@ -88,7 +86,6 @@ def read_tables(args):
 
 def main():
     args = get_args()
-    
     table_dict = read_tables(args) 
     
     graph_parts_dir = os.path.join('dataset', args.dataset, args.experiment, 'graph_parts')
@@ -102,16 +99,17 @@ def main():
         graph_data_file = os.path.join(graph_parts_dir, 'test_unseen.source_%s' % part_name)
         graph_tokens_lst = get_graph_tokens(graph_data_file)
 
-        passage_tables = get_passage_tables(part_name, args)
+        template_meta_data = get_template_meta(part_name, args)
         preds_file = os.path.join(passage_dir, part_name, 'val_outputs/test_unseen_predictions.txt.debug')
         with open(preds_file) as f:
             p_id = 0
             for row, text in enumerate(f):
                 template_graph_text = text.rstrip()
-                table_id = passage_tables[row]
+                meta_info = template_meta_data[row] 
+                table_id = meta_info['table_id']
                 graph_tokens = graph_tokens_lst[row]
                 table_data = table_dict[table_id]
-                table_passage_lst = get_table_text(table_data, template_graph_text, graph_tokens)
+                table_passage_lst = get_table_text(table_data, meta_info, template_graph_text, graph_tokens)
                 for passage in table_passage_lst:
                     out_item = {
                         'id': part_name,

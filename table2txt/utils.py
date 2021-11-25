@@ -42,7 +42,7 @@ def get_match_lst(pattern, text):
         match_lst.append(item_info)
     return match_lst
 
-def get_entity_end_pos(start_match, template_text, max_pos):
+def get_entity_end_pos(start_match, template_text, max_pos, opts):
     pos = start_match['span'][1]
     end_tag = '[/E%d]' % start_match['ent_idx']
     end_tag_len = len(end_tag)
@@ -51,6 +51,10 @@ def get_entity_end_pos(start_match, template_text, max_pos):
             pos += 1
         else:
             break
+    
+     
+    if '[/E0]' in template_text[start_match['span'][1]:max_pos]:
+        opts['E0'] = True
    
     if pos < max_pos:
         end_pos = pos + end_tag_len
@@ -58,7 +62,7 @@ def get_entity_end_pos(start_match, template_text, max_pos):
     else:
         return None
 
-def read_template(template_text):
+def read_template(table_data, meta_info, template_text):
     start_match_lst = get_match_lst(Ent_Start_Tag, template_text) 
     
     span_info_lst = []
@@ -90,7 +94,8 @@ def read_template(template_text):
         else:
             max_pos = len(template_text)
         
-        entity_end_pos = get_entity_end_pos(start_match, template_text, max_pos)
+        opts = {} 
+        entity_end_pos = get_entity_end_pos(start_match, template_text, max_pos, opts)
         if entity_end_pos is not None:
             span_pos_1 = start_match['span'][0]
             span_pos_2 = entity_end_pos
@@ -100,11 +105,15 @@ def read_template(template_text):
                 'span': [span_pos_1, span_pos_2]
             }
         else:
-            print('cannot find end tag for %s at [%d, %d]' % (
-                    start_match['match'].group(),
-                    start_match['span'][0],
-                    start_match['span'][1] 
-                    ))
+            e0_case_1 = (start_match['ent_idx'] == 0)
+            e0_case_2 = opts.get('E0', False)
+            e_0_case = e0_case_1 or e0_case_2
+            if (False):
+                print('cannot find end tag for %s at [%d, %d]' % (
+                        start_match['match'].group(),
+                        start_match['span'][0],
+                        start_match['span'][1] 
+                        ))
             span_info = {
                 'is_template': False,
                 'text' : ' ',
@@ -125,7 +134,7 @@ def read_template(template_text):
     for span_info in span_info_lst:
         if not span_info['is_template']:
             span_text = span_info['text']
-            for tag in [Ent_Start_Tag, Ent_End_Tag]:
+            for tag in [Ent_Start_Tag, Ent_End_Tag, r'\[/E0\]']:
                 to_replace = re.compile(tag)
                 span_text = to_replace.sub(' ', span_text)
             span_info['text'] = span_text
