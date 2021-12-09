@@ -5,8 +5,8 @@ fi
 dataset=$1
 table_file=$2
 exptr=$3
-stg=CompleteGraph
-python ./table2graph.py \
+stg=TemplateGraph
+python -m pdb ./table2graph.py \
 --dataset ${dataset} \
 --table_file ${table_file} \
 --experiment ${exptr} \
