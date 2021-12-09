@@ -6,9 +6,6 @@ from tqdm import tqdm
 import numpy as np
 import logging
 
-
-
-
 def set_logger(args):
     global logger
     logger = logging.getLogger(__name__)
@@ -60,25 +57,18 @@ def table_found(top_k_table_id_lst, gold_table_id_lst):
             return 1
     return 0 
 
-def get_top_k_tables(table_name_lst, K):
+def get_top_k_tables(table_id_lst, K):
     top_tables = []
     table_dict = {}
-    N = len(table_name_lst)
-    for idx, table_name in enumerate(table_name_lst):
-        if table_name not in table_dict:
+    N = len(table_id_lst)
+    for idx, table_id in enumerate(table_id_lst):
+        if table_id not in table_dict:
             table_info = {
-                'name':table_name,
-                'start_idx':idx,
-                'end_idx':idx
+                'table_id':table_id,
             }
             top_tables.append(table_info)
-            table_dict[table_name] = table_info
-        else:
-            table_dict[table_name]['end_idx'] = idx
+            table_dict[table_id] = table_info
 
-    #if len(top_tables) < K:
-    #    raise ValueError('Not enough tables')
-    
     top_k_tables = top_tables[:K]
     return top_k_tables
 
@@ -104,11 +94,13 @@ def main():
             qid = qry_ret['qid']
             query_info = query_info_dict[qid]
             gold_table_id_lst = query_info['table_id_lst']
+            passage_tags = qry_ret['passage_tags']
+            passage_table_id_lst = [a['table_id'] for a in passage_tags]
             for k in k_lst:
-                top_k_table_info_lst = get_top_k_tables(qry_ret['passage_tags'], k)
+                top_k_table_info_lst = get_top_k_tables(passage_table_id_lst, k)
                 if k == 5:
                     qry_ret['top_5_tables'] = top_k_table_info_lst
-                top_k_table_id_lst = [a['name'] for a in top_k_table_info_lst] 
+                top_k_table_id_lst = [a['table_id'] for a in top_k_table_info_lst] 
                 correct = table_found(top_k_table_id_lst, gold_table_id_lst)
                 correct_retr_dict[k].append(correct)
            
