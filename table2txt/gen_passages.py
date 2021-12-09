@@ -32,17 +32,21 @@ def get_table_text(table, meta_info, template_text, graph_tokens):
     input_text_lst = apply_template(table, meta_info, graph_tokens)
     assert(len(output_text_lst) == len(input_text_lst))
     passage_text_lst = []
-    for idx, input_text in enumerate(input_text_lst):
-        output_text = output_text_lst[idx]
-        passage_text = get_passage(table['tableId'], output_text, input_text)
-        passage_text_lst.append(passage_text)
+    for idx, input_text_info in enumerate(input_text_lst):
+        output_text_info = output_text_lst[idx]
+        input_text = input_text_info['text']
+        output_text = output_text_info['text']
+        assert(input_text_info['row'] == output_text_info['row'])
+        row = output_text_info['row']
+        passage_info = get_passage_info(table, row, output_text, input_text)
+        passage_text_lst.append(passage_info)
     return passage_text_lst
 
 def apply_template(table, meta_info, template_text):
     span_info_lst = utils.read_template(table, meta_info, template_text)
     out_text_lst = []
     row_lst = table['rows']
-    for row_item in row_lst:
+    for row_idx, row_item in enumerate(row_lst):
         cell_lst = row_item['cells']
         out_span_text_lst = []
         for span_info in span_info_lst:
@@ -54,17 +58,20 @@ def apply_template(table, meta_info, template_text):
                 out_span_text_lst.append(ent_text)
 
         out_item_text = ''.join(out_span_text_lst)
-        out_text_lst.append(out_item_text) 
+        out_item_info = {'row':row_idx, 'text':out_item_text}
+        out_text_lst.append(out_item_info) 
 
     return out_text_lst 
 
-def get_passage(table_id, graph_text, graph_tokens):
-    table_id_updated = table_id.replace('_', ' ').replace('-', ' ')
-    #graph_tokens_updated = graph_tokens.replace('<H>', ' ').replace('<R>', ' ').replace('<T>', ' , ')
+def get_passage_info(table, row, graph_text, graph_tokens):
+    title = table['documentTitle']
     graph_tokens_updated = remove_tags(graph_tokens)
-
-    passage = table_id_updated + ' . ' + graph_tokens_updated + ' (). ' + graph_text
-    return passage
+    passage = title + ' . ' + graph_tokens_updated + ' (). ' + graph_text
+    passage_info = {
+        'row': row,
+        'text': passage
+    }
+    return passage_info
 
 def get_graph_tokens(data_file):
     graph_tokens_lst = []
@@ -110,12 +117,17 @@ def main():
                 graph_tokens = graph_tokens_lst[row]
                 table_data = table_dict[table_id]
                 table_passage_lst = get_table_text(table_data, meta_info, template_graph_text, graph_tokens)
-                for passage in table_passage_lst:
+                for passage_info in table_passage_lst:
+                    tag_info = {
+                        'table_id': table_id,
+                        'row': passage_info['row']
+                    }
+                    passage = passage_info['text']
                     out_item = {
                         'id': part_name,
                         'p_id': p_id,
                         'passage': passage,
-                        'tag': table_id
+                        'tag': tag_info
                     }
                     p_id += 1
                     f_o.write(json.dumps(out_item) + '\n')
