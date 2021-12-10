@@ -8,7 +8,7 @@ import torch
 import numpy as np
 
 open_qa_result_file = './dataset/fetaqa/template_graph/dev/preds_dev.json'
-M = 5
+M = 10
 
 def read_passage_file(arg_info):
     passage_file = arg_info[0]
@@ -84,7 +84,7 @@ def get_open_qa():
     return open_qa
 
 def get_top_row_passages(open_qa, qid, question, passage_lst):
-    ret_num = 30
+    ret_num = 100
     if len(passage_lst) <= ret_num:
         return passage_lst 
 
@@ -106,7 +106,7 @@ def main():
     passage_dict = read_passages(tag_dict)
     
     qas_data_dict = get_qas_data()
-    #open_qa = get_open_qa()
+    open_qa = get_open_qa()
      
     with open(open_qa_result_file) as f:
         for line in tqdm(f):
@@ -126,14 +126,13 @@ def main():
             out_item['answers'] = qas_item['answers']
             out_passage_lst = []
             item_passage_lst = item['passages']
-            #for passage in item_passage_lst:
             for key in tag_keys:
                 row_passage_info_lst = passage_dict[key]
-                #row_passage_lst = [a['passage'] for a in row_passage_info_lst]
-                #top_row_passages = get_top_row_passages(open_qa, item['qid'], item['question'], text_lst)
+                text_lst = [a['passage'] for a in row_passage_info_lst]
+                top_row_passages = get_top_row_passages(open_qa, item['qid'], item['question'], text_lst)
                 
-                for row_passage_info in row_passage_info_lst:
-                    out_passage = row_passage_info['passage']
+                for row_passage in top_row_passages:
+                    out_passage = row_passage # row_passage_info['passage']
                     out_passage_info = {
                         'title': '',
                         'text': out_passage,
