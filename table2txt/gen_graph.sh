@@ -4,7 +4,7 @@ if [ "$#" -ne 2 ]; then
 fi
 dataset=$1
 table_file=tables.jsonl
-exptr=$3
+exptr=$2
 stg=TemplateGraph
 python ./table2graph.py \
 --dataset ${dataset} \
