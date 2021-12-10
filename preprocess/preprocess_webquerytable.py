@@ -77,25 +77,25 @@ def process_tables(table_file, out_file):
         out_item_info['rows'] = out_row_data 
         out_item_info['tableId'] = table_id
         out_item_info['documentTitle'] = title 
-        f_o.write(json.dumps(out_item_info)) 
+        f_o.write(json.dumps(out_item_info) + '\n') 
      
     f_o.close()
 
 
 def main():
     table_file = '/home/cc/code/GTR/data/webquerytable/tables.json'
-    out_file = '/home/cc/data/webquerytable/tables/tables.jsonl'
+    out_file = './output/tables.jsonl'
     process_tables(table_file, out_file)
 
     query_rels_file = '/home/cc/code/GTR/data/webquerytable/qtrels.txt'
     query_rel_dict = read_query_rels(query_rels_file)
 
     dev_query_file = '/home/cc/code/GTR/data/webquerytable/dev_query.txt'
-    dev_out_file = '/home/cc/data/webquerytable/interactions/dev_qas.jsonl'
+    dev_out_file = './output/dev_qas.jsonl'
     process_query(dev_query_file, query_rel_dict, dev_out_file)
 
     test_query_file = '/home/cc/code/GTR/data/webquerytable/test_query.txt'
-    test_out_file = '/home/cc/data/webquerytable/interactions/test_qas.jsonl'
+    test_out_file = './output/test_qas.jsonl'
     process_query(test_query_file, query_rel_dict, test_out_file)
 
 
