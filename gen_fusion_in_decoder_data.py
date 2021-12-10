@@ -67,8 +67,6 @@ def read_passages(tag_dict):
 
     all_passage_dict = {}
     for passage_dict in tqdm(work_pool.imap_unordered(read_passage_file, arg_info_lst), total=len(arg_info_lst)):
-    #for arg_info in arg_info_lst:
-    #    passage_dict = read_passage_file(arg_info)
         for key in passage_dict:
             if key not in all_passage_dict:
                 all_passage_dict[key] = []
@@ -86,7 +84,7 @@ def get_open_qa():
     return open_qa
 
 def get_top_row_passages(open_qa, qid, question, passage_lst):
-    ret_num = 20
+    ret_num = 30
     if len(passage_lst) <= ret_num:
         return passage_lst 
 
@@ -108,7 +106,7 @@ def main():
     passage_dict = read_passages(tag_dict)
     
     qas_data_dict = get_qas_data()
-    open_qa = get_open_qa()
+    #open_qa = get_open_qa()
      
     with open(open_qa_result_file) as f:
         for line in tqdm(f):
@@ -127,17 +125,21 @@ def main():
             out_item['table_id_lst'] = qas_item['table_id_lst']
             out_item['answers'] = qas_item['answers']
             out_passage_lst = []
+            item_passage_lst = item['passages']
+            #for passage in item_passage_lst:
             for key in tag_keys:
-                row_passage_lst = passage_dict[key]
-                text_lst = [a['passage'] for a in row_passage_lst]
-                top_row_passages = get_top_row_passages(open_qa, item['qid'], item['question'], text_lst)
-                out_passage = ' . '.join(top_row_passages)
-                out_passage_info = {
-                    'title': '',
-                    'text': out_passage,
-                    'tag': tag_dict[key]
-                }
-                out_passage_lst.append(out_passage_info)
+                row_passage_info_lst = passage_dict[key]
+                #row_passage_lst = [a['passage'] for a in row_passage_info_lst]
+                #top_row_passages = get_top_row_passages(open_qa, item['qid'], item['question'], text_lst)
+                
+                for row_passage_info in row_passage_info_lst:
+                    out_passage = row_passage_info['passage']
+                    out_passage_info = {
+                        'title': '',
+                        'text': out_passage,
+                        'tag': tag_dict[key]
+                    }
+                    out_passage_lst.append(out_passage_info)
 
             out_item['ctxs'] = out_passage_lst
             f_o.write(json.dumps(out_item) + '\n')
