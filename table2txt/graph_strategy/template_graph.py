@@ -79,7 +79,7 @@ class TemplateGraph(Strategy):
         for idx_2 in range(0, N):
             rel = row_info[idx_2]['name']
             if rel == '':
-                continue
+                rel = ','
             e_o = row_info[idx_2]['value']
             if e_o == '':
                 continue
