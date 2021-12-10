@@ -2,6 +2,10 @@ import json
 from tqdm import tqdm
 from multiprocessing import Pool as ProcessPool
 import glob
+from predictor import OpenQA
+from fabric_qa.reader.forward_reader.albert.qa_data import data_to_examples
+import torch
+import numpy as np
 
 open_qa_result_file = './dataset/fetaqa/template_graph/dev/preds_dev.json'
 M = 5
@@ -39,19 +43,18 @@ def get_top_tags():
             for tag in top_tags:
                 key = get_tag_key(tag)
                 if key not in tag_dict:
-                    tag_dict[key] = True
+                    tag_dict[key] = tag
     return tag_dict
 
-def get_gold_answers():
-    answer_dict = {}
+def get_qas_data():
+    ret_dict = {}
     data_file = '/home/cc/data/fetaqa/interactions/dev_qas.jsonl'
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
             qid = item['qid']
-            answers = item['answers']
-            answer_dict[qid] = answers
-    return answer_dict
+            ret_dict[qid] = item
+    return ret_dict
 
 def read_passages(tag_dict):
     work_pool = ProcessPool(30)
@@ -72,14 +75,41 @@ def read_passages(tag_dict):
             item_lst = all_passage_dict[key]
             all_passage_dict[key] = item_lst + passage_dict[key] 
     return all_passage_dict
-     
+
+def get_open_qa():
+    open_qa = OpenQA(
+        ir_host='127.0.0.1',
+        ir_port=9200,
+        ir_index='fetaqa_template_graph',
+        model_dir='/home/cc/code/fabric_qa/model',
+        cuda=0)
+    return open_qa
+
+def get_top_row_passages(open_qa, qid, question, passage_lst):
+    ret_num = 20
+    if len(passage_lst) <= ret_num:
+        return passage_lst 
+
+    p_id_lst = [a for a, _ in enumerate(passage_lst)]
+    batch_data = [{'qid':qid, 'question':question, 'p_id_lst':p_id_lst, 'passages':passage_lst }]
+    batch_examples = data_to_examples(batch_data) 
+    with torch.no_grad(): 
+        batch_score_lst = open_qa.answer_ranker(batch_data, batch_examples)
+    scores = batch_score_lst[0].cpu().numpy()
+    top_n = min(len(scores), ret_num)
+    top_idxes = np.argpartition(-scores, range(top_n))[:top_n]
+    top_passages = [passage_lst[a] for a in top_idxes]
+    return top_passages 
+ 
 def main():
     out_data_file = './dataset/fetaqa/template_graph/dev/fusion_in_decoder_data.jsonl'
     f_o = open(out_data_file, 'w')
     tag_dict = get_top_tags()
     passage_dict = read_passages(tag_dict)
-    answer_dict = get_gold_answers()
     
+    qas_data_dict = get_qas_data()
+    open_qa = get_open_qa()
+     
     with open(open_qa_result_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
@@ -93,17 +123,22 @@ def main():
             out_item = {}
             out_item['id'] = item['qid']
             out_item['question'] = item['question']
-            out_item['answers'] = answer_dict[item['qid']]
-            out_passage_lst = [] 
+            qas_item = qas_data_dict[item['qid']]
+            out_item['table_id_lst'] = qas_item['table_id_lst']
+            out_item['answers'] = qas_item['answers']
+            out_passage_lst = []
             for key in tag_keys:
                 row_passage_lst = passage_dict[key]
                 text_lst = [a['passage'] for a in row_passage_lst]
-                out_passage = ' . '.join(text_lst)
+                top_row_passages = get_top_row_passages(open_qa, item['qid'], item['question'], text_lst)
+                out_passage = ' . '.join(top_row_passages)
                 out_passage_info = {
                     'title': '',
-                    'text': out_passage 
+                    'text': out_passage,
+                    'tag': tag_dict[key]
                 }
                 out_passage_lst.append(out_passage_info)
+
             out_item['ctxs'] = out_passage_lst
             f_o.write(json.dumps(out_item) + '\n')
     
