@@ -54,7 +54,11 @@ def apply_template(table, meta_info, template_text):
                 out_span_text_lst.append(span_info['text'])
             else:
                 ent_idx = span_info['ent_idx']
-                ent_text = cell_lst[ent_idx-1]['text']
+                if (ent_idx-1 >= 0) and (ent_idx-1) < len(cell_lst):
+                    ent_text = cell_lst[ent_idx-1]['text']
+                else:
+                    text_span = span_info['span']
+                    ent_text = template_text[text_span[0]:text_span[1]]
                 out_span_text_lst.append(ent_text)
 
         out_item_text = ''.join(out_span_text_lst)
