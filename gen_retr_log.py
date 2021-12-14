@@ -81,7 +81,7 @@ def main():
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
-    k_lst = [1, 5]
+    k_lst = [1, 10]
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
@@ -89,14 +89,14 @@ def main():
     f_o = open(out_file, 'w')
     writer = csv.writer(f_o, delimiter=',')
     col_name_lst = ['qid', 'question', 'order', 'fabricqa passage', 
-                    'gold (fabricqa) table', 'fabricqa correct?', 'gold (fabricqa) answer',
-                    'open_table_qa table', 'open_table_qa correct?',
-                    'bm25 passage', 'bm25 table', 'bm25 correct?',
-                    'found in top 100 of bm25']
+                    'gold (fabricqa) table', 'fabricqa correct?']#, 'gold (fabricqa) answer',
+                    #'open_table_qa table', 'open_table_qa correct?',
+                    #'bm25 passage', 'bm25 table', 'bm25 correct?',
+                    #'found in top 100 of bm25']
     writer.writerow(col_name_lst)
     qry_result = read_qry_result(args)
-    em25_ret = read_bm25_retrieval(args)
-    open_table_qa_ret = read_open_table_qa_retr(args)
+    #em25_ret = read_bm25_retrieval(args)
+    #open_table_qa_ret = read_open_table_qa_retr(args)
     log_qid_lst = []
     for query_info in tqdm(query_info_lst):
         batch_queries = [query_info] 
@@ -104,21 +104,24 @@ def main():
         qid = qry_ret['qid']
         query_info = query_info_dict[qid]
         gold_table_id_lst = query_info['table_id_lst']
+        
+        
         q_correct_dict = {}
+        passage_tags = qry_ret['passage_tags']
         for k in k_lst:
-            top_k_table_id_lst = qry_ret['passage_tags'][:k]
+            top_k_passage_tags = passage_tags[:k]
+            top_k_table_id_lst = [a['table_id']for a in top_k_passage_tags]
             correct = table_found(top_k_table_id_lst, gold_table_id_lst)
             q_correct_dict[k] = correct
             correct_retr_dict[k].append(correct)
         
-        top_open_table_qa_table_lst = open_table_qa_ret[query_info['qid']]
         if q_correct_dict[1]: # ignore questions whose retrievaled top 1 table is correct. 
             continue 
 
-        if top_open_table_qa_table_lst[0] not in gold_table_id_lst:
+        if not q_correct_dict[10]:
             continue
-   
-        found_top_100 = ('Y' if em25_ret[query_info['qid']]['found_top_100'] > 0 else 'N')
+
+        #found_top_100 = ('Y' if em25_ret[query_info['qid']]['found_top_100'] > 0 else 'N')
         log_qid_lst.append(query_info['qid'])    
         csv_q_info = [
             query_info['qid'],
@@ -126,28 +129,21 @@ def main():
             '',
             '',
             list2str(query_info['table_id_lst']),
-            '',
-            list2str(query_info['answers']),
-            '',
-            '',
-            '',
-            '',
-            '',
-            found_top_100
+            ''
         ]
         writer.writerow(csv_q_info)
 
         passage_lst = qry_ret['passages']
-        passage_table_lst = qry_ret['passage_tags']
-        answer_lst = qry_ret['answers']
+        passage_table_lst = [a['table_id'] for a in passage_tags]
+        #answer_lst = qry_ret['answers']
 
-        top_em25_passages = em25_ret[query_info['qid']]['passages']
-        top_em25_table_lst = em25_ret[query_info['qid']]['passage_tags']
-        top_5_passage_lst = passage_lst[:5]
+        #top_em25_passages = em25_ret[query_info['qid']]['passages']
+        #top_em25_table_lst = em25_ret[query_info['qid']]['passage_tags']
+        top_5_passage_lst = passage_lst[:10]
         for idx, passage in enumerate(top_5_passage_lst):
             fabricqa_correct = ('Y' if passage_table_lst[idx] in gold_table_id_lst else 'N')
-            em25_correct = ('Y' if top_em25_table_lst[idx] in gold_table_id_lst else 'N') 
-            open_table_qa_correct = ('Y' if top_open_table_qa_table_lst[idx] in gold_table_id_lst else 'N') 
+            #em25_correct = ('Y' if top_em25_table_lst[idx] in gold_table_id_lst else 'N') 
+            #open_table_qa_correct = ('Y' if top_open_table_qa_table_lst[idx] in gold_table_id_lst else 'N') 
             csv_passage_info = [
                 '',
                 '',
@@ -155,13 +151,6 @@ def main():
                 passage,
                 passage_table_lst[idx],
                 fabricqa_correct,
-                answer_lst[idx]['answer'],
-                top_open_table_qa_table_lst[idx],
-                open_table_qa_correct,
-                top_em25_passages[idx],
-                top_em25_table_lst[idx],
-                em25_correct,
-                ''
             ]
             writer.writerow(csv_passage_info) 
 

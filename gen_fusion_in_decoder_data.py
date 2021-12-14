@@ -7,7 +7,9 @@ from fabric_qa.reader.forward_reader.albert.qa_data import data_to_examples
 import torch
 import numpy as np
 
-open_qa_result_file = './dataset/fetaqa/template_graph/dev/preds_dev.json'
+dataset_name='nq_tables'
+
+open_qa_result_file = './dataset/' + dataset_name + '/template_graph/dev/preds_dev.json'
 M = 10
 
 def read_passage_file(arg_info):
@@ -48,7 +50,7 @@ def get_top_tags():
 
 def get_qas_data():
     ret_dict = {}
-    data_file = '/home/cc/data/fetaqa/interactions/dev_qas.jsonl'
+    data_file = '/home/cc/data/' + dataset_name + '/interactions/dev_qas.jsonl'
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
@@ -58,7 +60,7 @@ def get_qas_data():
 
 def read_passages(tag_dict):
     work_pool = ProcessPool(30)
-    data_file_pattern = './table2txt/dataset/fetaqa/template_graph/passage_parts/graph_passages.json_part_*'
+    data_file_pattern = './table2txt/dataset/' + dataset_name + '/template_graph/passage_parts/graph_passages.json_part_*'
     file_lst = glob.glob(data_file_pattern)
     arg_info_lst = []
     for data_file in file_lst:
@@ -78,7 +80,7 @@ def get_open_qa():
     open_qa = OpenQA(
         ir_host='127.0.0.1',
         ir_port=9200,
-        ir_index='fetaqa_template_graph',
+        ir_index=dataset_name + '_template_graph',
         model_dir='/home/cc/code/fabric_qa/model',
         cuda=0)
     return open_qa
@@ -89,18 +91,33 @@ def get_top_row_passages(open_qa, qid, question, passage_lst):
         return passage_lst 
 
     p_id_lst = [a for a, _ in enumerate(passage_lst)]
-    batch_data = [{'qid':qid, 'question':question, 'p_id_lst':p_id_lst, 'passages':passage_lst }]
-    batch_examples = data_to_examples(batch_data) 
-    with torch.no_grad(): 
-        batch_score_lst = open_qa.answer_ranker(batch_data, batch_examples)
-    scores = batch_score_lst[0].cpu().numpy()
-    top_n = min(len(scores), ret_num)
-    top_idxes = np.argpartition(-scores, range(top_n))[:top_n]
+    
+    batch_size = 100
+    N = len(passage_lst)
+    all_score_Lst = []
+    for idx in range(0, N, batch_size):
+        pos = idx + batch_size
+        batch_p_id_lst = p_id_lst[idx:pos]
+        batch_passage_lst = passage_lst[idx:pos]
+        batch_data = [{'qid':qid,
+                       'question':question,
+                       'p_id_lst':batch_p_id_lst,
+                       'passages':batch_passage_lst 
+                     }]
+        batch_examples = data_to_examples(batch_data) 
+        with torch.no_grad(): 
+            batch_score_lst = open_qa.answer_ranker(batch_data, batch_examples)
+        batch_scores = batch_score_lst[0].cpu().numpy().tolist()
+        all_score_Lst.extend(batch_scores) 
+    
+    all_scores = np.array(all_score_Lst) 
+    top_n = min(len(all_scores), ret_num)
+    top_idxes = np.argpartition(-all_scores, range(top_n))[:top_n]
     top_passages = [passage_lst[a] for a in top_idxes]
     return top_passages 
  
 def main():
-    out_data_file = './dataset/fetaqa/template_graph/dev/fusion_in_decoder_data.jsonl'
+    out_data_file = './dataset/' + dataset_name + '/template_graph/dev/fusion_in_decoder_data.jsonl'
     f_o = open(out_data_file, 'w')
     tag_dict = get_top_tags()
     passage_dict = read_passages(tag_dict)
@@ -129,6 +146,7 @@ def main():
             for key in tag_keys:
                 row_passage_info_lst = passage_dict[key]
                 text_lst = [a['passage'] for a in row_passage_info_lst]
+                
                 top_row_passages = get_top_row_passages(open_qa, item['qid'], item['question'], text_lst)
                 
                 for row_passage in top_row_passages:

@@ -81,7 +81,7 @@ def main():
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
-    k_lst = [1, 5]
+    k_lst = [1, 10, 100]
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
@@ -89,7 +89,7 @@ def main():
     f_o = open(out_file, 'w')
     for query_info in tqdm(query_info_lst):
         batch_queries = [query_info] 
-        qry_ret_lst = open_qa.search(batch_queries, ir_retr_num=100, pr_retr_num=30, top_num=30)
+        qry_ret_lst = open_qa.search(batch_queries, ir_retr_num=200, pr_retr_num=100, top_num=100)
         for qry_ret in qry_ret_lst:
             qid = qry_ret['qid']
             query_info = query_info_dict[qid]
@@ -98,8 +98,8 @@ def main():
             passage_table_id_lst = [a['table_id'] for a in passage_tags]
             for k in k_lst:
                 top_k_table_info_lst = get_top_k_tables(passage_table_id_lst, k)
-                if k == 5:
-                    qry_ret['top_5_tables'] = top_k_table_info_lst
+                if k == 10:
+                    qry_ret['top_10_tables'] = top_k_table_info_lst
                 top_k_table_id_lst = [a['table_id'] for a in top_k_table_info_lst] 
                 correct = table_found(top_k_table_id_lst, gold_table_id_lst)
                 correct_retr_dict[k].append(correct)
@@ -107,14 +107,16 @@ def main():
             show_precison(correct_retr_dict) 
             f_o.write(json.dumps(qry_ret) + '\n')
 
-
     show_precison(correct_retr_dict)
     f_o.close()
 
 def show_precison(correct_retr_dict):
+    str_msg = ''
     for k in correct_retr_dict:
         precision = np.mean(correct_retr_dict[k]) * 100
-        logger.info('p@%d = %.2f' % (k, precision))
+        str_msg += 'p@%d=%.2f  ' % (k, precision)
+    
+    logger.info(str_msg)
     
 
 if __name__ == '__main__':

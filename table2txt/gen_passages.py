@@ -70,7 +70,8 @@ def apply_template(table, meta_info, template_text):
 def get_passage_info(table, row, graph_text, graph_tokens):
     title = table['documentTitle']
     graph_tokens_updated = remove_tags(graph_tokens)
-    passage = title + ' . ' + graph_tokens_updated + ' (). ' + graph_text
+    graph_text_updated = remove_tags(graph_text)
+    passage = title + ' . ' + graph_tokens_updated + ' (). ' + graph_text_updated
     passage_info = {
         'row': row,
         'text': passage

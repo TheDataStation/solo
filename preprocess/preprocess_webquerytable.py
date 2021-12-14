@@ -27,8 +27,13 @@ def read_query_rels(query_rels_file):
 
 
 def get_revised_question(question):
-    updated_question = question + ' is what ?'
-    return updated_question
+    question_lower = question.lower()
+    tokens = question_lower.split()
+    if ('what' in tokens) or ('when' in tokens) or ('how' in tokens):
+        return question
+    else:
+        updated_question = question + ' is about what ?'
+        return updated_question
 
 
 def process_query(query_file, query_rel_dict, out_file):
@@ -83,9 +88,11 @@ def process_tables(table_file, out_file):
 
 
 def main():
+    '''
     table_file = '/home/cc/code/GTR/data/webquerytable/tables.json'
     out_file = './output/tables.jsonl'
     process_tables(table_file, out_file)
+    '''
 
     query_rels_file = '/home/cc/code/GTR/data/webquerytable/qtrels.txt'
     query_rel_dict = read_query_rels(query_rels_file)
@@ -94,10 +101,11 @@ def main():
     dev_out_file = './output/dev_qas.jsonl'
     process_query(dev_query_file, query_rel_dict, dev_out_file)
 
+    '''
     test_query_file = '/home/cc/code/GTR/data/webquerytable/test_query.txt'
     test_out_file = './output/test_qas.jsonl'
     process_query(test_query_file, query_rel_dict, test_out_file)
-
+    '''
 
 if __name__ == '__main__':
     main()
