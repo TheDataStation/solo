@@ -2,7 +2,7 @@ import json
 from tqdm import tqdm
 from multiprocessing import Pool as ProcessPool
 import glob
-from predictor import OpenQA
+from predictor.ar_predictor import ArPredictor
 from fabric_qa.reader.forward_reader.albert.qa_data import data_to_examples
 import torch
 import numpy as np
@@ -10,7 +10,7 @@ import numpy as np
 dataset_name='nq_tables'
 
 open_qa_result_file = './dataset/' + dataset_name + '/template_graph/dev/preds_dev.json'
-M = 10
+M = 20
 
 def read_passage_file(arg_info):
     passage_file = arg_info[0]
@@ -76,43 +76,16 @@ def read_passages(tag_dict):
             all_passage_dict[key] = item_lst + passage_dict[key] 
     return all_passage_dict
 
-def get_open_qa():
-    open_qa = OpenQA(
-        ir_host='127.0.0.1',
-        ir_port=9200,
-        ir_index=dataset_name + '_template_graph',
-        model_dir='/home/cc/code/fabric_qa/model',
-        cuda=0)
-    return open_qa
+def get_ar_predictor():
+    ar_predictor = ArPredictor('drqa')
+    return ar_predictor
 
-def get_top_row_passages(open_qa, qid, question, passage_lst):
-    ret_num = 100
+def get_top_row_passages(row_para_predictor, qid, question, passage_lst):
+    ret_num = 50
     if len(passage_lst) <= ret_num:
         return passage_lst 
 
-    p_id_lst = [a for a, _ in enumerate(passage_lst)]
-    
-    batch_size = 100
-    N = len(passage_lst)
-    all_score_Lst = []
-    for idx in range(0, N, batch_size):
-        pos = idx + batch_size
-        batch_p_id_lst = p_id_lst[idx:pos]
-        batch_passage_lst = passage_lst[idx:pos]
-        batch_data = [{'qid':qid,
-                       'question':question,
-                       'p_id_lst':batch_p_id_lst,
-                       'passages':batch_passage_lst 
-                     }]
-        batch_examples = data_to_examples(batch_data) 
-        with torch.no_grad(): 
-            batch_score_lst = open_qa.answer_ranker(batch_data, batch_examples)
-        batch_scores = batch_score_lst[0].cpu().numpy().tolist()
-        all_score_Lst.extend(batch_scores) 
-    
-    all_scores = np.array(all_score_Lst) 
-    top_n = min(len(all_scores), ret_num)
-    top_idxes = np.argpartition(-all_scores, range(top_n))[:top_n]
+    top_idxes = row_para_predictor.predict(question, passage_lst, ret_num=ret_num)
     top_passages = [passage_lst[a] for a in top_idxes]
     return top_passages 
  
@@ -120,10 +93,11 @@ def main():
     out_data_file = './dataset/' + dataset_name + '/template_graph/dev/fusion_in_decoder_data.jsonl'
     f_o = open(out_data_file, 'w')
     tag_dict = get_top_tags()
+    row_para_predictor = get_ar_predictor()
+    
     passage_dict = read_passages(tag_dict)
     
     qas_data_dict = get_qas_data()
-    open_qa = get_open_qa()
      
     with open(open_qa_result_file) as f:
         for line in tqdm(f):
@@ -147,7 +121,7 @@ def main():
                 row_passage_info_lst = passage_dict[key]
                 text_lst = [a['passage'] for a in row_passage_info_lst]
                 
-                top_row_passages = get_top_row_passages(open_qa, item['qid'], item['question'], text_lst)
+                top_row_passages = get_top_row_passages(row_para_predictor, item['qid'], item['question'], text_lst)
                 
                 for row_passage in top_row_passages:
                     out_passage = row_passage # row_passage_info['passage']
