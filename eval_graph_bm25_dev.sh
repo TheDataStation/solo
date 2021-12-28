@@ -1,4 +1,4 @@
 python eval_bm25.py \
---index_name nq_tables_graph_all_cols \
+--index_name nq_tables_template_graph \
 --mode dev \
---out_dir ./dataset/nq_tables/bm25_graph_all_cols/dev
+--out_dir ./dataset/nq_tables/bm25_template_graph/dev

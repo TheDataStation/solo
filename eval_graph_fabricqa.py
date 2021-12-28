@@ -81,7 +81,7 @@ def main():
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
-    k_lst = [1, 10, 100]
+    k_lst = [1, 5, 10]
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
@@ -98,8 +98,8 @@ def main():
             passage_table_id_lst = [a['table_id'] for a in passage_tags]
             for k in k_lst:
                 top_k_table_info_lst = get_top_k_tables(passage_table_id_lst, k)
-                if k == 10:
-                    qry_ret['top_10_tables'] = top_k_table_info_lst
+                if k == 5:
+                    qry_ret['top_5_tables'] = top_k_table_info_lst
                 top_k_table_id_lst = [a['table_id'] for a in top_k_table_info_lst] 
                 correct = table_found(top_k_table_id_lst, gold_table_id_lst)
                 correct_retr_dict[k].append(correct)

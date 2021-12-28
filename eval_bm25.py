@@ -91,9 +91,11 @@ def main():
         query_info = query_info_dict[qid]
         gold_table_id_lst = query_info['table_id_lst']
         
+        passage_table_id_lst = [a['table_id'] for a in passage_tags]
+
         correct_info = {}
         for k in k_lst:
-            top_k_table_id_lst = passage_tags[:k]
+            top_k_table_id_lst = passage_table_id_lst[:k]
             correct = table_found(top_k_table_id_lst, gold_table_id_lst)
             correct_info[k] = correct
             correct_retr_dict[k].append(correct)
@@ -101,8 +103,8 @@ def main():
         correct_log = {
             'qid':qid,
             'question':query_info['question'],
-            'passages':top_ir_passages[:5],
-            'passage_tags':passage_tags[:5],
+            'passages':top_ir_passages,
+            'passage_tags':passage_tags,
             'answers':[{'answer':''} for a in range(5)],
             'found_top_100':correct_info[100]
         }

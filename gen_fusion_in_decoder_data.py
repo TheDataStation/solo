@@ -77,7 +77,10 @@ def read_passages(tag_dict):
     return all_passage_dict
 
 def get_ar_predictor():
-    ar_predictor = ArPredictor('drqa')
+    ar_predictor_1 = ArPredictor('drqa')
+    ar_predictor_2 = ArPredictor('albert_squad')
+
+    ar_predictor = [ar_predictor_1, ar_predictor_2]
     return ar_predictor
 
 def get_top_row_passages(row_para_predictor, qid, question, passage_lst):
@@ -85,8 +88,14 @@ def get_top_row_passages(row_para_predictor, qid, question, passage_lst):
     if len(passage_lst) <= ret_num:
         return passage_lst 
 
-    top_idxes = row_para_predictor.predict(question, passage_lst, ret_num=ret_num)
-    top_passages = [passage_lst[a] for a in top_idxes]
+    predictor_drqa, predictor_albert = row_para_predictor
+    ret_num_1 = 100
+    top_idxes_drqa = predictor_drqa.predict(question, passage_lst, ret_num=ret_num_1)
+    top_passages_drqa = [passage_lst[a] for a in top_idxes_drqa]
+    
+
+    top_idxes_albert = predictor_albert.predict(question, top_passages_drqa, ret_num=ret_num)
+    top_passages = [top_passages_drqa[a] for a in top_idxes_albert]
     return top_passages 
  
 def main():
