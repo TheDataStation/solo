@@ -11,7 +11,7 @@ class TemplateGraph(Strategy):
         topic_entity = table['documentTitle'].strip()
         return topic_entity
     
-    def get_rel_name(col_name):
+    def get_rel_name(self, col_name):
         if col_name == '':
             rel_name = ','
         else:
@@ -30,8 +30,8 @@ class TemplateGraph(Strategy):
                 ent_text = row_info['cells'][col_idx]['text'].strip()
                 ent_tokens = ent_text.split()
                 ent_size = len(ent_tokens)
-                ent_info = {'text':ent_text 'size':ent_size, 'row':row_idx}
-                ent_info_lst.append(ent_size)
+                ent_info = {'text':ent_text, 'size':ent_size, 'row':row_idx}
+                ent_info_lst.append(ent_info)
             
             col_entity_info = {
                 'col_name':col_name,
@@ -55,6 +55,7 @@ class TemplateGraph(Strategy):
             for obj_info in sample_objs:
                 graph = TemplateTag.get_annotated_triple(topic_entity, rel_name, obj_info['text']) 
                 graph_info = {
+                    'table_id':table['tableId'],
                     'row':obj_info['row'],
                     'sub_col':None,
                     'obj_col':col_idx,
@@ -68,11 +69,20 @@ class TemplateGraph(Strategy):
         q1_pct = np.percentile(item_size_lst, 25)
         q3_pct = np.percentile(item_size_lst, 75)
         sample_space = [a for a in data if (a['size'] > q1_pct) and (a['size'] < q3_pct)] 
-        if len(sample_space) = 0:
+        if len(sample_space) == 0:
             sample_space = data
         return sample_space
     
-    def get_sample_triples(self, sub_col_name, sub_entities, rel_name, obj_entities):
+    def get_sample_triples(self, col_entity_lst, sub_col_idx, obj_col_idx, num_samples):
+        sub_col_data = col_entity_lst[sub_col_idx]
+        sub_col_name = sub_col_data['col_name'] 
+        sub_entities = sub_col_data['entities']
+        
+        obj_col_data = col_entity_lst[obj_col_idx]
+        rel_name = obj_col_data['rel_name']
+        obj_entities = obj_col_data['entities']
+        assert(len(sub_entities) == len(obj_entities))
+
         triple_info_lst = []
         for idx, sub_ent_item in enumerate(sub_entities):
             obj_ent_item = obj_entities[idx]
@@ -96,20 +106,14 @@ class TemplateGraph(Strategy):
         out_graph_lst = []
         N = len(col_entity_lst)
         for sub_col_idx in range(N-1):
-            sub_info = col_entity_lst[sub_col_idx]
-            sub_col_name = sub_info['col_name'] 
-            sub_entities = sub_info['entities']
             for obj_col_idx in range(sub_col_idx+1, N):
-                obj_info = col_entity_lst[obj_idx]
-                rel_name = obj_info['rel_name']
-                obj_entities = obj_info['entities']
-                assert(len(sub_entities) == len(obj_entities))
-                sample_triples = self.get_sample_triples(sub_col_name, sub_entities, rel_name, obj_entities)
+                sample_triples = self.get_sample_triples(col_entity_lst, sub_col_idx, obj_col_idx, num_samples)
                 for triple_info in sample_triples:
                     graph = TemplateTag.get_annotated_triple(triple_info['sub'],
-                                                             triple_info['rel']
+                                                             triple_info['rel'],
                                                              triple_info['obj'])
                     graph_info = {
+                        'table_id':table['tableId'],
                         'row':triple_info['row'],
                         'sub_col':triple_info['sub_col'],
                         'obj_col':triple_info['obj_col'],

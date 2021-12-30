@@ -4,7 +4,7 @@ import argparse
 from tqdm import tqdm
 import numpy as np
 import random
-
+from multiprocessing import Pool as ProcessPool
 from table2txt.graph_strategy.strategy_constructor import get_strategy
 
 def read_table_file(table_lst, data_file, table_filter_set):
@@ -35,8 +35,12 @@ def read_tables(table_file, table_filter):
     read_table_file(table_lst, table_file, table_filter_set)
     return table_lst
 
-def process_table(table, strategy):
-    return strategy.generate(table)
+def init_worker(strategy_name):
+    global g_strategy
+    g_strategy = get_strategy(strategy_name) 
+
+def process_table(table):
+    return g_strategy.generate(table)
 
 def main():
     args = get_args()
@@ -59,24 +63,34 @@ def main():
     input_tables = os.path.join('/home/cc/data', args.dataset, 'tables', table_file_name)
     table_lst = read_tables(input_tables, None)
 
-    strategy = get_strategy(args.strategy)
-    for table in tqdm(table_lst):
-        _, graph_lst = process_table(table, strategy)
-        table_id = table['tableId']
-        for graph_info in graph_lst:
-            f_o_src.write(graph_info['graph'] + '\n')
-            f_o_tar.write('a\n')
-            meta_info = {
-                'table_id': table_id,
-                'row': graph_info['row']
-                'sub_col':graph_info['sub_col'],
-                'obj_col':graph_info['obj_col']
-            }
-            f_o_meta.write(json.dumps(meta_info) + '\n')
-        
+    DEBUG = False
+    if not DEBUG:
+        work_pool = ProcessPool(initializer=init_worker, initargs=(args.strategy,))
+        for graph_lst in tqdm(work_pool.imap_unordered(process_table, table_lst), total=len(table_lst)):
+            write_graphs(graph_lst, f_o_src, f_o_tar, f_o_meta) 
+             
+    else:
+        init_worker(args.strategy)
+        for table in tqdm(table_lst):
+            graph_lst = process_table(table)
+            write_graphs(graph_lst, f_o_src, f_o_tar, f_o_meta) 
+            
     f_o_src.close()
     f_o_tar.close()
     f_o_meta.close()  
+
+def write_graphs(graph_lst, f_o_src, f_o_tar, f_o_meta):
+    for graph_info in graph_lst:
+        f_o_src.write(graph_info['graph'] + '\n')
+        f_o_tar.write('a\n')
+        meta_info = {
+            'table_id': graph_info['table_id'],
+            'row': graph_info['row'],
+            'sub_col':graph_info['sub_col'],
+            'obj_col':graph_info['obj_col']
+        }
+        f_o_meta.write(json.dumps(meta_info) + '\n')
+
 
 def get_args():
     parser = argparse.ArgumentParser()
