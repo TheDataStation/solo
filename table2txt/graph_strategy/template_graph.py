@@ -44,6 +44,9 @@ class TemplateGraph(Strategy):
     def sample_topic_entity_templates(self, table, col_entity_lst, num_samples=1):
         out_graph_lst = []
         topic_entity = self.get_topic_entity(table)
+        if topic_entity == '':
+            return []
+
         column_data = table['columns']
         row_data = table['rows']
         for col_idx, col_info in enumerate(col_entity_lst):
@@ -53,7 +56,10 @@ class TemplateGraph(Strategy):
             M = min(len(sample_space), num_samples)
             sample_objs = random.sample(sample_space, M)
             for obj_info in sample_objs:
-                graph = TemplateTag.get_annotated_triple(topic_entity, rel_name, obj_info['text']) 
+                obj_entity = obj_info['text']
+                if obj_entity == '':
+                    continue 
+                graph = TemplateTag.get_annotated_triple(topic_entity, rel_name, obj_entity) 
                 graph_info = {
                     'table_id':table['tableId'],
                     'row':obj_info['row'],
@@ -87,16 +93,23 @@ class TemplateGraph(Strategy):
         for idx, sub_ent_item in enumerate(sub_entities):
             obj_ent_item = obj_entities[idx]
             assert(sub_ent_item['row'] == obj_ent_item['row'])
+            
+            sub_text = sub_ent_item['text']
+            obj_text = obj_ent_item['text']
+            if sub_text == '' or obj_text == '':
+                continue
             triple_info = {
-                'sub':(sub_col_name + ' ' + sub_ent_item['text']),
+                'sub':(sub_col_name + ' ' + sub_text),
                 'rel':rel_name,
-                'obj':obj_ent_item['text'],
+                'obj':obj_text,
                 'row':sub_ent_item['row'],
                 'sub_col':sub_col_idx,
                 'obj_col':obj_col_idx,
                 'size':(sub_ent_item['size'] + obj_ent_item['size'])
             }
             triple_info_lst.append(triple_info)
+        if len(triple_info_lst) == 0:
+            return []
         sample_space = self.get_sample_space(triple_info_lst)
         M = min(len(sample_space), num_samples)
         sample_triples = random.sample(sample_space, M)
@@ -128,4 +141,6 @@ class TemplateGraph(Strategy):
         graph_lst_1 = self.sample_topic_entity_templates(table, col_entity_lst, num_samples=1)
         graph_lst_2 = self.sample_row_templates(table, col_entity_lst, num_samples=1)
         return graph_lst_1 + graph_lst_2
+
+
 
