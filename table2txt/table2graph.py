@@ -69,6 +69,8 @@ def main():
             meta_info = {
                 'table_id': table_id,
                 'row': graph_info['row']
+                'sub_col':graph_info['sub_col'],
+                'obj_col':graph_info['obj_col']
             }
             f_o_meta.write(json.dumps(meta_info) + '\n')
         

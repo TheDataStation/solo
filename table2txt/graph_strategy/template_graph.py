@@ -1,136 +1,127 @@
 import random
 import numpy as np
 from table2txt.graph_strategy.strategy import Strategy 
+from webnlg.data.template_data import TemplateTag
 
 class TemplateGraph(Strategy):
     def __init__(self):
         super(TemplateGraph, self).__init__()
 
     def get_topic_entity(self, table):
-        topic_entity = table['documentTitle']
+        topic_entity = table['documentTitle'].strip()
         return topic_entity
+    
+    def get_rel_name(col_name):
+        if col_name == '':
+            rel_name = ','
+        else:
+            rel_name = col_name
+        return rel_name
 
-    def sample_tempate_rows(self, table, num_samples=1):
+    def get_col_entities(self, table):
+        col_entity_lst = []
+        column_data = table['columns']
         row_data = table['rows']
-        row_size_lst = []
-        for row_item in row_data:
-            cell_lst = row_item['cells']
-            row_size = 0
-            for cell in cell_lst:
-                cell_tokens = cell['text'].split()
-                row_size += len(cell_tokens)
-            row_size_lst.append(row_size)
-        q1_pct = np.percentile(row_size_lst, 25)
-        q3_pct = np.percentile(row_size_lst, 75)
+        for col_idx, col_info in enumerate(column_data):
+            col_name = col_info['text'].strip()
+            rel_name = self.get_rel_name(col_name)
+            ent_info_lst = []
+            for row_idx, row_info in enumerate(row_data):
+                ent_text = row_info['cells'][col_idx]['text'].strip()
+                ent_tokens = ent_text.split()
+                ent_size = len(ent_tokens)
+                ent_info = {'text':ent_text 'size':ent_size, 'row':row_idx}
+                ent_info_lst.append(ent_size)
+            
+            col_entity_info = {
+                'col_name':col_name,
+                'rel_name':rel_name,
+                'entities':ent_info_lst
+            }
+            col_entity_lst.append(col_entity_info) 
+        return col_entity_lst         
 
-        sample_row_pool = []
-        for row, row_size in enumerate(row_size_lst):
-            if (row_size > q1_pct) and (row_size < q3_pct):
-                sample_row_pool.append(row)
-        if len(sample_row_pool) == 0:
-            sample_row_pool = [row for row, _ in enumerate(row_size_lst)]
+    def sample_topic_entity_templates(self, table, col_entity_lst, num_samples=1):
+        out_graph_lst = []
+        topic_entity = self.get_topic_entity(table)
+        column_data = table['columns']
+        row_data = table['rows']
+        for col_idx, col_info in enumerate(col_entity_lst):
+            rel_name = col_info['rel_name'] 
+            obj_info_lst = col_info['entities']
+            sample_space = self.get_sample_space(obj_info_lst) 
+            M = min(len(sample_space), num_samples)
+            sample_objs = random.sample(sample_space, M)
+            for obj_info in sample_objs:
+                graph = TemplateTag.get_annotated_triple(topic_entity, rel_name, obj_info['text']) 
+                graph_info = {
+                    'row':obj_info['row'],
+                    'sub_col':None,
+                    'obj_col':col_idx,
+                    'graph':graph
+                }
+                out_graph_lst.append(graph_info)
+        return out_graph_lst
 
-        M = min(num_samples, len(sample_row_pool))
-        template_rows = random.sample(sample_row_pool, M)
-        return template_rows 
+    def get_sample_space(self, data):
+        item_size_lst = [a['size'] for a in data]  
+        q1_pct = np.percentile(item_size_lst, 25)
+        q3_pct = np.percentile(item_size_lst, 75)
+        sample_space = [a for a in data if (a['size'] > q1_pct) and (a['size'] < q3_pct)] 
+        if len(sample_space) = 0:
+            sample_space = data
+        return sample_space
+    
+    def get_sample_triples(self, sub_col_name, sub_entities, rel_name, obj_entities):
+        triple_info_lst = []
+        for idx, sub_ent_item in enumerate(sub_entities):
+            obj_ent_item = obj_entities[idx]
+            assert(sub_ent_item['row'] == obj_ent_item['row'])
+            triple_info = {
+                'sub':(sub_col_name + ' ' + sub_ent_item['text']),
+                'rel':rel_name,
+                'obj':obj_ent_item['text'],
+                'row':sub_ent_item['row'],
+                'sub_col':sub_col_idx,
+                'obj_col':obj_col_idx,
+                'size':(sub_ent_item['size'] + obj_ent_item['size'])
+            }
+            triple_info_lst.append(triple_info)
+        sample_space = self.get_sample_space(triple_info_lst)
+        M = min(len(sample_space), num_samples)
+        sample_triples = random.sample(sample_space, M)
+        return sample_triples 
+
+    def sample_row_templates(self, table, col_entity_lst, num_samples=1):
+        out_graph_lst = []
+        N = len(col_entity_lst)
+        for sub_col_idx in range(N-1):
+            sub_info = col_entity_lst[sub_col_idx]
+            sub_col_name = sub_info['col_name'] 
+            sub_entities = sub_info['entities']
+            for obj_col_idx in range(sub_col_idx+1, N):
+                obj_info = col_entity_lst[obj_idx]
+                rel_name = obj_info['rel_name']
+                obj_entities = obj_info['entities']
+                assert(len(sub_entities) == len(obj_entities))
+                sample_triples = self.get_sample_triples(sub_col_name, sub_entities, rel_name, obj_entities)
+                for triple_info in sample_triples:
+                    graph = TemplateTag.get_annotated_triple(triple_info['sub'],
+                                                             triple_info['rel']
+                                                             triple_info['obj'])
+                    graph_info = {
+                        'row':triple_info['row'],
+                        'sub_col':triple_info['sub_col'],
+                        'obj_col':triple_info['obj_col'],
+                        'graph':graph
+                    }
+                    out_graph_lst.append(graph_info)
+        
+        return out_graph_lst
 
     def generate(self, table, num_samples=1):
-        topic_entity = self.get_topic_entity(table)
-        columns = table['columns']
-        col_name_lst = []
-        for col_info in columns:
-            col_name = col_info['text'].strip()
-            col_name_lst.append(col_name)
-
-        row_data = table['rows']
-        sample_row_idxes = self.sample_tempate_rows(table, num_samples=num_samples)
-        table_graph_lst = []
-        for row_idx in sample_row_idxes:
-            row_item = row_data[row_idx]
-            cell_lst = row_item['cells']
-            assert(len(cell_lst) == len(col_name_lst))
-            row_info = []
-            for col_idx, cell in enumerate(cell_lst):
-                col_name = col_name_lst[col_idx] 
-                cell_text = cell['text'].strip()
-                cell_info = {
-                    'name':col_name,
-                    'value':cell_text
-                }
-                row_info.append(cell_info)
-            graph_lst = self.gen_graph_with_topic_entity(row_info, topic_entity)
-            graph_info_lst = [{'graph':a, 'row':row_idx} for a in graph_lst]
-            table_graph_lst.extend(graph_info_lst)
-        return (table, table_graph_lst)
-
-    def get_annotated_triple(self, e_s, sub_ent_idx, rel, e_o, obj_ent_idx):
-        tuple_text = '[T] [E%d] %s [/E%d] [R] %s [E%d] %s [/E%d] ' % (sub_ent_idx, e_s, sub_ent_idx,
-                                                                      rel,
-                                                                      obj_ent_idx, e_o, obj_ent_idx)
-        return tuple_text 
-        
-    def gen_graph_with_topic_entity(self, row_info, topic_entity):
-        N = len(row_info)
-        tuple_dict = {}
-        tuple_info_lst = []
-
-        e_s = topic_entity
-        sub_ent_idx = 0
-        for idx_2 in range(0, N):
-            rel = row_info[idx_2]['name']
-            if rel == '':
-                rel = ','
-            e_o = row_info[idx_2]['value']
-            if e_o == '':
-                continue
-            
-            obj_ent_idx = idx_2 + 1
-            tuple_text = self.get_annotated_triple(e_s, sub_ent_idx, rel, e_o, obj_ent_idx)
-            tuple_code = tuple_text.lower()
-            if tuple_code not in tuple_dict:
-                tuple_dict[tuple_code] = 1
-                tuple_info = {
-                    'text':tuple_text
-                }
-                tuple_info_lst.append(tuple_info)
-        
-        table_tuple_lst = self.get_table_tuples(row_info, tuple_dict)
-        all_tuple_lst = tuple_info_lst + table_tuple_lst
-
-        graph_lst = self.tuple2graph(all_tuple_lst)
-        return graph_lst
-
-    def get_table_tuples(self, row_info, tuple_dict):
-        N = len(row_info)
-        tuple_info_lst = []
-        for idx_1 in range(0, N):
-            sub_ent_idx = idx_1 + 1
-            e_s_class = row_info[idx_1]['name']
-            e_s = row_info[idx_1]['value']
-            if e_s == '':
-                continue
-            for idx_2 in range(idx_1+1, N):
-                obj_ent_idx = idx_2 + 1
-                rel = row_info[idx_2]['name']
-                if rel == '':
-                    rel = ','
-                e_o = row_info[idx_2]['value']
-                if e_o == '':
-                    continue
-                tuple_text = self.get_annotated_triple(e_s_class + ' ' + e_s, sub_ent_idx, rel, e_o, obj_ent_idx) 
-                tuple_code = tuple_text.lower()
-                if tuple_code not in tuple_dict:
-                    tuple_dict[tuple_code] = 1
-                    token_lst = tuple_text.split()
-                    tuple_info = {
-                        'text':tuple_text
-                    }
-                    tuple_info_lst.append(tuple_info)
-
-        return tuple_info_lst
-
-    def tuple2graph(self, tuple_info_lst):
-        graph_lst = [info['text'] for info in tuple_info_lst]
-        return graph_lst
-
+        col_entity_lst = self.get_col_entities(table)        
+        graph_lst_1 = self.sample_topic_entity_templates(table, col_entity_lst, num_samples=1)
+        graph_lst_2 = self.sample_row_templates(table, col_entity_lst, num_samples=1)
+        return graph_lst_1 + graph_lst_2
 
