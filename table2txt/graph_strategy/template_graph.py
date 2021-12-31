@@ -2,6 +2,10 @@ import random
 import numpy as np
 from table2txt.graph_strategy.strategy import Strategy 
 from webnlg.data.template_data import TemplateTag
+from table2txt.graph_strategy.utils import read_template
+
+Missing_Subject = '[Sub_Missing]'
+Missing_Object = '[Obj_Missing]'
 
 class TemplateGraph(Strategy):
     def __init__(self):
@@ -18,6 +22,86 @@ class TemplateGraph(Strategy):
             rel_name = col_name
         return rel_name
 
+    def get_text_from_template(template_text, span_info_lst, sub_text, obj_text):
+        out_part_lst = []
+        for span_info in span_info_lst:
+            part_span = span_info['span']
+            if not span_info['is_template']:
+                part_text = template_text[part_span[0], part_span[1] + 1]
+            else:
+                if span_info['type'] == 'sub':
+                    part_text = sub_text
+                else:
+                    part_text = obj_text
+            out_part_lst.append(part_text) 
+
+        out_text = ''.join(out_part_lst)
+        return out_text
+
+    def expand_template(self, table, expand_info, template_meta, template_text):
+        table_text_lst = []
+        assert(table['tableId'] == template_meta['table_id'])
+        topic_entity = expand_info['topic_entity']
+        col_entities = expand_info['col_entities']
+        span_info_lst = read_template(template_text)
+        sub_col = template_meta['sub_col']
+        obj_col = template_meta['obj_col']
+        if sub_col is None:
+            obj_col_data = col_entities[obj_col]
+            obj_info_lst = obj_col_data['entities']
+            for obj_info in obj_info_lst:
+                obj_text = obj_info['text']
+                if obj_text == '':
+                    obj_text = Missing_Object
+                if template_text is not None:
+                    out_text = self.get_text_from_template(template_text, span_info_lst, topic_entity, obj_text)
+                else:
+                    out_text = ' '.join([topic_entity, obj_col_data['rel_name'], obj_text]) 
+                out_text_info = {
+                    'text':out_text,
+                    'table_id':table['tableId'],
+                    'row':obj_info_lst['row'],
+                    'sub_col':sub_col,
+                    'col_col':sub_col
+                }
+                table_text_lst.append(out_text_info)
+        else:
+            sub_col_data = col_entities[sub_col]
+            obj_col_data = col_entities[obj_col]
+            sub_info_lst = sub_col_data['entities']
+            obj_info_lst = obj_col_data['entities']
+            for idx, sub_info in sub_info_lst:
+                obj_info = obj_info_lst[idx]
+                assert(sub_info['row'] == obj_info['row'])
+                sub_text = sub_info['text']
+                if sub_text == '':
+                    sub_text = Missing_Subject
+                updated_sub_text = sub_info['col_name'] + ' ' + sub_text 
+                obj_text = obj_info['text']
+                if obj_text == '':
+                    obj_text = Missing_Object
+                if template_text is not None:
+                    out_text = self.get_text_from_template(template_text, span_info_lst, updated_sub_text, obj_text)
+                else:
+                    out_text = ' '.join([updated_sub_text, obj_col_data['rel_name'], obj_text])
+                out_text_info = {
+                    'text':out_text,
+                    'table_id':table['tableId'],
+                    'row':sub_info['row'],
+                    'sub_col':sub_col,
+                    'obj_col':obj_col
+                }
+                table_text_lst.append(out_text_info)
+
+        return table_text_lst
+
+    def get_expand_info(self, table):
+        info = {
+            'topic_entity':self.get_topic_entity(table),
+            'col_entities':self.get_col_entities(table)
+        }
+        return info
+    
     def get_col_entities(self, table):
         col_entity_lst = []
         column_data = table['columns']

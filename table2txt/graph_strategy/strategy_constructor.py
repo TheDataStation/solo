@@ -15,8 +15,6 @@ def get_strategy_lst():
 def get_strategy(name):
     if name == 'CompleteGraph':
         return CompleteGraph()
-    elif name == 'GraphNoCaption':
-        return GraphNoCaption()
     elif name == 'TemplateGraph':
         return TemplateGraph()
     else:
