@@ -1,6 +1,7 @@
 import json
 import re
 from tqdm import tqdm
+from webnlg.data.template_data import TemplateTag
 
 Tuple_Start_Tag = r'\[T\]'
 
@@ -20,27 +21,6 @@ def read_table_file(table_lst, data_file, table_filter_set):
                     continue
             table_lst.append(table)
     return table_lst
-
-def get_match_lst(pattern, text):
-    match_lst = []
-    p = re.compile(pattern)
-    for m in p.finditer(text):
-        span = m.span()
-        pos_1 = span[0]
-        while pos_1 < span[1]:
-            if text[pos_1] == 'E':
-                break
-            pos_1 += 1
-        pos_1 += 1
-        pos_2 = span[1] - 1
-        ent_idx = int(text[pos_1:pos_2])
-        item_info = {
-            'ent_idx': ent_idx,
-            'span': span,
-            'match': m
-        }
-        match_lst.append(item_info)
-    return match_lst
 
 def get_entity_end_pos(start_match, template_text, max_pos, opts):
     pos = start_match['span'][1]
@@ -62,84 +42,73 @@ def get_entity_end_pos(start_match, template_text, max_pos, opts):
     else:
         return None
 
+def get_tag_span(start_tag, end_tag, template_text):
+    pos_1 = template_text.find(start_tag)
+    pos_2 = template_text.find(end_tag)
+    if pos_1 < 0 or pos_2 < 0:
+        raise ValueError('%s or %s not found' % (start_tag, end_tag))
+
+    span_start = pos_1
+    span_end = pos_2 + len(end_tag)
+    span = (span_start, span_end)
+    return span 
+
 def read_template(table_data, meta_info, template_text):
     span_info_lst = []
-    start_match_lst = get_match_lst(Ent_Start_Tag, template_text) 
-    if len(start_match_lst) == 0:
-        span_info = {
-            'is_template':False,
-            'text': template_text
-        }
-        span_info_lst.append(span_info)
-        remove_ent_tags(span_info_lst)
-        return span_info_lst
-            
-    pos = start_match_lst[0]['span'][0]
-    if pos > 0:
-        span_text = template_text[:pos]
-        span_info = {
-            'is_template': False,
-            'text': span_text,
-            'span': [0, pos]
-        }
-        span_info_lst.append(span_info)
-
-    for start_idx, start_match in enumerate(start_match_lst):
-        if start_idx > 0:
-            pos_1 = span_info_lst[-1]['span'][1]
-            pos_2 = start_match['span'][0]
-            span_text = template_text[pos_1:pos_2]
-            span_info = {
-                'is_template': False,
-                'text': span_text,
-                'span': [pos_1, pos_2]
-            }
-            span_info_lst.append(span_info)
-        
-        ent_idx = start_match['ent_idx']
-        if start_idx < len(start_match_lst) - 1:
-            max_pos = start_match_lst[start_idx+1]['span'][0]
-        else:
-            max_pos = len(template_text)
-        
-        opts = {} 
-        entity_end_pos = get_entity_end_pos(start_match, template_text, max_pos, opts)
-        if entity_end_pos is not None:
-            span_pos_1 = start_match['span'][0]
-            span_pos_2 = entity_end_pos
-            span_info = {
-                'is_template': True,
-                'ent_idx': ent_idx,
-                'span': [span_pos_1, span_pos_2]
-            }
-        else:
-            e0_case_1 = (start_match['ent_idx'] == 0)
-            e0_case_2 = opts.get('E0', False)
-            e_0_case = e0_case_1 or e0_case_2
-            if (False):
-                print('cannot find end tag for %s at [%d, %d]' % (
-                        start_match['match'].group(),
-                        start_match['span'][0],
-                        start_match['span'][1] 
-                        ))
-            span_info = {
-                'is_template': False,
-                'text' : ' ',
-                'span': start_match['span']
-            }
-        span_info_lst.append(span_info)
-    
-    pos = span_info_lst[-1]['span'][1]
-    if pos < len(template_text):
-        span_text = template_text[pos:]
-        span_info = {
-            'is_template': False,
-            'text': span_text,
-            'span': [pos, len(template_text)]
-        }
-        span_info_lst.append(span_info)
+    sub_span = get_tag_span(TemplateTag.Subject_Start, TemplateTag.Subject_End, template_text)
+    obj_span = get_tag_span(TemplateTag.Object_Start, TemplateTag.Object_End, template_text)
+    sub_first = sub_span[1] < obj_span[0]
+    obj_first = obj_span[1] < sub_span[0]
+    assert(sub_first or obj_first)
    
-    remove_ent_tags(span_info_lst)
+    sub_span_info = {
+        'is_template':True,
+        'span':sub_span,
+        'type':'sub'
+    }
+
+    obj_span_info = {
+        'is_template':True,
+        'span':obj_span,
+        'type':'obj'
+    }
+    
+    ent_span_lst = []
+    if sub_first:
+        ent_span_lst = [sub_span_info, obj_span_info]
+    else:
+        ent_span_lst = [obj_span_info, sub_span_info]
+   
+    left_most_ent_pos = ent_span_lst[0]['span'][0] 
+    if left_most_ent_pos > 0:
+        span_info_1 = {
+            'is_template':False,
+            'span':[0, left_most_ent_pos-1]
+        }
+        # span from 0 to left most entity
+        span_info_lst.append(span_info_1)
+    # span of left most entity
+    span_info_lst.append(ent_span_lst[0])
+    # span of the region between two entities  
+    pos_1 = ent_span_lst[0]['span'][1] + 1
+    pos_2 = ent_span_lst[1]['span'][0] - 1
+    if pos_1 <= pos_2:
+        span_info_2 = {
+            'is_template':False,
+            'span':[pos_1, pos_2]
+        }
+        span_info_lst.append(span_info_2)
+    # span of the right most entity
+    span_info_lst.append(ent_span_lst[1])
+    
+    right_most_ent_pos = ent_span_lst[1]['span'][1]
+    if right_most_ent_posi + 1 < len(template_text):
+        span_info_3 = {
+            'is_template':False,
+            'span':[right_most_ent_posi + 1, len(template_text) - 1]
+        }
+        span_info_lst.append(span_info_3)
+
     return span_info_lst
    
 def remove_ent_tags(span_info_lst):
