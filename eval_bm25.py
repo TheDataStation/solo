@@ -113,7 +113,7 @@ def search(open_qa, query, max_k):
                                                     k=max_k,
                                                     ret_src=True)
     top_ir_passages = [a['_source']['body'] for a in retr_source_data]
-    passage_tags = [a['_source']['tag'] for a in retr_source_data]
+    passage_tags = [{'table_id':a['_source']['table_id'], 'row':a['_source']['row']} for a in retr_source_data]
     passage_scores = [a['_score'] for a in retr_source_data]
      
     result = group_by_tables(top_ir_passages, passage_tags, passage_scores)
