@@ -6,6 +6,7 @@ dataset=$1
 exptr=$2
 python ./gen_passages.py \
 --dataset ${dataset} \
+--strategy TemplateGraph \
 --experiment ${exptr}
 data_dir=./dataset/${dataset}/${exptr}
 passage_parts_dir=${data_dir}/passage_parts

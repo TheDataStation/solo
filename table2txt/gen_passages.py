@@ -15,7 +15,7 @@ def get_template_meta(part_name, args):
             meta_info_lst.append(item)
     return meta_info_lst
 
-def get_table_text(strategy, table, expand_info, meta_info, template_text, graph_tokens):
+def get_table_text(strategy, table, expand_info, meta_info, template_text):
     #generate text from template
     generated_text_lst = strategy.expand_template(table, expand_info, meta_info, template_text) 
     #get the original cell text 
@@ -28,13 +28,18 @@ def get_table_text(strategy, table, expand_info, meta_info, template_text, graph
         cell_text = cell_text_info['text']
         generated_text = generated_text_info['text']
         
-        assert(cell_text['row'] == generated_text['row'])
-        sub_col_1 = cell_text_info['sub_col'] is cell_text_info['sub_col'] is not None else -1
-        sub_col_2 = generated_text_info['sub_col'] if generated_text_info['sub_col'] is not None else -1
+        assert(cell_text_info['row'] == generated_text_info['row'])
+        sub_col_1 = (cell_text_info['sub_col'] if cell_text_info['sub_col'] is not None else -1)
+        sub_col_2 = (generated_text_info['sub_col'] if generated_text_info['sub_col'] is not None else -1)
+       
         assert(sub_col_1 == sub_col_2)
         assert(cell_text_info['obj_col'] == generated_text_info['obj_col'])
 
         row = generated_text_info['row']
+
+        sub_col = meta_info['sub_col']
+        obj_col = meta_info['obj_col']
+
         passage_info = get_passage_info(table, row, sub_col, obj_col, cell_text, generated_text)
         passage_info_lst.append(passage_info)
     return passage_info_lst
@@ -50,10 +55,21 @@ def get_passage_info(table, row, sub_col, obj_col, cell_text, generated_text):
     }
     return passage_info
 
+def read_table_file(table_lst, data_file, table_filter_set):
+    with open(data_file) as f:
+        for line in tqdm(f):
+            table = json.loads(line)
+            table_id = table['tableId']
+            if table_filter_set is not None:
+                if table_id not in table_filter_set:
+                    continue
+            table_lst.append(table)
+    return table_lst
+
 def read_tables(args):
     table_data_file = os.path.join('/home/cc/data', args.dataset, 'tables', 'tables.jsonl') 
     table_lst = []
-    utils.read_table_file(table_lst, table_data_file, None)
+    read_table_file(table_lst, table_data_file, None)
     table_dict = {}
     for table in table_lst:
         table_id = table['tableId']

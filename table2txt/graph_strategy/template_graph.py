@@ -22,12 +22,14 @@ class TemplateGraph(Strategy):
             rel_name = col_name
         return rel_name
 
-    def get_text_from_template(template_text, span_info_lst, sub_text, obj_text):
+    def get_text_from_template(self, template_text, span_info_lst, sub_text, obj_text):
         out_part_lst = []
         for span_info in span_info_lst:
             part_span = span_info['span']
             if not span_info['is_template']:
-                part_text = template_text[part_span[0], part_span[1] + 1]
+                pos_1 = part_span[0]
+                pos_2 = part_span[1] + 1
+                part_text = template_text[pos_1:pos_2]
             else:
                 if span_info['type'] == 'sub':
                     part_text = sub_text
@@ -43,7 +45,9 @@ class TemplateGraph(Strategy):
         assert(table['tableId'] == template_meta['table_id'])
         topic_entity = expand_info['topic_entity']
         col_entities = expand_info['col_entities']
-        span_info_lst = read_template(template_text)
+        span_info_lst = None
+        if template_text is not None:
+            span_info_lst = read_template(template_text, template_meta)
         sub_col = template_meta['sub_col']
         obj_col = template_meta['obj_col']
         if sub_col is None:
@@ -54,15 +58,19 @@ class TemplateGraph(Strategy):
                 if obj_text == '':
                     obj_text = Missing_Object
                 if template_text is not None:
-                    out_text = self.get_text_from_template(template_text, span_info_lst, topic_entity, obj_text)
+                    if span_info_lst is not None:
+                        out_text = self.get_text_from_template(template_text, span_info_lst, topic_entity, obj_text)
+                    else:
+                        out_text = ''
                 else:
                     out_text = ' '.join([topic_entity, obj_col_data['rel_name'], obj_text]) 
+                
                 out_text_info = {
                     'text':out_text,
                     'table_id':table['tableId'],
-                    'row':obj_info_lst['row'],
+                    'row':obj_info['row'],
                     'sub_col':sub_col,
-                    'col_col':sub_col
+                    'obj_col':sub_col
                 }
                 table_text_lst.append(out_text_info)
         else:
@@ -70,18 +78,21 @@ class TemplateGraph(Strategy):
             obj_col_data = col_entities[obj_col]
             sub_info_lst = sub_col_data['entities']
             obj_info_lst = obj_col_data['entities']
-            for idx, sub_info in sub_info_lst:
+            for idx, sub_info in enumerate(sub_info_lst):
                 obj_info = obj_info_lst[idx]
                 assert(sub_info['row'] == obj_info['row'])
                 sub_text = sub_info['text']
                 if sub_text == '':
                     sub_text = Missing_Subject
-                updated_sub_text = sub_info['col_name'] + ' ' + sub_text 
+                updated_sub_text = sub_col_data['col_name'] + ' ' + sub_text 
                 obj_text = obj_info['text']
                 if obj_text == '':
                     obj_text = Missing_Object
                 if template_text is not None:
-                    out_text = self.get_text_from_template(template_text, span_info_lst, updated_sub_text, obj_text)
+                    if span_info_lst is not None:
+                        out_text = self.get_text_from_template(template_text, span_info_lst, updated_sub_text, obj_text)
+                    else:
+                        out_text = ''
                 else:
                     out_text = ' '.join([updated_sub_text, obj_col_data['rel_name'], obj_text])
                 out_text_info = {

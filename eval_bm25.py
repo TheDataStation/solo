@@ -56,7 +56,52 @@ def table_found(top_k_table_id_lst, gold_table_id_lst):
             return 1
     return 0 
 
-def search(open_qa, query):
+def group_by_tables(passage_lst, passage_tag_lst, passage_score_lst):
+    passage_group_dict = {}
+    table_id_lst = []
+    for idx, passage in enumerate(passage_lst):
+        table_id = passage_tag_lst[idx]['table_id']
+        if table_id not in passage_group_dict:
+            passage_group_dict[table_id] = []
+            table_id_lst.append(table_id)
+        table_passages = passage_group_dict[table_id]
+    
+        passage_info = {
+            'passage':passage,
+            'table_id':table_id,
+            'tag':passage_tag_lst[idx],
+            'score':passage_score_lst[idx]
+        }
+        table_passages.append(passage_info)
+
+    table_score_lst = []
+    
+    for table_id in table_id_lst:
+        top_table_passages = passage_group_dict[table_id][:3]
+        top_scores = [a['score'] for a in top_table_passages]
+        mean_score = np.mean(top_scores)
+        table_score_lst.append(mean_score)
+    
+    top_idxes = np.argsort(-np.array(table_score_lst))
+    
+    merged_passage_lst = []
+    merged_tags = []
+    top_m_idxes = top_idxes[:30]
+    top_table_id_lst =[table_id_lst[a] for a in top_m_idxes]
+
+    for top_idx in top_m_idxes:
+        table_id = table_id_lst[top_idx]
+        table_passage_info_lst = passage_group_dict[table_id][:3]
+        table_passages = [a['passage'] for a in table_passage_info_lst] 
+        merged_passage = ' . '.join(table_passages)
+        merged_passage_lst.append(merged_passage)
+        merged_tag = {'table_id':table_id}
+        merged_tags.append(merged_tag)
+
+    return merged_passage_lst, merged_tags, top_table_id_lst
+        
+
+def search(open_qa, query, max_k):
     question = open_qa.process_question(query['question'])
     qry_question = open_qa.get_qry_question(question)
     sub_entity = None
@@ -65,11 +110,14 @@ def search(open_qa, query):
     retr_source_data = open_qa.ir_ranker.search(index_name=open_qa.ir_index,
                                                     question=qry_question,
                                                     entity=sub_entity,
-                                                    k=100,
+                                                    k=max_k,
                                                     ret_src=True)
-    top_ir_passages = [a['body'] for a in retr_source_data]
-    passage_tags = [a['tag'] for a in retr_source_data]
-    return (top_ir_passages, passage_tags)
+    top_ir_passages = [a['_source']['body'] for a in retr_source_data]
+    passage_tags = [a['_source']['tag'] for a in retr_source_data]
+    passage_scores = [a['_score'] for a in retr_source_data]
+     
+    result = group_by_tables(top_ir_passages, passage_tags, passage_scores)
+    return result
 
 def main():
     args = get_args()
@@ -79,42 +127,63 @@ def main():
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
-    k_lst = [1, 5, 100]
+    max_k = 1000
+    k_lst = [1, 5, 10, 20, 30]
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
     out_file = os.path.join(args.out_dir, 'preds_%s.json' % args.mode)
     f_o = open(out_file, 'w')
+    step = 0
+
+    num_tables = 0
     for query_info in tqdm(query_info_lst): 
-        top_ir_passages, passage_tags = search(open_qa, query_info)
+        merged_passage_lst, merged_tag_lst, top_table_id_lst = search(open_qa, query_info, max_k)
         qid = query_info['qid']
         query_info = query_info_dict[qid]
         gold_table_id_lst = query_info['table_id_lst']
         
-        passage_table_id_lst = [a['table_id'] for a in passage_tags]
+        passage_table_id_lst = [a['table_id'] for a in merged_tag_lst]
+
+        table_set = set(passage_table_id_lst)
+        num_tables = len(table_set)
+
+        num_passages = len(merged_passage_lst)
 
         correct_info = {}
         for k in k_lst:
-            top_k_table_id_lst = passage_table_id_lst[:k]
+            top_k_table_id_lst = top_table_id_lst[:k]
             correct = table_found(top_k_table_id_lst, gold_table_id_lst)
             correct_info[k] = correct
             correct_retr_dict[k].append(correct)
 
-        correct_log = {
-            'qid':qid,
-            'question':query_info['question'],
-            'passages':top_ir_passages,
-            'passage_tags':passage_tags,
-            'answers':[{'answer':''} for a in range(5)],
-            'found_top_100':correct_info[100]
-        }
-        f_o.write(json.dumps(correct_log) + '\n')
+        step += 1
+        if step % 10 == 0: 
+            show_precision(correct_retr_dict, num_tables, num_passages)
+       
+        question = query_info['question'] 
+        write_data(f_o, qid, question, merged_passage_lst, merged_tag_lst) 
 
+    show_precision(correct_retr_dict, num_tables, num_passages)
+    f_o.close()
+
+def write_data(f_o, qid, question, passage_lst, passage_tags):
+    out_item = {
+        'qid':qid,
+        'question':question,
+        'passages':passage_lst,
+        'passage_tags':passage_tags
+    }
+    f_o.write(json.dumps(out_item) + '\n') 
+
+def show_precision(correct_retr_dict, num_tables, num_passages):
+    str_msg = ''
     for k in correct_retr_dict:
         precision = np.mean(correct_retr_dict[k]) * 100
-        logger.info('p@%d = %.2f' % (k, precision))
-
-    f_o.close()
+        str_msg += ' p@%d = %.2f' % (k, precision)
+    str_msg += ' num_tables=%d num_passages=%d' % (num_tables, num_passages)
+    logger.info(str_msg)
+    
 
 if __name__ == '__main__':
     main()

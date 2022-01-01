@@ -2,7 +2,7 @@ import json
 from tqdm import tqdm
 from multiprocessing import Pool as ProcessPool
 import glob
-from predictor.ar_predictor import ArPredictor
+#from predictor.ar_predictor import ArPredictor
 from fabric_qa.reader.forward_reader.albert.qa_data import data_to_examples
 import torch
 import numpy as np
@@ -10,7 +10,6 @@ import numpy as np
 dataset_name='nq_tables'
 
 retr_result_file = './dataset/nq_tables/bm25_template_graph/dev/preds_dev.json'
-M = 20
 
 def get_qas_data():
     ret_dict = {}
@@ -21,6 +20,27 @@ def get_qas_data():
             qid = item['qid']
             ret_dict[qid] = item
     return ret_dict
+
+def merge_passages(passage_lst, passage_tags):
+    passage_group_dict = {}
+    for idx, passage in enumerate(passage_lst):
+        table_id = passage_tags[idx]['table_id']
+        if table_id not in passage_group_dict:
+            passage_group_dict[table_id] = []
+        
+        table_passage_lst = passage_group_dict[table_id]
+        table_passage_lst.append(passage)
+
+    merged_passage_lst = []
+    merged_passage_tags = []
+    for table_id in passage_group_dict:
+        table_passage_lst = passage_group_dict[table_id]
+        merged_passage = ' . '.join(table_passage_lst)
+        merged_passage_lst.append(merged_passage)
+        merged_tag = {'table_id':table_id}
+        merged_passage_tags.append(merged_tag)
+
+    return (merged_passage_lst, merged_passage_tags)
  
 def main():
     out_data_file = './dataset/nq_tables/bm25_template_graph/dev/fusion_in_decoder_data.jsonl'
@@ -39,12 +59,15 @@ def main():
             out_item['answers'] = qas_item['answers']
             out_passage_lst = []
             item_passage_lst = item['passages']
-            for p_idx, item_passage in enumerate(item_passage_lst):
-                out_passage = item_passage # row_passage_info['passage']
+            
+            merged_passage_lst, merged_passage_tags = merge_passages(item_passage_lst, passage_tags)
+
+            for p_idx, item_passage in enumerate(merged_passage_lst):
+                out_passage = item_passage
                 out_passage_info = {
                     'title': '',
                     'text': out_passage,
-                    'tag': passage_tags[p_idx]
+                    'tag': merged_passage_tags[p_idx]
                 }
                 out_passage_lst.append(out_passage_info)
 

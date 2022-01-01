@@ -7,6 +7,7 @@ exptr=$2
 index_name=${dataset}_${exptr}
 data_dir="./dataset/${dataset}/${exptr}/passage_parts"
 python ~/code/fabric_qa/src/data_process/indexer/data_indexer.py \
+--text_type table \
 --index_name ${index_name} \
 --input_dir ${data_dir} \
 --file_pattern '*.json_part_*'
