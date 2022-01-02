@@ -75,7 +75,7 @@ def get_top_k_tables(table_id_lst, K):
 
 def read_ir_result():
     result = {}
-    with open('./dataset/nq_tables/bm25_template_graph/dev/preds_dev.json') as f:
+    with open('./dataset/nq_tables/bm25_nq_tables_template_graph/dev/preds_dev.json') as f:
         for line in f:
             item = json.loads(line)
             qid = item['qid']
@@ -96,7 +96,7 @@ def main():
     for k in k_lst:
         correct_retr_dict[k] = []
     
-    ar_predictor = ArPredictor('albert_ensemble')
+    ar_predictor = ArPredictor('albert_qa_zre')
     
     ir_result_data = read_ir_result()
     step = 0
@@ -108,6 +108,9 @@ def main():
         
         passage_lst = result_item['passages']
         passage_tags = result_item['passage_tags']
+         
+        
+        
         passage_table_id_lst = [a['table_id'] for a in passage_tags]
         top_idxes = ar_predictor.predict(question, passage_lst, ret_num=30)
 

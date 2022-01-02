@@ -9,7 +9,7 @@ import numpy as np
 
 dataset_name='nq_tables'
 
-retr_result_file = './dataset/nq_tables/bm25_template_graph/dev/preds_dev.json'
+retr_result_file = './dataset/nq_tables/bm25_nq_tables_template_graph/dev/preds_dev.json'
 
 def get_qas_data():
     ret_dict = {}
@@ -43,7 +43,7 @@ def merge_passages(passage_lst, passage_tags):
     return (merged_passage_lst, merged_passage_tags)
  
 def main():
-    out_data_file = './dataset/nq_tables/bm25_template_graph/dev/fusion_in_decoder_data.jsonl'
+    out_data_file = './dataset/nq_tables/bm25_nq_tables_template_graph/dev/fusion_in_decoder_data.jsonl'
     f_o = open(out_data_file, 'w')
     qas_data_dict = get_qas_data()
     with open(retr_result_file) as f:

@@ -79,23 +79,26 @@ def search_in_table(question, tag_dict, ir_ranker, index_name):
                                            question=new_qry_question,
                                            table_id=table_id,
                                            row=row,
-                                           k=200)
+                                           k=300)
          
         for item in result:
             passage_info = search_result_to_passage_info(item)
             assert(passage_info['tag']['table_id'] == table_id)
             assert(passage_info['tag']['row'] == row)
-            passage_info_lst.append(passage_info) 
+            passage_info_lst.append(passage_info)
+    
     
     passage_lst = [a['passage'] for a in passage_info_lst]
-    ar_top_idxes, ar_top_scores = ar_predictor.predict(question, passage_lst, ret_num=200)
+    pr_top_idxes, pr_top_scores = passage_ranker.predict(question, passage_lst, ret_num=30)
+    
+    input_passage_lst = [passage_lst[a] for a in pr_top_idxes] 
+    ar_top_idxes, ar_top_scores = ar_predictor.predict(question, input_passage_lst, ret_num=30)
     top_passage_info_lst = [passage_info_lst[a] for a in ar_top_idxes] 
     return top_passage_info_lst
 
 def group_by_tables(passage_info_lst, question, ir_ranker, index_name):
     passage_lst = [a['passage'] for a in passage_info_lst] 
-    ar_top_idxes, ar_top_scores = ar_predictor.predict(question, passage_lst, ret_num=150)
-    
+    ar_top_idxes, ar_top_scores = ar_predictor.predict(question, passage_lst, ret_num=100)
     min_table_size = 5
     kept_top_idxes = []
     count = 0
@@ -174,14 +177,15 @@ def main():
     set_logger(args)
     open_qa = get_open_qa(args)
 
-    global ar_predictor
+    global ar_predictor, passage_ranker
+    passage_ranker = ArPredictor('drqa')
     ar_predictor = ArPredictor('albert_squad')
 
     query_info_lst = get_questions(args.mode)
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
-    max_k = 150
+    max_k = 100
     k_lst = [1, 5, 10, 20]
     correct_retr_dict = {}
     for k in k_lst:
