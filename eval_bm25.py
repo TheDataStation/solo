@@ -2,6 +2,7 @@ import json
 import argparse
 import os
 from predictor import OpenQA
+from predictor.ar_predictor import ArPredictor
 from tqdm import tqdm
 import numpy as np
 import logging
@@ -56,62 +57,61 @@ def table_found(top_k_table_id_lst, gold_table_id_lst):
             return 1
     return 0 
 
+def get_qry_passages(passages):
+    qry_passages = ' . '.join(passages)
+    tokens = qry_passages.split()
+    token_set = set(tokens)
+    token_lst = list(token_set)
+    text = ' '.join(token_lst[:300])
+    return text
+
 def search_in_table(question, tag_dict, ir_ranker, index_name):
-    ret_passage_info_lst = []
+    passage_info_lst = []
     for tag_key in tag_dict:
-        tag_info = tag_dict[tag_key]
+        tag_info = tag_dict[tag_key]['tag_info']
+        passages = tag_dict[tag_key]['passages']
+        qry_passages = get_qry_passages(passages)
+        new_qry_question = question + ' . ' + qry_passages
+
         table_id = tag_info['table_id']
         row = tag_info['row']
         result = ir_ranker.search_in_table(index_name=index_name,
-                                           question=question,
+                                           question=new_qry_question,
                                            table_id=table_id,
                                            row=row,
-                                           k=20)
+                                           k=200)
          
         for item in result:
             passage_info = search_result_to_passage_info(item)
             assert(passage_info['tag']['table_id'] == table_id)
             assert(passage_info['tag']['row'] == row)
-            ret_passage_info_lst.append(passage_info) 
-
-    return ret_passage_info_lst
+            passage_info_lst.append(passage_info) 
+    
+    passage_lst = [a['passage'] for a in passage_info_lst]
+    ar_top_idxes, ar_top_scores = ar_predictor.predict(question, passage_lst, ret_num=200)
+    top_passage_info_lst = [passage_info_lst[a] for a in ar_top_idxes] 
+    return top_passage_info_lst
 
 def group_by_tables(passage_info_lst, question, ir_ranker, index_name):
-    passage_group_dict = {}
-    table_id_lst = []
-    for idx, passage_info in enumerate(passage_info_lst):
-        table_id = passage_info['tag']['table_id']
-        if table_id not in passage_group_dict:
-            passage_group_dict[table_id] = []
-            table_id_lst.append(table_id)
-        table_passages = passage_group_dict[table_id]
-        table_passages.append(passage_info)
-
-    table_score_lst = []
-    for table_id in table_id_lst:
-        top_table_passages = passage_group_dict[table_id][:3]
-        top_scores = [a['score'] for a in top_table_passages]
-        mean_score = np.mean(top_scores)
-        table_score_lst.append(mean_score)
+    passage_lst = [a['passage'] for a in passage_info_lst] 
+    ar_top_idxes, ar_top_scores = ar_predictor.predict(question, passage_lst, ret_num=150)
     
-    top_idxes = np.argsort(-np.array(table_score_lst))
+    min_table_size = 5
+    kept_top_idxes = []
+    count = 0
+    table_set = set()
+    for idx in ar_top_idxes:
+        table_id = passage_info_lst[idx]['tag']['table_id']
+        if len(table_set) < min_table_size:
+            table_set.add(table_id)
+            kept_top_idxes.append(idx)
     
-    top_m_idxes = top_idxes[:20]
-    top_table_id_lst =[table_id_lst[a] for a in top_m_idxes]
-
-    ret_passage_info_lst = []
-    for top_idx in top_m_idxes:
-        table_id = table_id_lst[top_idx]
-        table_passage_info_lst = passage_group_dict[table_id][:3]
-        #ret_passage_info_lst.extend(table_passage_info_lst)
-        
-        tag_dict = get_tag_dict(table_passage_info_lst)
-        table_second_results = search_in_table(question, tag_dict, ir_ranker, index_name)
-        ret_passage_info_lst.extend(table_second_results) 
-
-    #updated_passage_info_lst = remove_duplicate_passages(ret_passage_info_lst)
-    return ret_passage_info_lst, top_table_id_lst
-
+    top_passage_info_lst = [passage_info_lst[a] for a in kept_top_idxes] 
+    tag_dict = get_tag_dict(top_passage_info_lst)
+    ret_passage_info_lst = search_in_table(question, tag_dict, ir_ranker, index_name)
+    
+    return ret_passage_info_lst
+    
 def remove_duplicate_passages(passage_info_lst):
     passage_id_dict = {}
     ret_passage_info_lst = []
@@ -129,7 +129,10 @@ def get_tag_dict(table_passage_info_lst):
         row = tag_info['row']
         tag_key = '%s_%d' % (table_id, row)
         if tag_key not in tag_dict:
-            tag_dict[tag_key] = tag_info
+            tag_dict[tag_key] = {'tag_info': tag_info, 'passages':[]}
+
+        passages = tag_dict[tag_key]['passages']
+        passages.append(passage_info['passage'])
     return tag_dict
 
 
@@ -170,11 +173,15 @@ def main():
     args = get_args()
     set_logger(args)
     open_qa = get_open_qa(args)
+
+    global ar_predictor
+    ar_predictor = ArPredictor('albert_squad')
+
     query_info_lst = get_questions(args.mode)
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
-    max_k = 1000
+    max_k = 150
     k_lst = [1, 5, 10, 20]
     correct_retr_dict = {}
     for k in k_lst:
@@ -185,11 +192,12 @@ def main():
 
     num_tables = 0
     for query_info in tqdm(query_info_lst): 
-        ret_passage_info_lst, top_table_id_lst = search(open_qa, query_info, max_k)
+        ret_passage_info_lst = search(open_qa, query_info, max_k)
         qid = query_info['qid']
         query_info = query_info_dict[qid]
         gold_table_id_lst = query_info['table_id_lst']
-        
+       
+        top_table_id_lst = [a['tag']['table_id'] for a in ret_passage_info_lst] 
         table_set = set(top_table_id_lst)
         num_tables = len(table_set)
 
@@ -203,8 +211,8 @@ def main():
             correct_retr_dict[k].append(correct)
 
         step += 1
-        if step % 10 == 0: 
-            show_precision(correct_retr_dict, num_tables, num_passages)
+        #if step % 10 == 0: 
+        show_precision(correct_retr_dict, num_tables, num_passages)
        
         question = query_info['question'] 
         write_data(f_o, qid, question, ret_passage_info_lst) 
