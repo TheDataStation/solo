@@ -1,8 +1,7 @@
 import json
 import argparse
 import os
-#from predictor import OpenQA
-from predictor.ar_predictor import ArPredictor
+from predictor import OpenQA
 from tqdm import tqdm
 import numpy as np
 import logging
@@ -73,60 +72,43 @@ def get_top_k_tables(table_id_lst, K):
     top_k_tables = top_tables[:K]
     return top_k_tables
 
-def read_ir_result():
-    result = {}
-    with open('./dataset/nq_tables/bm25_nq_tables_template_graph/dev/preds_dev.json') as f:
-        for line in f:
-            item = json.loads(line)
-            qid = item['qid']
-            result[qid] = item
-    return result
-
 def main():
     args = get_args()
     set_logger(args)
     args.index_name = args.index_name.lower()
-    #open_qa = get_open_qa(args)
+    open_qa = get_open_qa(args)
     query_info_lst = get_questions(args.query_dir, args.mode)
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
-    k_lst = [1, 5, 10, 20, 30]
+    k_lst = [1, 10, 100]
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
-    
-    ar_predictor = ArPredictor('albert_qa_zre')
-    
-    ir_result_data = read_ir_result()
-    step = 0
+    out_file = os.path.join(args.out_dir, 'preds_%s.json' % args.mode)
+    f_o = open(out_file, 'w')
     for query_info in tqdm(query_info_lst):
-        step += 1
-        qid = query_info['qid']
-        question = query_info['question']
-        result_item = ir_result_data[qid]
-        
-        passage_lst = result_item['passages']
-        passage_tags = result_item['passage_tags']
-         
-        
-        
-        passage_table_id_lst = [a['table_id'] for a in passage_tags]
-        top_idxes = ar_predictor.predict(question, passage_lst, ret_num=30)
-
-        top_passsage_lst = [passage_lst[a] for a in top_idxes]
-        top_table_id_lst = [passage_table_id_lst[a] for a in top_idxes]    
-        
-        query_info = query_info_dict[qid]
-        gold_table_id_lst = query_info['table_id_lst']
-        for k in k_lst:
-            top_k_table_id_lst = top_table_id_lst[:k] 
-            correct = table_found(top_k_table_id_lst, gold_table_id_lst)
-            correct_retr_dict[k].append(correct)
-       
-        show_precison(correct_retr_dict) 
+        batch_queries = [query_info] 
+        qry_ret_lst = open_qa.search(batch_queries, ir_retr_num=200, pr_retr_num=100, top_num=100)
+        for qry_ret in qry_ret_lst:
+            qid = qry_ret['qid']
+            query_info = query_info_dict[qid]
+            gold_table_id_lst = query_info['table_id_lst']
+            passage_tags = qry_ret['passage_tags']
+            passage_table_id_lst = [a['table_id'] for a in passage_tags]
+            for k in k_lst:
+                top_k_table_info_lst = get_top_k_tables(passage_table_id_lst, k)
+                if k == 10:
+                    qry_ret['top_10_tables'] = top_k_table_info_lst
+                top_k_table_id_lst = [a['table_id'] for a in top_k_table_info_lst] 
+                correct = table_found(top_k_table_id_lst, gold_table_id_lst)
+                correct_retr_dict[k].append(correct)
+           
+            show_precison(correct_retr_dict) 
+            f_o.write(json.dumps(qry_ret) + '\n')
 
     show_precison(correct_retr_dict)
+    f_o.close()
 
 def show_precison(correct_retr_dict):
     str_msg = ''

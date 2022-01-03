@@ -1,14 +1,15 @@
-if [ "$#" -ne 2 ]; then
-    echo "Usage: ./eval_graph_fabricqa_dev.sh <dataset> <experiment>"
+if [ "$#" -ne 3 ]; then
+    echo "Usage: ./eval_graph_fabricqa.sh <mode> <dataset> <experiment>"
     exit
 fi
-dataset=$1
-exptr=$2
+mode=$1
+dataset=$2
+exptr=$3
 query_dir=~/data/${dataset}/interactions
 index_name=${dataset}_${exptr}
-out_dir=./dataset/${dataset}/${exptr}/dev
+out_dir=./dataset/${dataset}/${exptr}/${mode}
 python eval_graph_fabricqa.py \
 --query_dir ${query_dir} \
 --index_name ${index_name} \
---mode dev \
+--mode ${mode} \
 --out_dir ${out_dir} 
