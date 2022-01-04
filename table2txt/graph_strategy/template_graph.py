@@ -4,8 +4,8 @@ from table2txt.graph_strategy.strategy import Strategy
 from webnlg.data.template_data import TemplateTag
 from table2txt.graph_strategy.utils import read_template
 
-Missing_Subject = '[Sub_Missing]'
-Missing_Object = '[Obj_Missing]'
+Missing_Subject = '[Sub_None]'
+Missing_Object = '[Obj_None]'
 
 class TemplateGraph(Strategy):
     def __init__(self):
