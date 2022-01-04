@@ -214,20 +214,20 @@ class TemplateGraph(Strategy):
         out_graph_lst = []
         N = len(col_entity_lst)
         for sub_col_idx in range(N-1):
-            obj_col_idx = sub_col_idx + 1
-            sample_triples = self.get_sample_triples(col_entity_lst, sub_col_idx, obj_col_idx, num_samples)
-            for triple_info in sample_triples:
-                graph = TemplateTag.get_annotated_triple(triple_info['sub'],
-                                                         triple_info['rel'],
-                                                         triple_info['obj'])
-                graph_info = {
-                    'table_id':table['tableId'],
-                    'row':triple_info['row'],
-                    'sub_col':triple_info['sub_col'],
-                    'obj_col':triple_info['obj_col'],
-                    'graph':graph
-                }
-                out_graph_lst.append(graph_info)
+            for obj_col_idx in range(sub_col_idx+1, N):
+                sample_triples = self.get_sample_triples(col_entity_lst, sub_col_idx, obj_col_idx, num_samples)
+                for triple_info in sample_triples:
+                    graph = TemplateTag.get_annotated_triple(triple_info['sub'],
+                                                             triple_info['rel'],
+                                                             triple_info['obj'])
+                    graph_info = {
+                        'table_id':table['tableId'],
+                        'row':triple_info['row'],
+                        'sub_col':triple_info['sub_col'],
+                        'obj_col':triple_info['obj_col'],
+                        'graph':graph
+                    }
+                    out_graph_lst.append(graph_info)
         
         return out_graph_lst
 
