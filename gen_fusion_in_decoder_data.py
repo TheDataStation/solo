@@ -6,11 +6,16 @@ from predictor import OpenQA
 from fabric_qa.reader.forward_reader.albert.qa_data import data_to_examples
 import torch
 import numpy as np
+import os
+import argparse
 
-dataset_name='fetaqa'
-mode = 'test'
-open_qa_result_file = './dataset/' + dataset_name + ('/template_graph/%s/preds_%s.json' % (mode, mode))
-M = 10
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset', type=str)
+    parser.add_argument('--mode', type=str)
+    parser.add_argument('--expr', type=str)
+    args = parser.parse_args()
+    return args
 
 def read_passage_file(arg_info):
     passage_file = arg_info[0]
@@ -48,9 +53,9 @@ def get_top_tags():
                     tag_dict[key] = tag
     return tag_dict
 
-def get_qas_data():
+def get_qas_data(args):
     ret_dict = {}
-    data_file = '/home/cc/data/' + dataset_name + ('/interactions/%s_qas.jsonl' % mode)
+    data_file = '/home/cc/data/' + dataset_name + ('/interactions/%s_qas.jsonl' % args.mode)
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
@@ -58,9 +63,9 @@ def get_qas_data():
             ret_dict[qid] = item
     return ret_dict
 
-def read_passages(tag_dict):
+def read_passages(tag_dict, args):
     work_pool = ProcessPool(30)
-    data_file_pattern = './table2txt/dataset/' + dataset_name + '/template_graph/passage_parts/graph_passages.json_part_*'
+    data_file_pattern = './table2txt/dataset/' + dataset_name + '/%s/passage_parts/graph_passages.json_part_*' % args.expr
     file_lst = glob.glob(data_file_pattern)
     arg_info_lst = []
     for data_file in file_lst:
@@ -76,11 +81,11 @@ def read_passages(tag_dict):
             all_passage_dict[key] = item_lst + passage_dict[key] 
     return all_passage_dict
 
-def get_open_qa():
+def get_open_qa(args):
     open_qa = OpenQA(
         ir_host='127.0.0.1',
         ir_port=9200,
-        ir_index=dataset_name + '_template_graph',
+        ir_index=args.dataset + '_%s' % args.expr,
         model_dir='/home/cc/code/fabric_qa/model',
         cuda=0)
     return open_qa
@@ -117,14 +122,21 @@ def get_top_row_passages(open_qa, qid, question, passage_lst):
     return top_passages 
  
 def main():
-    out_data_file = './dataset/' + dataset_name + ('/template_graph/%s/fusion_in_decoder_data.jsonl' % mode)
+    args = get_args()
+    open_qa_result_file = './dataset/' + args.dataset  + ('/%s/%s/preds_%s.json' % (args.expr, args.mode, args.mode))
+    out_data_file = './dataset/' + args.dataset + ('/%s/%s/fusion_in_decoder_data.jsonl' % (args.expr, args.mode))
+    if os.path.exists(out_data_file):
+        print('[%s] aleady exists.' % out_data_file)
+        return
+
     f_o = open(out_data_file, 'w')
     tag_dict = get_top_tags()
-    passage_dict = read_passages(tag_dict)
+    passage_dict = read_passages(tag_dict, args)
     
-    qas_data_dict = get_qas_data()
-    open_qa = get_open_qa()
-     
+    qas_data_dict = get_qas_data(args)
+    open_qa = get_open_qa(args)
+    
+    M = 10 
     with open(open_qa_result_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
