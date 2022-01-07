@@ -46,7 +46,7 @@ def get_table_text(strategy, table, expand_info, meta_info, template_text):
 
 def get_passage_info(table, row, sub_col, obj_col, cell_text, generated_text):
     title = table['documentTitle']
-    passage = cell_text + '   .   ' + generated_text
+    passage = title + '   .   ' +  cell_text + '   .   ' + generated_text
     passage_info = {
         'text':passage,
         'row':row,
