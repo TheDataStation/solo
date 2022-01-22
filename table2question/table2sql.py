@@ -37,12 +37,12 @@ def read_tables(table_file, table_filter):
     read_table_file(table_lst, table_file, table_filter_set)
     return table_lst
 
-def init_worker(strategy_name):
+def init_worker():
     global graph_strategy
     graph_strategy = TemplateGraph()
 
 def get_key_cols(col_ent_data, ent_num_lst):
-    sorted_idxes = np.argsort(ent_num_lst)
+    sorted_col_idxes = np.argsort(ent_num_lst)
     N = len(col_ent_data)
     idx = N - 1
     key_ent_num = -1
@@ -81,7 +81,7 @@ def infer_table_keys(table):
     for col, col_info in enumerate(col_ent_data):
         if (col_info['col_name'] != '') and (col not in key_col_set):
             non_key_col_lst.append(col)
-   
+ 
     return (col_ent_data, key_col_lst, non_key_col_lst)
      
 def is_float(text):
@@ -100,7 +100,7 @@ def is_float(text):
     else:
         return False
 
-def infer_column_type(col_ent_data)
+def infer_column_type(col_ent_data):
     for col_info in col_ent_data:
         entities = col_info['entities']  
         ent_text_lst = [a['text'] for a in entities] 
@@ -108,7 +108,7 @@ def infer_column_type(col_ent_data)
         col_type = 'float' if all(type_lst) else 'text'
         col_info['type_infered'] = col_type 
 
-def get_query_table(col_ent_data):
+def get_query_table(table_id, col_ent_data):
     col_name_lst = [a['col_name'] for a in col_ent_data]
     query_table = {
         'id':table_id,
@@ -118,9 +118,12 @@ def get_query_table(col_ent_data):
 
 def process_table(table):
     col_ent_data, key_col_lst, non_key_col_lst = infer_table_keys(table) 
+    if len(key_col_lst + non_key_col_lst) == 0:
+        return []
+
     infer_column_type(col_ent_data)
-    query_lst = sample_query_lst(table, col_ent_data, key_col_lst, non_key_col_lst)
-    query_table = get_query_table(col_ent_data)
+    query_lst = sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst)
+    query_table = get_query_table(table['tableId'], col_ent_data)
 
     for query in query_lst:
         sql_info = query['sql']
@@ -144,21 +147,22 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
     max_try_count = 20
     while (len(sample_query_lst) < max_samles) and (try_count < max_try_count):
         try_count += 1
-        sel_col = random.sample(col_lst)[0]
+        sel_col = random.sample(col_lst, 1)[0]
         sel_col_type = col_ent_data[sel_col]['type_infered']
         if sel_col_type == 'float':
             agg_op = random.sample(SqlQuery.agg_ops[:1], 1)[0] 
-        else
+        else:
             agg_op = ''
        
         agg_op_idx = SqlQuery.agg_ops.index(agg_op)
         
-        if agg_op != ''
+        if agg_op != '':
             all_cond_cols = [a for a in col_lst if a != sel_col]
         else:
             all_cond_cols = col_lst
         
         cond_num = random.sample(cond_num_lst, 1)[0]
+        cond_num = min(len(all_cond_cols), cond_num)
         cond_col_lst = random.sample(all_cond_cols, cond_num)
         
         query_col_lst = list(set([sel_col] + all_cond_cols))
@@ -173,20 +177,20 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
             cond_op_idx = random.sample(cond_op_idx_lst, 1)[0]
             cond_value = col_ent_data[cond_col]['entities'][row]['text'] 
             
-            sql_cond = [cond_col, cond_op_idx, cond_value]
+            sql_cond = [int(cond_col), int(cond_op_idx), cond_value]
             sql_cond_lst.append(sql_cond)
         
         sql_info = {
             'conds':sql_cond_lst,
-            'sel':sel_col,
-            'agg':agg_op_idx
+            'sel':int(sel_col),
+            'agg':int(agg_op_idx)
         }
 
         query_info = {
             'question':'N/A',
             'sql':sql_info,
             'table_id':table_id,
-            'row':row
+            'row':int(row)
         }
         sample_query_lst.append(query_info)
     return sample_query_lst
@@ -229,14 +233,14 @@ def main():
     input_tables = os.path.join('/home/cc/data', args.dataset, 'tables', table_file_name)
     table_lst = read_tables(input_tables, None)
 
-    DEBUG = False
+    DEBUG = True
     if not DEBUG:
-        work_pool = ProcessPool(initializer=init_worker, initargs=(args.strategy,))
+        work_pool = ProcessPool(initializer=init_worker)
         for query_lst in tqdm(work_pool.imap_unordered(process_table, table_lst), total=len(table_lst)):
             write_query(query_lst, f_o_src, f_o_tar, f_o_meta) 
              
     else:
-        init_worker(args.strategy)
+        init_worker()
         for table in tqdm(table_lst):
             query_lst = process_table(table)
             write_query(query_lst, f_o_src, f_o_tar, f_o_meta) 
@@ -245,7 +249,7 @@ def main():
     f_o_tar.close()
     f_o_meta.close()  
 
-def write_graphs(query_lst, f_o_src, f_o_tar, f_o_meta):
+def write_query(query_lst, f_o_src, f_o_tar, f_o_meta):
     for query in query_lst:
         f_o_src.write(query['sql_text'] + '\n')
         f_o_tar.write('a\n')
@@ -258,8 +262,6 @@ def get_args():
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--table_file', type=str)
     parser.add_argument('--experiment', type=str)
-    parser.add_argument('--strategy', type=str)
-    parser.add_argument('--debug', type=int, default=0)
     args = parser.parse_args()
     return args
 
