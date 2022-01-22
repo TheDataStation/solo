@@ -42,6 +42,15 @@ def init_worker():
     global graph_strategy
     graph_strategy = TemplateGraph()
 
+def is_good_col_name(col_name):
+    if col_name == '':
+        return False
+    col_tokens = col_name.split()
+    sub_tokens = [a for a in col_tokens if len(a) < 2]
+    if len(sub_tokens) > 0:
+        return False
+    return True
+
 def get_key_cols(col_ent_data, ent_num_lst):
     sorted_col_idxes = np.argsort(ent_num_lst)
     N = len(col_ent_data)
@@ -50,7 +59,7 @@ def get_key_cols(col_ent_data, ent_num_lst):
     key_col_lst = []
     while idx >= 0:
         col = sorted_col_idxes[idx]
-        if col_ent_data[col]['col_name'] != '':
+        if is_good_col_name(col_ent_data[col]['col_name']):
             if key_ent_num < 0:
                 key_ent_num = ent_num_lst[col]
                 key_col_lst.append(col)
@@ -80,7 +89,7 @@ def infer_table_keys(table):
 
     non_key_col_lst = []
     for col, col_info in enumerate(col_ent_data):
-        if (col_info['col_name'] != '') and (col not in key_col_set):
+        if is_good_col_name(col_info['col_name']) and (col not in key_col_set):
             non_key_col_lst.append(col)
  
     return (col_ent_data, key_col_lst, non_key_col_lst)
@@ -270,17 +279,25 @@ def main():
     table_lst = read_tables(input_tables, None)
 
     DEBUG = True
+    all_query_lst = []
     if not DEBUG:
         work_pool = ProcessPool(initializer=init_worker)
         for query_lst in tqdm(work_pool.imap_unordered(process_table, table_lst), total=len(table_lst)):
-            write_query(query_lst, f_o_src, f_o_tar, f_o_meta) 
+            all_query_lst.extend(query_lst)
+            #write_query(query_lst, f_o_src, f_o_tar, f_o_meta) 
              
     else:
         init_worker()
         for table in tqdm(table_lst):
             query_lst = process_table(table)
-            write_query(query_lst, f_o_src, f_o_tar, f_o_meta) 
-            
+            all_query_lst.extend(query_lst)
+            #write_query(query_lst, f_o_src, f_o_tar, f_o_meta) 
+    
+    random.shuffle(all_query_lst)
+    full_size = 65000
+    all_query_lst = random.sample(all_query_lst, full_size)
+    write_query(all_query_lst, f_o_src, f_o_tar, f_o_meta)
+     
     f_o_src.close()
     f_o_tar.close()
     f_o_meta.close()  
