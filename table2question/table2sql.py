@@ -6,6 +6,8 @@ import numpy as np
 import random
 from multiprocessing import Pool as ProcessPool
 from table2txt.graph_strategy.template_graph import TemplateGraph
+from table2question.sql_data import SqlQuery 
+from table2question.sql_preprocess import get_sql_text
 
 def read_table_file(table_lst, data_file, table_filter_set):
     with open(data_file) as f:
@@ -39,6 +41,28 @@ def init_worker(strategy_name):
     global graph_strategy
     graph_strategy = TemplateGraph()
 
+def get_key_cols(col_ent_data, ent_num_lst):
+    sorted_idxes = np.argsort(ent_num_lst)
+    N = len(col_ent_data)
+    idx = N - 1
+    key_ent_num = -1
+    key_col_lst = []
+    while idx >= 0:
+        col = sorted_col_idxes[idx]
+        if col_ent_data[col]['col_name'] != '':
+            if key_ent_num < 0:
+                key_ent_num = ent_num_lst[col]
+                key_col_lst.append(col)
+            else:
+                if key_ent_num == ent_num_lst[col]:
+                    key_col_lst.append(col)
+
+        idx -= 1
+    
+    if len(key_col_lst) > 0:
+        key_col_lst.sort()
+    return key_col_lst
+
 def infer_table_keys(table):
     col_ent_data = graph_strategy.get_col_entities(table)
     ent_num_lst = []
@@ -48,27 +72,17 @@ def infer_table_keys(table):
         ent_set = set(ent_text_lst)  
         ent_num = len(ent_set)
         ent_num_lst.append(ent_num)
-    
-    sorted_idxes = np.argsort(ent_num_lst)
-    key_idx = sorted_idxes[-1]
-    max_ent_num = ent_num_lst[key_idx]
-    key_idx_lst = [key_idx]
-    
-    N = len(col_ent_data)
-    idx = N - 2
-    while idx >= 0:
-        col_idx = sorted_idxes[idx]
-        ent_num = ent_num_lst[col_idx]
-        if ent_num != max_ent_num:
-            break
-        key_idx_lst.append(col_idx)
-        idx -= 1
    
-    key_idx_lst = key_idx_lst[:2]
-    key_idx_set = set(key_idx_lst)
-    non_key_idx_lst = [a for a in range(N) if a not in key_idx_set]
+    key_col_lst = get_key_cols(col_ent_data, ent_num_lst) 
+    key_col_lst = key_col_lst[:2]
+    key_col_set = set(key_col_lst)
+
+    non_key_col_lst = []
+    for col, col_info in enumerate(col_ent_data):
+        if (col_info['col_name'] != '') and (col not in key_col_set):
+            non_key_col_lst.append(col)
    
-    return (col_ent_data, key_idx_lst, non_key_idx_lst)
+    return (col_ent_data, key_col_lst, non_key_col_lst)
      
 def is_float(text):
     if text == '':
@@ -94,31 +108,110 @@ def infer_column_type(col_ent_data)
         col_type = 'float' if all(type_lst) else 'text'
         col_info['type_infered'] = col_type 
 
-def process_table(table):
-    col_ent_data, key_idx_lst, non_key_idx_lst = infer_table_keys(table) 
-    infer_column_type(col_ent_data)
-    sql_lst = sample_sqls(table, col_ent_data, key_idx_lst, non_key_idx_lst)
-    return sql_lst 
+def get_query_table(col_ent_data):
+    col_name_lst = [a['col_name'] for a in col_ent_data]
+    query_table = {
+        'id':table_id,
+        'header':col_name_lst
+    }
+    return query_table
 
-def sample_sqls(table, col_ent_data, key_idx_lst, non_key_idx_lst):
+def process_table(table):
+    col_ent_data, key_col_lst, non_key_col_lst = infer_table_keys(table) 
+    infer_column_type(col_ent_data)
+    query_lst = sample_query_lst(table, col_ent_data, key_col_lst, non_key_col_lst)
+    query_table = get_query_table(col_ent_data)
+
+    for query in query_lst:
+        sql_info = query['sql']
+        sql_text = get_sql_text(query_table, sql_info)
+        query['sql_text'] = sql_text
+
+    return query_lst
+
+def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
+    sample_query_lst = []
+
+    table_id = table['tableId']
     max_samles = 6
     num_samples = 0
+    row_data = table['rows']
+    col_lst = key_col_lst + non_key_col_lst
+    cond_num_lst = [1, 2]
     
-    while (num_samples < max_samles):
-        key_col = (random.sample(key_idx_lst, 1))[0]
-        non_key_num_lst = [1, 2]
-        non_key_num = (random.sample(non_key_num_lst, 1))[0]
-        non_key_cols = random.sample(non_key_idx_lst, non_key_num) 
+    cond_op_idx_lst = [a for a in range(len(SqlQuery.cond_ops)-1)]
+    try_count = 0
+    max_try_count = 20
+    while (len(sample_query_lst) < max_samles) and (try_count < max_try_count):
+        try_count += 1
+        sel_col = random.sample(col_lst)[0]
+        sel_col_type = col_ent_data[sel_col]['type_infered']
+        if sel_col_type == 'float':
+            agg_op = random.sample(SqlQuery.agg_ops[:1], 1)[0] 
+        else
+            agg_op = ''
+       
+        agg_op_idx = SqlQuery.agg_ops.index(agg_op)
         
-        table_id = table['tableId']
+        if agg_op != ''
+            all_cond_cols = [a for a in col_lst if a != sel_col]
+        else:
+            all_cond_cols = col_lst
         
-           
+        cond_num = random.sample(cond_num_lst, 1)[0]
+        cond_col_lst = random.sample(all_cond_cols, cond_num)
+        
+        query_col_lst = list(set([sel_col] + all_cond_cols))
+        
+        row_spaces = get_sample_row_space(row_data, col_ent_data, query_col_lst)
+        if len(row_spaces) == 0:
+            continue
 
+        row = random.sample(row_spaces, 1)[0]
+        sql_cond_lst = []
+        for cond_col in cond_col_lst:
+            cond_op_idx = random.sample(cond_op_idx_lst, 1)[0]
+            cond_value = col_ent_data[cond_col]['entities'][row]['text'] 
+            
+            sql_cond = [cond_col, cond_op_idx, cond_value]
+            sql_cond_lst.append(sql_cond)
+        
+        sql_info = {
+            'conds':sql_cond_lst,
+            'sel':sel_col,
+            'agg':agg_op_idx
+        }
+
+        query_info = {
+            'question':'N/A',
+            'sql':sql_info,
+            'table_id':table_id,
+            'row':row
+        }
+        sample_query_lst.append(query_info)
+    return sample_query_lst
+
+def get_sample_row_space(row_data, col_ent_data, query_col_lst):
+    row_spaces = []
+    for row in range(len(row_data)):
+        if not is_row_data_missing(row, col_ent_data, query_col_lst):
+            row_spaces.append(row)
+    return row_spaces 
+
+def is_row_data_missing(row, col_ent_data, query_col_lst):
+    for col in query_col_lst:
+        if col_ent_data[col]['entities'][row] == '':
+            return True
+    return False
+      
 
 def main():
     args = get_args()
-    table2txt_dir = '/home/cc/code/open_table_discovery/table2txt'
-    out_dir = os.path.join(table2txt_dir, 'dataset', args.dataset, args.experiment)
+    table2question_dir = '/home/cc/code/open_table_discovery/table2question'
+    dataset_dir = os.path.join(table2question_dir, 'dataset', args.dataset)
+    if not os.path.exists(dataset_dir):
+        os.mkdir(dataset_dir)
+    out_dir = os.path.join(dataset_dir, args.experiment)
     if os.path.isdir(out_dir):
         err_msg = ('[%s] already exists, please use a different value for [--out_dir].\n'
               % (out_dir))
@@ -129,8 +222,8 @@ def main():
     out_file_tar = os.path.join(out_dir, 'test_unseen.target')
     f_o_src = open(out_file_src, 'w')
     f_o_tar = open(out_file_tar, 'w')
-    out_row_table_file = os.path.join(out_dir, 'graph_row_table.txt')
-    f_o_meta = open(out_row_table_file, 'w')
+    out_meta_file = os.path.join(out_dir, 'meta.txt')
+    f_o_meta = open(out_meta_file, 'w')
 
     table_file_name = args.table_file
     input_tables = os.path.join('/home/cc/data', args.dataset, 'tables', table_file_name)
@@ -139,29 +232,24 @@ def main():
     DEBUG = False
     if not DEBUG:
         work_pool = ProcessPool(initializer=init_worker, initargs=(args.strategy,))
-        for graph_lst in tqdm(work_pool.imap_unordered(process_table, table_lst), total=len(table_lst)):
-            write_graphs(graph_lst, f_o_src, f_o_tar, f_o_meta) 
+        for query_lst in tqdm(work_pool.imap_unordered(process_table, table_lst), total=len(table_lst)):
+            write_query(query_lst, f_o_src, f_o_tar, f_o_meta) 
              
     else:
         init_worker(args.strategy)
         for table in tqdm(table_lst):
-            graph_lst = process_table(table)
-            write_graphs(graph_lst, f_o_src, f_o_tar, f_o_meta) 
+            query_lst = process_table(table)
+            write_query(query_lst, f_o_src, f_o_tar, f_o_meta) 
             
     f_o_src.close()
     f_o_tar.close()
     f_o_meta.close()  
 
-def write_graphs(graph_lst, f_o_src, f_o_tar, f_o_meta):
-    for graph_info in graph_lst:
-        f_o_src.write(graph_info['graph'] + '\n')
+def write_graphs(query_lst, f_o_src, f_o_tar, f_o_meta):
+    for query in query_lst:
+        f_o_src.write(query['sql_text'] + '\n')
         f_o_tar.write('a\n')
-        meta_info = {
-            'table_id': graph_info['table_id'],
-            'row': graph_info['row'],
-            'sub_col':graph_info['sub_col'],
-            'obj_col':graph_info['obj_col']
-        }
+        meta_info = query
         f_o_meta.write(json.dumps(meta_info) + '\n')
 
 
