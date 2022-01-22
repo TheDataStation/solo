@@ -8,6 +8,7 @@ from multiprocessing import Pool as ProcessPool
 from table2txt.graph_strategy.template_graph import TemplateGraph
 from table2question.sql_data import SqlQuery 
 from table2question.sql_preprocess import get_sql_text
+import re
 
 def read_table_file(table_lst, data_file, table_filter_set):
     with open(data_file) as f:
@@ -87,25 +88,16 @@ def infer_table_keys(table):
 def is_float(text):
     if text == '':
         return False
-    dot_lst = []
-    digit_lst = []
-    for a in text:
-        if a == '.':
-            dot_lst.append(a)
-        elif a.isdigit():
-            digit_lst.append(a)
-    
-    if (len(dot_lst) <= 1) and (len(dot_lst) + len(digit_lst) == len(text)):
-        return True
-    else:
+    if re.match(r'^-?\d+(?:\.\d+)$', text) is None:
         return False
+    return True
 
 def infer_column_type(col_ent_data):
     for col_info in col_ent_data:
         entities = col_info['entities']  
         ent_text_lst = [a['text'] for a in entities] 
-        type_lst = [is_float(a) for a in ent_text_lst] 
-        col_type = 'float' if all(type_lst) else 'text'
+        float_flag_lst = [is_float(a) for a in ent_text_lst] 
+        col_type = 'float' if all(float_flag_lst) else 'text'
         col_info['type_infered'] = col_type 
 
 def get_query_table(table_id, col_ent_data):
@@ -140,6 +132,18 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
     num_samples = 0
     row_data = table['rows']
     col_lst = key_col_lst + non_key_col_lst
+    float_col_lst = []
+    text_col_lst = []
+    sel_col_type_lst = []
+    for col in col_lst:
+        col_type = col_ent_data[col]['type_infered']
+        sel_col_type_lst.append(col_type)
+        if col_type == 'float':
+            float_col_lst.append(col)
+        else:
+            text_col_lst.append(col)
+    sel_col_type_lst = list(set(sel_col_type_lst))
+
     cond_num_lst = [1, 2]
     
     cond_op_idx_lst = [a for a in range(len(SqlQuery.cond_ops)-1)]
@@ -147,10 +151,14 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
     max_try_count = 20
     while (len(sample_query_lst) < max_samles) and (try_count < max_try_count):
         try_count += 1
-        sel_col = random.sample(col_lst, 1)[0]
-        sel_col_type = col_ent_data[sel_col]['type_infered']
+        sel_col_type = random.sample(sel_col_type_lst, 1)[0] 
         if sel_col_type == 'float':
-            agg_op = random.sample(SqlQuery.agg_ops[:1], 1)[0] 
+            sel_col = random.sample(float_col_lst, 1)[0]
+        else:
+            sel_col = random.sample(text_col_lst, 1)[0]
+        
+        if sel_col_type == 'float':
+            agg_op = random.sample(SqlQuery.agg_ops[1:], 1)[0] 
         else:
             agg_op = ''
        
@@ -174,9 +182,37 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
         row = random.sample(row_spaces, 1)[0]
         sql_cond_lst = []
         for cond_col in cond_col_lst:
-            cond_op_idx = random.sample(cond_op_idx_lst, 1)[0]
-            cond_value = col_ent_data[cond_col]['entities'][row]['text'] 
+            cond_col_type = col_ent_data[cond_col]['type_infered']
+            if cond_col_type == 'float':
+                cond_op_idx = random.sample(cond_op_idx_lst, 1)[0]
+            else:
+                cond_op_idx = 0
             
+            cond_value = col_ent_data[cond_col]['entities'][row]['text'] 
+            cond_op = SqlQuery.cond_ops[cond_op_idx]
+            if cond_op == '>':
+                float_cond_value = float(cond_value)
+                if float_cond_value >= 0:
+                    float_cond_value = float_cond_value / 2
+                else:
+                    float_cond_value = float_cond_value * 2
+                if float_cond_value == 0:
+                    float_cond_value = -1
+                cond_value = str(float_cond_value)
+            elif cond_op == '<':
+                float_cond_value = float(cond_value)
+                if float_cond_value >= 0:
+                    float_cond_value = float_cond_value * 2
+                else:
+                    float_cond_value = float_cond_value / 2
+                if float_cond_value == 0:
+                    float_cond_value = 1 
+                cond_value = str(float_cond_value)
+             
+            cond_value_size = col_ent_data[cond_col]['entities'][row]['size']
+            if cond_value_size > 30:
+                cond_value = cond_value[:30] 
+             
             sql_cond = [int(cond_col), int(cond_op_idx), cond_value]
             sql_cond_lst.append(sql_cond)
         
