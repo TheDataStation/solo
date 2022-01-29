@@ -1,5 +1,5 @@
 if [ "$#" -ne 2 ]; then
-    echo "Usage: ./gen_passages_to_import.sh <dataset> <experiment>"
+    echo "Usage: ./gen_graph_passages.sh <dataset> <experiment>"
     exit
 fi
 dataset=$1
