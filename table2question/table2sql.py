@@ -7,7 +7,7 @@ import random
 from multiprocessing import Pool as ProcessPool
 from table2txt.graph_strategy.template_graph import TemplateGraph
 from table2question.sql_data import SqlQuery 
-from table2question.sql_preprocess import get_sql_text
+from table2question.wikisql_preprocess import get_sql_text
 import re
 
 def read_table_file(table_lst, data_file, table_filter_set):
@@ -137,7 +137,7 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
     sample_query_lst = []
 
     table_id = table['tableId']
-    max_samles = 6
+    max_samles = 10
     num_samples = 0
     row_data = table['rows']
     col_lst = key_col_lst + non_key_col_lst
@@ -284,18 +284,13 @@ def main():
         work_pool = ProcessPool(initializer=init_worker)
         for query_lst in tqdm(work_pool.imap_unordered(process_table, table_lst), total=len(table_lst)):
             all_query_lst.extend(query_lst)
-            #write_query(query_lst, f_o_src, f_o_tar, f_o_meta) 
              
     else:
         init_worker()
         for table in tqdm(table_lst):
             query_lst = process_table(table)
             all_query_lst.extend(query_lst)
-            #write_query(query_lst, f_o_src, f_o_tar, f_o_meta) 
     
-    random.shuffle(all_query_lst)
-    full_size = 65000
-    all_query_lst = random.sample(all_query_lst, full_size)
     write_query(all_query_lst, f_o_src, f_o_tar, f_o_meta)
      
     f_o_src.close()
