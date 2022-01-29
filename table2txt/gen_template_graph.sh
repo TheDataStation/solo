@@ -1,10 +1,10 @@
-if [ "$#" -ne 2 ]; then
-    echo "Usage: ./gen_graph.sh <dataset> <experiment>"
+if [ "$#" -ne 3 ]; then
+    echo "Usage: ./gen_template_graph.sh <dataset> <table_file> <experiment>"
     exit
 fi
 dataset=$1
-table_file=tables.jsonl
-exptr=$2
+table_file=$2
+exptr=$3
 stg=TemplateGraph
 python ./table2graph.py \
 --dataset ${dataset} \
