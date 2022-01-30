@@ -84,6 +84,10 @@ def main():
     graph_parts_dir = os.path.join('dataset', args.dataset, args.experiment, 'graph_parts')
     passage_dir = os.path.join('dataset', args.dataset, args.experiment, 'generated_passages')
     part_name_lst = sorted(os.listdir(passage_dir))
+    
+    if len(part_name_lst) == 0:
+        print('No generated passage parts in directory [%s]' % passage_dir)
+        return
 
     out_passage_file = os.path.join('dataset', args.dataset, args.experiment, 'graph_passages.json') 
     f_o = open(out_passage_file, 'w')
