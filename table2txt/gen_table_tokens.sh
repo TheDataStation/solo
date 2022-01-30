@@ -5,7 +5,7 @@ fi
 
 dataset=$1
 table_file=$2
-exptr=$3
+exptr='table_token_'$3
 stg=$3
 
 python ./table2tokens.py \

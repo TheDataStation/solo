@@ -7,32 +7,12 @@ import random
 from multiprocessing import Pool as ProcessPool
 from table2txt.graph_strategy.strategy_constructor import get_strategy
 
-def read_table_file(table_lst, data_file, table_filter_set):
+def read_tables(data_file):
+    table_lst = []
     with open(data_file) as f:
         for line in tqdm(f):
             table = json.loads(line)
-            table_id = table['tableId']
-            if table_filter_set is not None:
-                if table_id not in table_filter_set:
-                    continue
             table_lst.append(table)
-    return table_lst
-
-def read_table_filter_set(table_fileter_file):
-    table_id_lst = []
-    with open(table_fileter_file) as f:
-        for line in f:
-            table_id = line.strip()
-            table_id_lst.append(table_id)
-    table_id_set = set(table_id_lst)
-    return table_id_set
-
-def read_tables(table_file, table_filter):
-    table_lst = []
-    table_filter_set = None
-    if table_filter is not None:
-        table_filter_set = read_table_filter_set(table_filter)
-    read_table_file(table_lst, table_file, table_filter_set)
     return table_lst
 
 def init_worker(strategy_name):
@@ -60,8 +40,8 @@ def main():
     f_o_meta = open(out_row_table_file, 'w')
 
     table_file_name = args.table_file
-    input_tables = os.path.join('/home/cc/data', args.dataset, 'tables', table_file_name)
-    table_lst = read_tables(input_tables, None)
+    input_table_file = os.path.join('/home/cc/data', args.dataset, 'tables', table_file_name)
+    table_lst = read_tables(input_table_file)
 
     DEBUG = False
     if not DEBUG:
