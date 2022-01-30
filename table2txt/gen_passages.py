@@ -88,13 +88,13 @@ def main():
     out_passage_file = os.path.join('dataset', args.dataset, args.experiment, 'graph_passages.json') 
     f_o = open(out_passage_file, 'w')
     table_expand_info = {}
+    passage_id = 0
     for part_name in tqdm(part_name_lst):
         graph_data_file = os.path.join(graph_parts_dir, 'test_unseen.source_%s' % part_name)
 
         template_meta_data = get_template_meta(part_name, args)
         preds_file = os.path.join(passage_dir, part_name, 'val_outputs/test_unseen_predictions.txt.debug')
         with open(preds_file) as f:
-            p_id = 0
             for row, text in enumerate(f):
                 template_graph_text = text.rstrip()
                 meta_info = template_meta_data[row] 
@@ -107,6 +107,7 @@ def main():
                                                    meta_info, template_graph_text)
                 for passage_info in table_passage_lst:
                     tag_info = {
+                        'p_id':passage_id,
                         'table_id':table_id,
                         'row':passage_info['row'],
                         'sub_col':passage_info['sub_col'],
@@ -114,12 +115,11 @@ def main():
                     }
                     passage = passage_info['text']
                     out_item = {
-                        'id': part_name,
-                        'p_id': p_id,
-                        'passage': passage,
-                        'tag': tag_info
+                        'p_id':passage_id,
+                        'passage':passage,
+                        'tag':tag_info
                     }
-                    p_id += 1
+                    passage_id += 1
                     f_o.write(json.dumps(out_item) + '\n')
     f_o.close()
 
