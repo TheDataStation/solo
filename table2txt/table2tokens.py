@@ -40,9 +40,20 @@ def write_table_info(table_info, f_o_tables):
         'tag':table_id
     }
     f_o_tables.write(json.dumps(out_data) + '\n')
+
+def get_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset', type=str)
+    parser.add_argument('--table_file', type=str)
+    parser.add_argument('--experiment', type=str)
+    parser.add_argument('--strategy', type=str)
+    parser.add_argument('--debug', type=int, default=0)
+    args = parser.parse_args()
+    return args
   
 def main():
-    out_table_file = os.path.join('output', 'fetaQA', 'table_tokens', 'table_token_text.json')
+    args = get_args()
+    out_table_file = os.path.join('dataset', args.dataset, args.experiment, 'token_text.jsonl')
     f_o_tables = open(out_table_file, 'w')
 
     table_lst = read_tables()
@@ -51,7 +62,8 @@ def main():
   
     for table_info in tqdm(work_pool.imap_unordered(process_table, table_lst), total=N):
         write_table_info(table_info, f_o_tables)
-   
+    
+    if not args.debug:  
     ''' 
     for table in table_lst:
         table_info = process_table(table)
