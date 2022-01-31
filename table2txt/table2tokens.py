@@ -88,12 +88,15 @@ class SlidingStrategy(TextStrategy):
         text_info_lst = []
         for col_idx, col_info in enumerate(col_info_lst):
             cell_info = cell_lst[col_idx]
-
+            if col_info['text'] == '' and cell_info['text'].strip() == '':
+                continue
+            
             if self.cell_buffer.can_add(col_idx, col_info, cell_info):
                 self.cell_buffer.add(cell_info)
             else:
                 text_info = self.cell_buffer.pop(title)
                 text_info_lst.append(text_info)
+                self.cell_buffer.add(cell_info)
         
         if self.cell_buffer.can_pop():
             text_info = self.cell_buffer.pop(title)
