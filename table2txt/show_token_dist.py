@@ -13,6 +13,7 @@ def get_args():
     return args
 
 def main():
+    args = get_args()
     tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
     passage_file = './dataset/%s/%s/%s' % (args.dataset, args.experiment, args.file_name)
     passage_lst = []
@@ -42,5 +43,4 @@ def main():
 
 if __name__ == '__main__':
     main()
-
 
