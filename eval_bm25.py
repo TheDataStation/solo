@@ -36,6 +36,7 @@ def get_ir(args):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--index_name', type=str)
+    parser.add_argument('--dataset', type=str)
     parser.add_argument('--mode', type=str)
     parser.add_argument('--out_dir', type=str)
     args = parser.parse_args()
@@ -86,7 +87,7 @@ def main():
     args = get_args()
     set_logger(args)
     ir_ranker = get_ir(args)
-    query_info_lst = get_questions(args.mode)
+    query_info_lst = get_questions(args.mode, dataset)
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
