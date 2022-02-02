@@ -87,7 +87,7 @@ def main():
     args = get_args()
     set_logger(args)
     ir_ranker = get_ir(args)
-    query_info_lst = get_questions(args.mode, dataset)
+    query_info_lst = get_questions(args.mode, args.dataset)
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
@@ -125,4 +125,7 @@ def main():
     f_o.close()
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except ValueError as e:
+        print(e)
