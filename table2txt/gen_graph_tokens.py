@@ -2,7 +2,7 @@ import json
 from tqdm import tqdm
 import os
 
-dataset='nq_tables'
+dataset='fetaqa'
 
 def main():
     out_file = './dataset/%s/triple_template_graph/graph_tokens.json' % dataset

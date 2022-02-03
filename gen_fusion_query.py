@@ -3,6 +3,8 @@ from tqdm import tqdm
 import glob
 import torch
 import numpy as np
+import os
+import argparse
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -22,7 +24,14 @@ def get_qas_data(args):
  
 def main():
     args = get_args()
-    out_data_file = './fusion_query_%s.json' % args.mode
+    out_dir = './output'
+    if not os.path.isdir(out_dir):
+        os.mkdir(out_dir)
+    out_data_file = '%s/fusion_query_%s.json' % (out_dir, args.mode)
+    if os.path.exists(out_data_file):
+        print('[%s] already exists' % out_data_file)
+        return
+    
     f_o = open(out_data_file, 'w')
     qas_lst = get_qas_data(args)
     for item in tqdm(qas_lst):

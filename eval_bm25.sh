@@ -9,4 +9,4 @@ python eval_bm25.py \
 --index_name ${dataset}_${expr} \
 --mode ${mode} \
 --dataset ${dataset} \
---out_dir ./dataset/${dataset}/bm25_${dataset}_${expr}/${mode}
+--out_dir ./dataset/${dataset}/bm25_${expr}/${mode}
