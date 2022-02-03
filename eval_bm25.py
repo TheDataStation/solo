@@ -79,7 +79,14 @@ def search(ir_ranker, query, args, spacy_nlp):
                                         k=100,
                                         ret_src=True)
     top_ir_passages = [a['_source']['body'] for a in retr_source_data]
-    passage_tags = [{'table_id':a['_source']['table_id']} for a in retr_source_data]
+    passage_tags = [
+                    {
+                        'table_id':a['_source']['table_id'], 
+                        'p_id':int(a['_id']),
+                        'row':a['_source']['row'],
+                        'sub_col':a['_source']['sub_col'],
+                        'obj_col':a['_source']['obj_col']
+                    } for a in retr_source_data ]
     return (top_ir_passages, passage_tags)
 
 def main():
@@ -95,7 +102,7 @@ def main():
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
-    out_file = os.path.join(args.out_dir, 'preds_%s.json' % args.mode)
+    out_file = os.path.join(args.out_dir, 'bm25_fusion_retrieve_%s.jsonl' % args.mode)
     f_o = open(out_file, 'w')
     for query_info in tqdm(query_info_lst): 
         top_ir_passages, passage_tags = search(ir_ranker, query_info, args, spacy_nlp)
@@ -103,6 +110,7 @@ def main():
         query_info = query_info_dict[qid]
         gold_table_id_lst = query_info['table_id_lst']
         retr_table_id_lst = [a['table_id'] for a in passage_tags]
+        retr_passage_id_lst = [a['p_id'] for a in passage_tags]
         correct_info = {}
         for k in k_lst:
             top_k_table_id_lst = retr_table_id_lst[:k]
@@ -110,13 +118,24 @@ def main():
             correct_info[k] = correct
             correct_retr_dict[k].append(correct)
 
-        correct_log = {
+        out_item = {
             'qid':qid,
             'question':query_info['question'],
-            'passages':top_ir_passages,
-            'passage_tags':passage_tags,
+            'table_id_lst':gold_table_id_lst,
+            'answers':['N/A'],
         }
-        f_o.write(json.dumps(correct_log) + '\n')
+        out_passage_lst = []
+        for retr_idx, retr_passage in enumerate(top_ir_passages):
+            tag_info = passage_tags[retr_idx]
+            out_passage_info = {
+                'id':tag_info['p_id'],
+                'title':'',
+                'text':retr_passage,
+                'tag':tag_info
+            }
+            out_passage_lst.append(out_passage_info)
+        out_item['ctxs'] = out_passage_lst
+        f_o.write(json.dumps(out_item) + '\n')
 
     for k in correct_retr_dict:
         precision = np.mean(correct_retr_dict[k]) * 100
