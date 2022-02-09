@@ -15,25 +15,23 @@ def get_args():
 def main():
     args = get_args()
     data_dir = './dataset/%s/%s/%s' % (args.dataset, args.sql_expr, args.table_expr)
-    data_file = '%s/fusion_retrieved.json' % data_dir
+    data_file = '%s/retrieved_data.jsonl' % data_dir
     print('loading retrieved data')
-    with open(data_file) as f:
-        data = json.load(f)
-   
     data_table_dict = {}
-    for item in tqdm(data):
-        gold_table_lst = item['table_id_lst']
-        table_id = gold_table_lst[0]
-
-        passage_info_lst = item['ctxs']
-        label_lst = [int (a['tag']['table_id'] in gold_table_lst) for a in passage_info_lst] 
-        if (max(label_lst) < 1) or (min(label_lst) > 0):
-            continue
-         
-        if table_id not in data_table_dict:
-            data_table_dict[table_id] = []
-        table_item_lst = data_table_dict[table_id]
-        table_item_lst.append(item)
+    with open(data_file) as f:
+        for line in tqdm(f):
+            item = json.loads(line)
+            gold_table_lst = item['table_id_lst']
+            table_id = gold_table_lst[0]
+            passage_info_lst = item['ctxs']
+            label_lst = [int (a['tag']['table_id'] in gold_table_lst) for a in passage_info_lst] 
+            if (max(label_lst) < 1) or (min(label_lst) > 0):
+                continue
+             
+            if table_id not in data_table_dict:
+                data_table_dict[table_id] = []
+            table_item_lst = data_table_dict[table_id]
+            table_item_lst.append(item)
     
     all_table_id_lst = list(data_table_dict.keys())
     num_dev = 1000
