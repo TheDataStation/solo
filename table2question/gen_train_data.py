@@ -16,48 +16,42 @@ def main():
     args = get_args()
     data_dir = './dataset/%s/%s/%s' % (args.dataset, args.sql_expr, args.table_expr)
     data_file = '%s/retrieved_data.jsonl' % data_dir
+    
+    dev_table_file = f'./dataset/{args.dataset}/{args.sql_expr}/dev_table_lst.json'
+    with open(dev_table_file) as f_dev_table:
+        dev_table_lst = json.load(f_dev_table)
+    dev_table_set = set(dev_table_lst)
+
+    out_train_file = '%s/fusion_retrieved_%s.jsonl' % (data_dir, 'train')
+    f_o_train = open(out_train_file, 'w')
+
+    out_dev_file = '%s/fusion_retrieved_%s.jsonl' % (data_dir, 'dev')  
+    f_o_dev = open(out_dev_file, 'w')
+
+    out_train_data = []
+    out_dev_data = []
     print('loading retrieved data')
-    data_table_dict = {}
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
             gold_table_lst = item['table_id_lst']
             table_id = gold_table_lst[0]
-            passage_info_lst = item['ctxs']
-            label_lst = [int (a['tag']['table_id'] in gold_table_lst) for a in passage_info_lst] 
-            if (max(label_lst) < 1) or (min(label_lst) > 0):
-                continue
-             
-            if table_id not in data_table_dict:
-                data_table_dict[table_id] = []
-            table_item_lst = data_table_dict[table_id]
-            table_item_lst.append(item)
-    
-    all_table_id_lst = list(data_table_dict.keys())
-    num_dev = 1000
-    num_train = len(all_table_id_lst) - num_dev
-    train_table_id_lst = random.sample(all_table_id_lst, num_train)
-    train_table_id_set = set(train_table_id_lst)
-    
-    gen_data(data_dir, data_table_dict, train_table_id_set)
+            if table_id not in dev_table_set:
+                passage_info_lst = item['ctxs']
+                label_lst = [int (a['tag']['table_id'] in gold_table_lst) for a in passage_info_lst] 
+                if (max(label_lst) < 1) or (min(label_lst) > 0):
+                    continue
+                out_train_data.append(line)
+            else:
+                out_dev_data.append(line)
 
-def gen_data(data_dir, data_table_dict, train_table_id_set): 
-    out_train_file = '%s/fusion_retrieved_%s.jsonl' % (data_dir, 'train')  
-    f_o_train = open(out_train_file, 'w')
-    out_dev_file = '%s/fusion_retrieved_%s.jsonl' % (data_dir, 'dev')  
-    f_o_dev = open(out_dev_file, 'w')
+    out_dev_data_sample = random.sample(out_dev_data, 2000)
     
-    for table_id in tqdm(data_table_dict):
-        if table_id in train_table_id_set:
-            f_o = f_o_train
-        else:
-            f_o = f_o_dev
-       
-        table_item_lst = data_table_dict[table_id]
-        for item in table_item_lst:
-            f_o.write(json.dumps(item) + '\n') 
-    
+    for train_line in out_train_data:
+        f_o_train.write(train_line)
     f_o_train.close()
+    for dev_line in out_dev_data_sample:
+        f_o_dev.write(dev_line)
     f_o_dev.close()
 
 if __name__ == '__main__':
