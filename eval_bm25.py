@@ -37,17 +37,25 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--index_name', type=str)
     parser.add_argument('--dataset', type=str)
+    parser.add_argument('--expr', type=str)
+    parser.add_argument('--synthetic', type=int)
     parser.add_argument('--mode', type=str)
     parser.add_argument('--out_dir', type=str)
     args = parser.parse_args()
     return args
 
-def get_questions(mode, dataset):
+def get_questions(args):
     q_item_lst = []
-    qas_file = '/home/cc/data/%s/interactions/%s_qas.jsonl' % (dataset, mode)
+    if (args.synthetic is None) or (args.synthetic == 0):
+        qas_file = '/home/cc/data/%s/interactions/%s_qas.jsonl' % (args.dataset, args.mode)
+    else:
+        dataset_dir = '/home/cc/code/open_table_discovery/table2question/dataset'
+        qas_file = dataset_dir + f'/{args.dataset}/sql_all_per_10/fusion_query_{args.mode}.jsonl'
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)
+            if args.synthetic:
+                q_item['qid'] = q_item['id']
             q_item_lst.append(q_item)
     return q_item_lst
 
@@ -94,7 +102,7 @@ def main():
     args = get_args()
     set_logger(args)
     ir_ranker = get_ir(args)
-    query_info_lst = get_questions(args.mode, args.dataset)
+    query_info_lst = get_questions(args)
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
