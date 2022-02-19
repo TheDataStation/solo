@@ -1,5 +1,5 @@
 import json
-from sql_data import SqlQuery
+from table2question.sql_data import SqlQuery
 from tqdm import tqdm
 import re
 
@@ -76,10 +76,15 @@ def get_sql_text(table_info, sql_info):
     cond_text_lst = []
     for cond_info in conds:
         col_idx, op_idx, cond_value = cond_info
-        cond_col_name = col_names[col_idx]
         cond_op = SqlQuery.cond_ops[op_idx]
         cond_op_tag = SqlQuery.get_src_tag(cond_op)
-        cond_text = '%s %s %s' % (cond_col_name, cond_op_tag, cond_value)
+        if col_idx is not None:
+            cond_col_name = col_names[col_idx]
+            if cond_col_name == '':
+                print(sql_info)
+            cond_text = '%s %s %s' % (cond_col_name, cond_op_tag, cond_value)
+        else:
+            cond_text = 'about %s %s' % (cond_op_tag, cond_value)
         cond_text_lst.append(cond_text)
    
     sel_op_tag = SqlQuery.get_src_tag(SqlQuery.sel_op) 
