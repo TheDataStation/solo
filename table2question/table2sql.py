@@ -153,11 +153,11 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
             text_col_lst.append(col)
     sel_col_type_lst = list(set(sel_col_type_lst))
 
-    cond_num_lst = [1, 2]
+    cond_num_lst = [0, 1, 2]
     
     cond_op_idx_lst = [a for a in range(len(SqlQuery.cond_ops)-1)]
     try_count = 0
-    max_try_count = 20
+    max_try_count = 60
     while (len(sample_query_lst) < max_samles) and (try_count < max_try_count):
         try_count += 1
         sel_col_type = random.sample(sel_col_type_lst, 1)[0] 
@@ -177,11 +177,14 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
             all_cond_cols = [a for a in col_lst if a != sel_col]
         else:
             all_cond_cols = col_lst
-        
+       
         cond_num = random.sample(cond_num_lst, 1)[0]
-        cond_num = min(len(all_cond_cols), cond_num)
-        cond_col_lst = random.sample(all_cond_cols, cond_num)
-        
+        cond_col_lst = [None]
+        if cond_num > 0:
+            cond_num = min(len(all_cond_cols), cond_num)
+            sample_cond_cols = random.sample(all_cond_cols, cond_num)
+            cond_col_lst.extend(sample_cond_cols)
+              
         query_col_lst = list(set([sel_col] + all_cond_cols))
         
         row_spaces = get_sample_row_space(row_data, col_ent_data, query_col_lst)
@@ -191,6 +194,11 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
         row = random.sample(row_spaces, 1)[0]
         sql_cond_lst = []
         for cond_col in cond_col_lst:
+            if cond_col is None:
+                sql_cond = [None, 0, table['documentTitle'].strip()]
+                sql_cond_lst.append(sql_cond)
+                continue
+
             cond_col_type = col_ent_data[cond_col]['type_infered']
             if cond_col_type == 'float':
                 cond_op_idx = random.sample(cond_op_idx_lst, 1)[0]
@@ -219,9 +227,9 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
                 cond_value = str(float_cond_value)
              
             cond_value_size = col_ent_data[cond_col]['entities'][row]['size']
-            if cond_value_size > 30:
-                cond_value = cond_value[:30] 
-             
+            if cond_value_size > 15:
+                continue
+                 
             sql_cond = [int(cond_col), int(cond_op_idx), cond_value]
             sql_cond_lst.append(sql_cond)
         
@@ -291,11 +299,30 @@ def main():
             query_lst = process_table(table)
             all_query_lst.extend(query_lst)
     
-    write_query(all_query_lst, f_o_src, f_o_tar, f_o_meta)
+    sample_query_lst = get_table_queries(all_query_lst) 
+    write_query(sample_query_lst, f_o_src, f_o_tar, f_o_meta)
      
     f_o_src.close()
     f_o_tar.close()
     f_o_meta.close()  
+
+def get_table_queries(all_query_lst):
+    table_query_dict = {}
+    for query in all_query_lst:
+        table_id = query['table_id']
+        if table_id not in table_query_dict:
+            table_query_dict[table_id] = []
+        query_lst = table_query_dict[table_id]
+        query_lst.append(query)
+    table_id_lst = list(table_query_dict.keys())
+    N = min(20000, len(table_id_lst))
+    sample_table_id_lst = random.sample(table_id_lst, N)
+    all_sample_query_lst = []
+    for sample_table_id in sample_table_id_lst:
+        query_lst = table_query_dict[sample_table_id]
+        sample_query_lst = random.sample(query_lst, 3)
+        all_sample_query_lst.extend(sample_query_lst)
+    return all_sample_query_lst
 
 def write_query(query_lst, f_o_src, f_o_tar, f_o_meta):
     for query in query_lst:
