@@ -4,8 +4,11 @@ import argparse
 import os
 from tqdm import tqdm
 
+Small_Table_File = '/home/cc/data/test_table_id_lst.txt'
+Output_Directory = '/home/cc/data/ref_test_tables'
+
 def read_small_table_set():
-    data_file = '/home/cc/data/nq/tables/tables_small.jsonl'
+    data_file = Small_Table_File
     table_lst = []
     with open(data_file) as f:
         for line in f:
@@ -16,27 +19,24 @@ def read_small_table_set():
 
 def read_table():
     data_file = '/home/cc/data/nq_tables/tables/tables.jsonl'
-    #small_table_set = read_small_table_set()
+    small_table_set = read_small_table_set()
     with open(data_file) as f:
         for line in f:
             table_data = json.loads(line)
             table_id = table_data['tableId']
-            #if table_id not in small_table_set:
-            #    continue
+            if table_id not in small_table_set:
+                continue
             yield table_data
 
 def main():
     args = get_args()
-    given_table_id = args.table_id
     table_id_dict = {}
     for table in tqdm(read_table()):
         table_id = table['tableId']
-        if table_id != given_table_id:
-            continue
         if '/' in table_id:
             table_id = table_id.replace('/', '[left-slash]')
 
-        out_file = os.path.join('/home/cc/data/nq_tables/tables/tables_csv', '%s.csv' % table_id)
+        out_file = os.path.join(Output_Directory, '%s.csv' % table_id)
         with open(out_file, 'w') as f_o:
             columns = table['columns']
             writer = csv.writer(f_o)
@@ -50,7 +50,6 @@ def main():
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--table_id', type=str, required=True)
     args = parser.parse_args()
     return args
 
