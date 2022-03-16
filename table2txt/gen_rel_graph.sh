@@ -1,5 +1,5 @@
 if [ "$#" -ne 3 ]; then
-    echo "Usage: ./gen_template_graph.sh <dataset> <table_file> <experiment>"
+    echo "Usage: ./gen_rel_graph.sh <dataset> <table_file> <experiment>"
     exit
 fi
 dataset=$1

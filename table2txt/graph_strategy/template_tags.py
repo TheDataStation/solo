@@ -1,27 +1,27 @@
 class TemplateTag:
-    caption = '[c-a-p]'
+    title = '[T]'
     
-    sub_name = '[s-u-b-n-a-m-e]'
-    sub = '[s-u-b]'
+    sub_name = '[SC]'
+    sub = '[S]'
     
-    obj_name = '[o-b-j-n-a-m-e]'
-    obj = '[o-b-j]'
+    obj_name = '[OC]'
+    obj = '[O]'
 
-    sub_none = '[sub-none]'
-    obj_none = '[obj-none]'
+    sub_none = ''
+    obj_none = ''
 
     @staticmethod
-    def get_annotated_text(caption, sub_name, sub, obj_name, obj):
-        if sub is not None:
-            out_text = (
-                    f'{TemplateTag.caption} {caption} ' 
-                    f'{TemplateTag.sub_name} {sub_name} {TemplateTag.sub} {sub} '
-                    f'{TemplateTag.obj_name} {obj_name} {TemplateTag.obj} {obj}'
-            )
-        else:
-            out_text = (
-                    f'{TemplateTag.caption} {caption} ' 
-                    f'{TemplateTag.obj_name} {obj_name} {TemplateTag.obj} {obj}'
-            )
-
+    def get_annotated_text(title, sub_name, sub, obj_name, obj):
+        if title is None:
+            title = ''
+        if sub_name is None:
+            sub_name = ''
+        assert (sub is not None)
+        assert (obj_name is not None)
+        assert(obj is not None)
+        out_text = (
+                f'{TemplateTag.title} {title} ' 
+                f'{TemplateTag.sub_name} {sub_name} {TemplateTag.sub} {sub} '
+                f'{TemplateTag.obj_name} {obj_name} {TemplateTag.obj} {obj}'
+        )
         return out_text
