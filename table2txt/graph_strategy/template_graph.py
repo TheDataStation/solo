@@ -35,7 +35,7 @@ class TemplateGraph(Strategy):
             for col_idx, col_info in enumerate(col_data):
                 rel_name = col_info['text']
                 obj = row_info['cells'][col_idx]['text'] 
-                graph = TemplateTag.get_annotated_text(None, None, topic_entity, rel_name, obj) 
+                graph = TemplateTag.get_annotated_text(topic_entity, None, None, rel_name, obj) 
                 graph_info = {
                     'table_id':table['tableId'],
                     'row':row_idx,

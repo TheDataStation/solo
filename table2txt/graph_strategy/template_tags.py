@@ -12,11 +12,11 @@ class TemplateTag:
 
     @staticmethod
     def get_annotated_text(title, sub_name, sub, obj_name, obj):
-        if title is None:
-            title = ''
+        assert (title is not None)
         if sub_name is None:
             sub_name = ''
-        assert (sub is not None)
+        if sub is None:
+            sub = ''
         assert (obj_name is not None)
         assert(obj is not None)
         out_text = (
