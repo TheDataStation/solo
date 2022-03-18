@@ -3,12 +3,14 @@ import os
 import argparse
 from tqdm import tqdm
 import numpy as np
+import transformers
 import random
 from multiprocessing import Pool as ProcessPool
-from table2txt.graph_strategy.template_graph import TemplateGraph
 from table2question.sql_data import SqlQuery 
 from table2question.wikisql_preprocess import get_sql_text
 import re
+
+g_tokenizer = None
 
 def read_table_file(table_lst, data_file, table_filter_set):
     with open(data_file) as f:
@@ -39,8 +41,8 @@ def read_tables(table_file, table_filter):
     return table_lst
 
 def init_worker():
-    global graph_strategy
-    graph_strategy = TemplateGraph()
+    global g_tokenizer
+    g_tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
 
 def is_good_col_name(col_name):
     if col_name == '':
@@ -73,8 +75,32 @@ def get_key_cols(col_ent_data, ent_num_lst):
         key_col_lst.sort()
     return key_col_lst
 
+def get_text_size(text):
+    tokens = g_tokenizer.tokenize(text)
+    return len(tokens)
+
+def get_col_entities(table):
+    col_entity_lst = []
+    column_data = table['columns']
+    row_data = table['rows']
+    for col_idx, col_info in enumerate(column_data):
+        col_name = col_info['text'].strip()
+        ent_info_lst = []
+        for row_idx, row_info in enumerate(row_data):
+            ent_text = row_info['cells'][col_idx]['text'].strip()
+            ent_size = get_text_size(ent_text)
+            ent_info = {'text':ent_text, 'size':ent_size, 'row':row_idx}
+            ent_info_lst.append(ent_info)
+
+        col_entity_info = {
+            'col_name':col_name,
+            'entities':ent_info_lst
+        }
+        col_entity_lst.append(col_entity_info)
+    return col_entity_lst
+
 def infer_table_keys(table):
-    col_ent_data = graph_strategy.get_col_entities(table)
+    col_ent_data = get_col_entities(table)
     ent_num_lst = []
     for col_info in col_ent_data:
         entities = col_info['entities']
@@ -137,7 +163,7 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
     sample_query_lst = []
 
     table_id = table['tableId']
-    max_samles = 10
+    max_samles = 12
     num_samples = 0
     row_data = table['rows']
     col_lst = key_col_lst + non_key_col_lst
@@ -153,11 +179,11 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
             text_col_lst.append(col)
     sel_col_type_lst = list(set(sel_col_type_lst))
 
-    cond_num_lst = [0, 1, 2]
+    cond_num_lst = [0, 1, 2, 3] # the sql cond will also include the title
     
     cond_op_idx_lst = [a for a in range(len(SqlQuery.cond_ops)-1)]
     try_count = 0
-    max_try_count = 60
+    max_try_count = 100
     while (len(sample_query_lst) < max_samles) and (try_count < max_try_count):
         try_count += 1
         sel_col_type = random.sample(sel_col_type_lst, 1)[0] 
@@ -191,8 +217,8 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
         if len(row_spaces) == 0:
             continue
 
-        row = random.sample(row_spaces, 1)[0]
         sql_cond_lst = []
+        row = random.sample(row_spaces, 1)[0]
         for cond_col in cond_col_lst:
             if cond_col is None:
                 sql_cond = [None, 0, table['documentTitle'].strip()]
@@ -227,7 +253,7 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
                 cond_value = str(float_cond_value)
              
             cond_value_size = col_ent_data[cond_col]['entities'][row]['size']
-            if cond_value_size > 15:
+            if cond_value_size > 30:
                 continue
                  
             sql_cond = [int(cond_col), int(cond_op_idx), cond_value]
@@ -236,14 +262,14 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
         sql_info = {
             'conds':sql_cond_lst,
             'sel':int(sel_col),
-            'agg':int(agg_op_idx)
+            'agg':int(agg_op_idx),
         }
 
         query_info = {
             'question':'N/A',
             'sql':sql_info,
             'table_id':table_id,
-            'row':int(row)
+            'row':row,
         }
         sample_query_lst.append(query_info)
     return sample_query_lst
@@ -267,7 +293,7 @@ def main():
     table2question_dir = '/home/cc/code/open_table_discovery/table2question'
     dataset_dir = os.path.join(table2question_dir, 'dataset', args.dataset)
     if not os.path.exists(dataset_dir):
-        os.mkdir(dataset_dir)
+        os.makedirs(dataset_dir)
     out_dir = os.path.join(dataset_dir, args.experiment)
     if os.path.isdir(out_dir):
         err_msg = ('[%s] already exists, please use a different value for [--out_dir].\n'
