@@ -15,7 +15,7 @@ def read_small_table_set(data_file):
 
 def read_table(args):
     data_file = '/home/cc/data/%s/tables/tables.jsonl' % args.dataset
-    small_table_set = read_small_table_set()
+    small_table_set = read_small_table_set(args.input_tables)
     with open(data_file) as f:
         for line in f:
             table_data = json.loads(line)
@@ -27,7 +27,7 @@ def read_table(args):
 def main():
     args = get_args()
     table_id_dict = {}
-    for table in tqdm(read_table()):
+    for table in tqdm(read_table(args)):
         table_id = table['tableId']
         if '/' in table_id:
             table_id = table_id.replace('/', '[left-slash]')

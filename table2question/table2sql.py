@@ -341,12 +341,13 @@ def get_table_queries(all_query_lst):
         query_lst = table_query_dict[table_id]
         query_lst.append(query)
     table_id_lst = list(table_query_dict.keys())
-    N = min(20000, len(table_id_lst))
+    N = min(10000, len(table_id_lst))
     sample_table_id_lst = random.sample(table_id_lst, N)
     all_sample_query_lst = []
     for sample_table_id in sample_table_id_lst:
         query_lst = table_query_dict[sample_table_id]
-        sample_query_lst = random.sample(query_lst, 3)
+        N = min(len(query_lst), 8)
+        sample_query_lst = random.sample(query_lst, N)
         all_sample_query_lst.extend(sample_query_lst)
     return all_sample_query_lst
 
