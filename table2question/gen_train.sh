@@ -4,4 +4,4 @@ if [ "$#" -ne 2 ]; then
 fi
 dataset=$1
 expr=$2
-python ./gen_train_data.py --dataset ${dataset} --sql_expr sql_all_per_10 --table_expr ${expr}
+python ./gen_train_data.py --dataset ${dataset} --sql_expr auto_sql --expr ${expr}
