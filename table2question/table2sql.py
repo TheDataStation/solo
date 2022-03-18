@@ -163,7 +163,7 @@ def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
     sample_query_lst = []
 
     table_id = table['tableId']
-    max_samles = 12
+    max_samles = 8
     num_samples = 0
     row_data = table['rows']
     col_lst = key_col_lst + non_key_col_lst
@@ -346,9 +346,7 @@ def get_table_queries(all_query_lst):
     all_sample_query_lst = []
     for sample_table_id in sample_table_id_lst:
         query_lst = table_query_dict[sample_table_id]
-        N = min(len(query_lst), 8)
-        sample_query_lst = random.sample(query_lst, N)
-        all_sample_query_lst.extend(sample_query_lst)
+        all_sample_query_lst.extend(query_lst)
     return all_sample_query_lst
 
 def write_query(query_lst, f_o_src, f_o_tar, f_o_meta):
