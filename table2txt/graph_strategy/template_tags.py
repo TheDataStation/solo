@@ -1,11 +1,11 @@
 class TemplateTag:
-    title = '[T]'
+    #title = '[T]'
     
-    sub_name = '[SC]'
-    sub = '[S]'
+    #sub_name = '[SC]'
+    #sub = '[S]'
     
-    obj_name = '[OC]'
-    obj = '[O]'
+    #obj_name = '[OC]'
+    #obj = '[O]'
 
     sub_none = ''
     obj_none = ''
@@ -19,9 +19,9 @@ class TemplateTag:
             sub = ''
         assert (obj_name is not None)
         assert(obj is not None)
-        out_text = (
-                f'{TemplateTag.title} {title} ' 
-                f'{TemplateTag.sub_name} {sub_name} {TemplateTag.sub} {sub} '
-                f'{TemplateTag.obj_name} {obj_name} {TemplateTag.obj} {obj}'
-        )
+
+        sub_part = sub_name + '  ' + sub
+        obj_part = obj_name + '  ' + obj
+        out_text = title + '  ,  ' + sub_part.strip() + '  ' + obj_part.strip() + ' . '
+
         return out_text
