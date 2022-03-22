@@ -28,9 +28,9 @@ class CellBuffer:
 
     def can_add(self, col_idx, col_info, cell_info):
         if col_info['text'] != '':
-            text = col_info['text'] + ' ' + cell_info['text'].strip() + ' ; '
+            text = col_info['text'] + '  ' + cell_info['text'].strip() + '  ,  '
         else:
-            text = cell_info['text'].strip() + ' . '
+            text = cell_info['text'].strip() + '  ,  '
 
         cell_info[self.custom_attr_col_idx] = col_idx
         cell_info[self.custom_attr_text] = text
