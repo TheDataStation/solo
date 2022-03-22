@@ -6,8 +6,9 @@ import random
 from multiprocessing import Pool as ProcessPool
 from table2txt.table2graph import read_tables
 import argparse
+import transformers
 
-MAX_NUM_TOKENS = 100
+MAX_NUM_TOKENS = 150
 
 class CellBuffer:
     def __init__(self, max_buffer_size=MAX_NUM_TOKENS, stride=1):
@@ -18,18 +19,22 @@ class CellBuffer:
         self.custom_attr_col_idx = '_user_col_idx'
         self.custom_attr_text = '_user_text'
         self.custom_attr_size = '_user_size'
+       
+        self.tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
         
+    def get_token_size(self, text):
+        tokens = self.tokenizer.tokenize(text) 
+        return len(tokens)
 
     def can_add(self, col_idx, col_info, cell_info):
         if col_info['text'] != '':
-            text = col_info['text'] + ' ( ' + cell_info['text'].strip() + ' ) . '
+            text = col_info['text'] + ' ' + cell_info['text'].strip() + ' ; '
         else:
             text = cell_info['text'].strip() + ' . '
 
         cell_info[self.custom_attr_col_idx] = col_idx
         cell_info[self.custom_attr_text] = text
-        tokens = text.split()
-        token_size = len(tokens)
+        token_size = self.get_token_size(text)
         cell_info[self.custom_attr_size] = token_size
         
         if self.buffer_size == 0:
@@ -48,14 +53,14 @@ class CellBuffer:
      
     def pop(self, title):
         assert(len(self.text_buffer) > 0)
-        out_text = title + '   .   ' + ' '.join([a[self.custom_attr_text] for a in self.text_buffer])
+        out_text = title + '  .  ' + ' '.join([a[self.custom_attr_text] for a in self.text_buffer])
         out_meta = {'cols':[a[self.custom_attr_col_idx] for a in self.text_buffer]}
         out_data = {
             'text':out_text,
             'meta':out_meta
         }
         
-        self.text_buffer = self.text_buffer[-1:]
+        self.text_buffer = self.text_buffer[1:]
         self.buffer_size = sum([a[self.custom_attr_size] for a in self.text_buffer]) 
         if self.buffer_size > self.max_buffer_size:
             self.text_buffer = []
@@ -119,10 +124,8 @@ def get_col_data(table):
     col_info_lst = []
     for col_data in columns:
         col_name = col_data['text'].strip()
-        col_name_size = col_name.split()
         col_info = {
             'text':col_name,
-            'size':col_name_size
         }
         col_info_lst.append(col_info)
     return col_info_lst
