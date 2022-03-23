@@ -58,13 +58,17 @@ class RelationTemplate():
         column_data = table['columns']
         row_data = table['rows']
         for col_idx, col_info in enumerate(col_entity_lst):
+            col_name = col_info['col_name']
+            if col_name == '':
+                continue
+
             rel_name = col_info['rel_name']
             rel_size = col_info['rel_size']
             if rel_size > MAX_Rel_Size: # ignore long col names
                 continue
              
             obj_info_lst = col_info['entities']
-            sample_space = [a for a in obj_info_lst if (a['size'] >= 1) and (a['size'] <= MAX_Cell_Size)]
+            sample_space = self.get_topic_sample_space(topic_entity, col_name, obj_info_lst) 
             if len(sample_space) == 0: #ignore long cell text
                 continue
 
@@ -84,6 +88,14 @@ class RelationTemplate():
                 }
                 out_graph_lst.append(graph_info)
         return out_graph_lst
+   
+    def get_topic_sample_space(self, topic_entity, col_name, obj_info_lst):
+        sample_space = []
+        for obj_info in obj_info_lst:
+            if obj_info['size'] == 0 or obj_info['size'] > MAX_Cell_Size:
+                continue
+            sample_space.append(obj_info)
+        return sample_space
     
     def get_sample_triples(self, col_entity_lst, sub_col_idx, obj_col_idx, num_samples):
         sub_col_data = col_entity_lst[sub_col_idx]
@@ -91,6 +103,7 @@ class RelationTemplate():
         sub_entities = sub_col_data['entities']
         
         obj_col_data = col_entity_lst[obj_col_idx]
+        obj_col_name = obj_col_data['col_name']
         rel_name = obj_col_data['rel_name']
         rel_size = obj_col_data['rel_size']
         if rel_size > MAX_Rel_Size:
@@ -111,6 +124,9 @@ class RelationTemplate():
             obj_size = obj_ent_item['size']
 
             if sub_text == '' or obj_text == '':
+                continue
+            
+            if obj_col_name == '' and (sub_text == obj_text):
                 continue
             
             if sub_size > MAX_Cell_Size or obj_size > MAX_Cell_Size:
