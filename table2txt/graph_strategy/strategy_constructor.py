@@ -1,22 +1,8 @@
-from table2txt.graph_strategy.complete_graph import CompleteGraph
-from table2txt.graph_strategy.graph_no_caption import GraphNoCaption
-from table2txt.graph_strategy.template_graph import TemplateGraph
-
-def get_strategy_lst():
-    stg_lst = []
-    stg_1 = CompleteGraph()
-    stg_lst.append(stg_1)
-
-    #stg_2 = GraphNoCaption()
-    #stg_lst.append(stg_2)
-    
-    return stg_lst
+from table2txt.graph_strategy.rel_graph import RelationGraph
 
 def get_strategy(name):
-    if name == 'CompleteGraph':
-        return CompleteGraph()
-    elif name == 'TemplateGraph':
-        return TemplateGraph()
+    if name == 'RelationGraph':
+        return RelationGraph()
     else:
         raise ValueError('Stategy (%s) Not supported.' % name)
 

@@ -5,7 +5,7 @@ fi
 dataset=$1
 table_file=$2
 exptr=$3
-stg=TemplateGraph
+stg=RelationGraph
 python ./table2graph.py \
 --dataset ${dataset} \
 --table_file ${table_file} \

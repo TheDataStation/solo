@@ -1,4 +1,4 @@
-class TemplateTag:
+class RelationTag:
     #title = '[T]'
     
     #sub_name = '[SC]'

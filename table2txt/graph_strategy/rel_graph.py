@@ -1,11 +1,11 @@
 import random
 import numpy as np
 from table2txt.graph_strategy.strategy import Strategy 
-from table2txt.graph_strategy.template_tags import TemplateTag
+from table2txt.graph_strategy.rel_tags import RelationTag
 
-class TemplateGraph(Strategy):
+class RelationGraph(Strategy):
     def __init__(self):
-        super(TemplateGraph, self).__init__()
+        super(RelationGraph, self).__init__()
 
     def get_topic_entity(self, table):
         topic_entity = table['documentTitle'].strip()
@@ -35,7 +35,7 @@ class TemplateGraph(Strategy):
             for col_idx, col_info in enumerate(col_data):
                 rel_name = col_info['text']
                 obj = row_info['cells'][col_idx]['text'] 
-                graph = TemplateTag.get_annotated_text(topic_entity, None, None, rel_name, obj) 
+                graph = RelationTag.get_annotated_text(topic_entity, None, None, rel_name, obj) 
                 graph_info = {
                     'table_id':table['tableId'],
                     'row':row_idx,
@@ -59,7 +59,7 @@ class TemplateGraph(Strategy):
                 for obj_col_idx in range(sub_col_idx+1, N):
                     rel_name = col_data[obj_col_idx]['text']
                     obj = row_info['cells'][obj_col_idx]['text']
-                    graph = TemplateTag.get_annotated_text(topic_entity, sub_name, sub, rel_name, obj) 
+                    graph = RelationTag.get_annotated_text(topic_entity, sub_name, sub, rel_name, obj) 
                     graph_info = {
                         'table_id':table['tableId'],
                         'row':row_idx,
