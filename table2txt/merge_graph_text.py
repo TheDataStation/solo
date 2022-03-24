@@ -44,13 +44,15 @@ def read_rel_graph(args):
     graph_dict = {}
     data_dir = os.path.join('dataset', args.dataset, args.graph_expr)
     data_file = os.path.join(data_dir, 'passages.jsonl')
+    graph_lst = []
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
+            graph_lst.append(item)
             tag = item['tag']
             key = get_key(tag['table_id'], tag['row'], tag['sub_col'], tag['obj_col']) 
             graph_dict[key] = item
-    return graph_dict 
+    return (graph_dict, graph_lst)
 
 def remove_tags(text):
     out_text = text
@@ -109,7 +111,7 @@ def replace_sub_obj(meta_info, table_data, text, sub, obj):
     
     return out_text
 
-def merge_text(meta_info, text, table_dict, graph_dict, f_o):
+def merge_passages(meta_info, text, table_dict, graph_dict):
     table_id = meta_info['table_id']
     template_row = meta_info['row']
     sub_col = meta_info['sub_col']
@@ -127,19 +129,19 @@ def merge_text(meta_info, text, table_dict, graph_dict, f_o):
                 sub = row_item['cells'][sub_col]['text'].strip()
             obj = row_item['cells'][obj_col]['text'].strip() 
             out_text = replace_sub_obj(meta_info, table_data, text, sub, obj) 
+            out_text = remove_tags(out_text) 
         
+        out_text = out_text.strip()
         key = get_key(table_id, row, sub_col, obj_col)
         graph_item = graph_dict[key]
         graph_item['generated_text'] = out_text
-        merge_text = graph_item['passage'].rstrip()
+        merged_text = graph_item['passage'].rstrip()
         if out_text != '':
-            if merge_text.endswith('.'):
-                merge_text += ' ' + out_text
+            if merged_text.endswith('.'):
+                merged_text += ' ' + out_text
             else:
-                merge_text += '  .  ' + out_text
-        graph_item['passage'] = merge_text
-
-        f_o.write(json.dumps(graph_item) + '\n')
+                merged_text += '  .  ' + out_text
+        graph_item['passage'] = merged_text
 
 def main():
     args = get_args()
@@ -153,9 +155,9 @@ def main():
     if os.path.exists(out_passage_file):
         print('merged file (%s) already exists' % out_passage_file)
         return
-    f_o = open(out_passage_file, 'w')
     table_dict = read_tables(args)
-    graph_dict = read_rel_graph(args) 
+    graph_dict, graph_lst = read_rel_graph(args) 
+    
     for text_part_name in tqdm(text_part_lst):
         text_meta_data = get_text_meta(text_expr_dir, text_part_name)
         text_part_file = os.path.join(text_part_dir, text_part_name)
@@ -163,8 +165,12 @@ def main():
             for idx, text in tqdm(enumerate(f)):
                 template_graph_text = text.rstrip()
                 meta_info = text_meta_data[idx] 
-                merge_text(meta_info, text, table_dict, graph_dict, f_o)
-    f_o.close()
+                merge_passages(meta_info, text, table_dict, graph_dict)
+    
+    with open(out_passage_file, 'w') as f_o:
+        for item in tqdm(graph_lst):
+            f_o.write(json.dumps(item) + '\n')
+
 
 def get_args():
     parser = argparse.ArgumentParser()
