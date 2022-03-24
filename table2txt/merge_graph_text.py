@@ -131,10 +131,13 @@ def merge_text(meta_info, text, table_dict, graph_dict, f_o):
         key = get_key(table_id, row, sub_col, obj_col)
         graph_item = graph_dict[key]
         graph_item['generated_text'] = out_text
-        merge_text = graph_item['passage']
+        merge_text = graph_item['passage'].rstrip()
         if out_text != '':
-            merge_text += '   .   ' + out_text
-        graph_item['merged_text'] = merge_text
+            if merge_text.endswith('.'):
+                merge_text += ' ' + out_text
+            else:
+                merge_text += '  .  ' + out_text
+        graph_item['passage'] = merge_text
 
         f_o.write(json.dumps(graph_item) + '\n')
 
