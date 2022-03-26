@@ -52,7 +52,7 @@ def main():
     
     train_table_set = all_table_set - dev_table_set  
     
-    output_data(out_train_file, train_table_set, all_query_data, None)
+    output_data(out_train_file, train_table_set, all_query_data, 10000)
     output_data(out_dev_file, dev_table_set, all_query_data, 1000)
 
 def output_data(out_file, table_set, all_query_data, num_examples):
