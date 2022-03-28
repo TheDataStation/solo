@@ -9,13 +9,12 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--sql_expr', type=str)
-    parser.add_argument('--expr', type=str)
     args = parser.parse_args()
     return args
 
 def get_all_query_data(args):
     all_query_data = {}
-    data_file = os.path.join('dataset', args.dataset, args.sql_expr, args.expr, 'fusion_retrieved.jsonl')
+    data_file = os.path.join('dataset', args.dataset, args.sql_expr, 'fusion_query.jsonl')
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
@@ -27,8 +26,8 @@ def get_all_query_data(args):
     return all_query_data
 
 def get_out_file(args, mode):
-    out_dir = os.path.join('dataset', args.dataset, args.sql_expr, args.expr)
-    out_file = os.path.join(out_dir, 'fusion_retrieved_%s.jsonl' % mode)
+    out_dir = os.path.join('dataset', args.dataset, args.sql_expr)
+    out_file = os.path.join(out_dir, 'fusion_query_%s.jsonl' % mode)
     return out_file 
 
 def main():
@@ -53,7 +52,7 @@ def main():
     train_table_set = all_table_set - dev_table_set  
     
     output_data(out_train_file, train_table_set, all_query_data, 10000)
-    output_data(out_dev_file, dev_table_set, all_query_data, 1000)
+    output_data(out_dev_file, dev_table_set, all_query_data, 2000)
 
 def output_data(out_file, table_set, all_query_data, num_examples):
     query_items = []
