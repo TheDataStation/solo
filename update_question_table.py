@@ -2,11 +2,9 @@ import json
 from tqdm import tqdm
 import csv
 
-dataset = 'nq_tables'
-
-def read_tables():
+def read_tables(dataset):
     table_dict = {}
-    data_file = f'./{dataset}/tables/tables.jsonl'
+    data_file = '/home/cc/data/%s/tables/tables.jsonl' % dataset
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
@@ -78,8 +76,11 @@ def process_data(mode, data_file, table_dict):
             f_o.write(table_id + '\n')
 
 def main():
-    table_dict = read_tables()
-    process_data('dev', '/home/cc/data/nq_tables/interactions/dev_qas.jsonl', table_dict)
+    dataset = 'nq_tables'
+    mode = 'test'
+    table_dict = read_tables(dataset)
+    data_file = '/home/cc/data/nq_tables/interactions/%s_qas.jsonl' % mode
+    process_data(mode, data_file, table_dict)
 
 if __name__ == '__main__':
     main()
