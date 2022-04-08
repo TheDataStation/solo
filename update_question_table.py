@@ -1,34 +1,69 @@
 import json
 from tqdm import tqdm
 import csv
+from fabric_qa.utils import f1_score
 
 def read_tables(dataset):
-    table_dict = {}
+    table_dict = {} 
+    table_title_dict = {}
     data_file = '/home/cc/data/%s/tables/tables.jsonl' % dataset
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
             table_id = item['tableId']
+            table_dict[table_id] = item
             parts = table_id.split('_')
             assert(len(parts) == 2)
-            table_id_title = parts[0]
-            if table_id_title not in table_dict:
-                table_dict[table_id_title] = []
-            data_lst = table_dict[table_id_title]
+            table_title = parts[0]
+            if table_title not in table_title_dict:
+                table_title_dict[table_title] = []
+            data_lst = table_title_dict[table_title]
             data_lst.append(item)
 
-    return table_dict
+    return (table_dict, table_title_dict)
 
-def find_answer(answer, table):
+
+def find_gold_answer_cells(answer, table):
+    answer_cells = []
     row_data = table['rows']
+    col_data = table['columns']
     for row_item in row_data:
         row_cells = row_item['cells']
-        for cell in row_cells:
+        for col, cell in enumerate(row_cells):
             if answer in cell['text']:
-                return True
+                cell_text = cell['text'].strip()
+                col_text = col_data[col]['text'].strip()
+                cell_col_text = 'col_name:' + col_text + ' cell_text:' + cell_text
+                answer_cells.append(cell_col_text)  
+    return answer_cells 
+
+
+def text_matched(gold_answer, other_answer):
+    score = f1_score(other_answer, gold_answer)
+    return score >= 0.9
+
+
+def find_answer(answer, gold_table_lst, other_table):
+    debug_mode = False
+    if debug_mode:
+        gold_table_id_lst = [a['tableId'] for a in gold_table_lst]
+        if answer == 'Russia (' and '2014 Winter Olympics medal table_84AAFABE2421A55B' in gold_table_id_lst:
+            if other_table['tableId'] == '2014 Winter Olympics medal table_4C1729274FC23617':
+                import pdb; pdb.set_trace()
+                print('debug')
+    
+    other_answer_cells = find_gold_answer_cells(answer, other_table)
+    for gold_table in gold_table_lst:
+        gold_anser_cells = find_gold_answer_cells(answer, gold_table)
+        for gold_answer in gold_anser_cells:
+            for other_answer in other_answer_cells:
+                if text_matched(gold_answer, other_answer):
+                    return True 
+
     return False
 
-def process_data(mode, data_file, table_dict):
+
+def process_data(mode, data_file, table_dict, table_title_dict):
     out_csv_file = '%s_log.csv' % mode
     f_o_csv = open(out_csv_file, 'w')
     csv_writer = csv.writer(f_o_csv, delimiter=',')
@@ -42,26 +77,27 @@ def process_data(mode, data_file, table_dict):
             table_id_lst = item['table_id_lst']
             answers = item['answers']
            
-            table_id_title_lst = [] 
+            table_title_lst = [] 
             for table_id in table_id_lst:
                 table_set.add(table_id)
                 parts = table_id.split('_')
-                table_id_title = parts[0]
-                table_id_title_lst.append(table_id_title)
+                table_title = parts[0]
+                table_title_lst.append(table_title)
             
-            table_id_title_set = set(table_id_title_lst)
-            assert(len(table_id_title_set) == 1)
+            table_title_set = set(table_title_lst)
+            assert(len(table_title_set) == 1)
             
-            table_id_title = list(table_id_title_set)[0]
-            data_lst = table_dict[table_id_title]
+            table_title = list(table_title_set)[0]
+            data_lst = table_title_dict[table_title]
             
             table_id_lst_text = ' \n '.join(table_id_lst)
 
+            gold_table_lst = [table_dict[a] for a in table_id_lst]
             for data_table in data_lst:
                 if data_table['tableId'] in table_id_lst:
                     continue
                 for answer in answers:
-                    if find_answer(answer, data_table):
+                    if find_answer(answer, gold_table_lst, data_table):
                         qid_set.add(item['qid'])
                         table_set.add(data_table['tableId'])
                         csv_row = [item['qid'], item['question'], table_id_lst_text, answer, data_table['tableId']]
@@ -78,9 +114,9 @@ def process_data(mode, data_file, table_dict):
 def main():
     dataset = 'nq_tables'
     mode = 'test'
-    table_dict = read_tables(dataset)
+    table_dict, table_title_dict = read_tables(dataset)
     data_file = '/home/cc/data/nq_tables/interactions/%s_qas.jsonl' % mode
-    process_data(mode, data_file, table_dict)
+    process_data(mode, data_file, table_dict,  table_title_dict)
 
 if __name__ == '__main__':
     main()
