@@ -45,11 +45,11 @@ def init_worker():
     g_tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
 
 def is_good_col_name(col_name):
+    MAX_COL_NAME_SIZE = 20
     if col_name == '':
         return False
-    col_tokens = col_name.split()
-    sub_tokens = [a for a in col_tokens if len(a) < 2]
-    if len(sub_tokens) > 0:
+    col_token_size = get_text_size(col_name)
+    if col_token_size > MAX_COL_NAME_SIZE:
         return False
     return True
 
@@ -58,7 +58,7 @@ def get_key_cols(col_ent_data, ent_num_lst):
     N = len(col_ent_data)
     idx = N - 1
     key_ent_num = -1
-    key_col_lst = []
+    kget_key_colsey_col_lst = []
     while idx >= 0:
         col = sorted_col_idxes[idx]
         if is_good_col_name(col_ent_data[col]['col_name']):
@@ -98,6 +98,14 @@ def get_col_entities(table):
         }
         col_entity_lst.append(col_entity_info)
     return col_entity_lst
+
+def get_good_cols(table):
+    col_ent_data = get_col_entities(table)
+    good_cols = []
+    for col, col_info in enumerate(col_ent_data):
+        if is_good_col_name(col_info['col_name']):
+            good_cols.append(col)
+    return (col_ent_data, good_cols) 
 
 def infer_table_keys(table):
     col_ent_data = get_col_entities(table)
@@ -143,150 +151,147 @@ def get_query_table(table_id, col_ent_data):
     }
     return query_table
 
-def process_table(table):
-    col_ent_data, key_col_lst, non_key_col_lst = infer_table_keys(table) 
-    if len(key_col_lst + non_key_col_lst) == 0:
-        return []
 
-    infer_column_type(col_ent_data)
-    query_lst = sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst)
-    query_table = get_query_table(table['tableId'], col_ent_data)
-
-    for query in query_lst:
-        sql_info = query['sql']
-        sql_text = get_sql_text(query_table, sql_info)
-        query['sql_text'] = sql_text
+def generate_queries(mode, table_lst, num_queries):
+    query_lst = []
+    max_try_count = 1000000
+    try_count = 0
+    while (len(query_lst) < num_queries) and (try_count < max_try_count):
+        try_count += 1
+        table = random.sample(table_lst, 1)[0]
+        col_ent_data, good_cols = get_good_cols(table)
+        if len(good_cols) == 0:
+            continue 
+        infer_column_type(col_ent_data)
+        query = sample_query(table, col_ent_data, good_cols)
+        if query is not None: 
+            query_table = get_query_table(table['tableId'], col_ent_data)
+            sql_info = query['sql']
+            sql_text = get_sql_text(query_table, sql_info)
+            query['sql_text'] = sql_text
+            query_lst.append(query)
 
     return query_lst
 
-def sample_queries(table, col_ent_data, key_col_lst, non_key_col_lst):
-    sample_query_lst = []
+def sample_query(table, col_ent_data, col_lst):
+    max_num_try = 3
+    num_try = 0 
+    while num_try < max_num_try:
+        query = try_sample_query(table, col_ent_data, col_lst)
+        num_try += 1
+        if query is not None:
+            return query
+    return None 
 
+def try_sample_query(table, col_ent_data, col_lst):
     table_id = table['tableId']
-    max_samles = 8
-    num_samples = 0
     row_data = table['rows']
-    col_lst = key_col_lst + non_key_col_lst
-    float_col_lst = []
-    text_col_lst = []
-    sel_col_type_lst = []
-    for col in col_lst:
-        col_type = col_ent_data[col]['type_infered']
-        sel_col_type_lst.append(col_type)
-        if col_type == 'float':
-            float_col_lst.append(col)
-        else:
-            text_col_lst.append(col)
-    sel_col_type_lst = list(set(sel_col_type_lst))
-
-    cond_num_lst = [0, 1, 2, 3] # the sql cond will also include the title
+    sel_col = random.sample(col_lst, 1)[0]
+    sel_col_type = col_ent_data[sel_col]['type_infered'] 
+    if sel_col_type == 'float':
+        agg_op = random.sample(SqlQuery.agg_ops[1:], 1)[0] 
+    else:
+        agg_op = ''
+    agg_op_idx = SqlQuery.agg_ops.index(agg_op)
     
-    cond_op_idx_lst = [a for a in range(len(SqlQuery.cond_ops)-1)]
-    try_count = 0
-    max_try_count = 100
-    while (len(sample_query_lst) < max_samles) and (try_count < max_try_count):
-        try_count += 1
-        sel_col_type = random.sample(sel_col_type_lst, 1)[0] 
-        if sel_col_type == 'float':
-            sel_col = random.sample(float_col_lst, 1)[0]
+    all_cond_cols = col_lst
+    cond_col_num_lst = [0, 1, 2, 3] # the sql cond will also include the title as ('about', =, Title)
+    cond_op_idx_lst = [a for a in range(len(SqlQuery.cond_ops)-1)] # ignore the last one 'op'
+        
+    sql_cond_lst = []
+    title = table['documentTitle'].strip()
+    if title != '':
+        sql_cond = [None, 0, title]
+        sql_cond_lst.append(sql_cond)
+    
+    cond_col_num = random.sample(cond_col_num_lst, 1)[0]
+    cond_col_lst = []
+    row = None
+    if cond_col_num > 0:
+        num_sample_cond_col = min(len(all_cond_cols), cond_col_num)
+        cond_col_lst = random.sample(all_cond_cols, num_sample_cond_col)
+        row_spaces = get_sample_row_space(row_data, col_ent_data, cond_col_lst)
+        if len(row_spaces) > 0:
+            row = random.sample(row_spaces, 1)[0]
+            for cond_col in cond_col_lst:
+                sql_cond = get_sql_cond(row, col_ent_data, cond_col, cond_op_idx_lst)
+                if sql_cond is not None:
+                    sql_cond_lst.append(sql_cond)
+   
+    if len(sql_cond_lst) == 0:
+        return None
+         
+    sql_info = {
+        'conds':sql_cond_lst,
+        'sel':int(sel_col),
+        'agg':int(agg_op_idx),
+    }
+
+    query_info = {
+        'question':'N/A',
+        'sql':sql_info,
+        'table_id':table_id,
+        'row':row,
+    }
+    return query_info
+
+def get_sql_cond(row, col_ent_data, cond_col, cond_op_idx_lst):
+    cond_col_type = col_ent_data[cond_col]['type_infered']
+    if cond_col_type == 'float':
+        cond_op_idx = random.sample(cond_op_idx_lst, 1)[0]
+    else:
+        cond_op_idx = 0
+    
+    cond_value = col_ent_data[cond_col]['entities'][row]['text'] 
+    cond_op = SqlQuery.cond_ops[cond_op_idx]
+    if cond_op == '>':
+        float_cond_value = float(cond_value)
+        if float_cond_value >= 0:
+            float_cond_value = float_cond_value / 2
         else:
-            sel_col = random.sample(text_col_lst, 1)[0]
-        
-        if sel_col_type == 'float':
-            agg_op = random.sample(SqlQuery.agg_ops[1:], 1)[0] 
+            float_cond_value = float_cond_value * 2
+        if float_cond_value == 0:
+            float_cond_value = -1
+        cond_value = str(float_cond_value)
+    elif cond_op == '<':
+        float_cond_value = float(cond_value)
+        if float_cond_value >= 0:
+            float_cond_value = float_cond_value * 2
         else:
-            agg_op = ''
-       
-        agg_op_idx = SqlQuery.agg_ops.index(agg_op)
-        
-        if agg_op != '':
-            all_cond_cols = [a for a in col_lst if a != sel_col]
-        else:
-            all_cond_cols = col_lst
-       
-        cond_num = random.sample(cond_num_lst, 1)[0]
-        cond_col_lst = [None]
-        if cond_num > 0:
-            cond_num = min(len(all_cond_cols), cond_num)
-            sample_cond_cols = random.sample(all_cond_cols, cond_num)
-            cond_col_lst.extend(sample_cond_cols)
-              
-        query_col_lst = list(set([sel_col] + all_cond_cols))
-        
-        row_spaces = get_sample_row_space(row_data, col_ent_data, query_col_lst)
-        if len(row_spaces) == 0:
-            continue
+            float_cond_value = float_cond_value / 2
+        if float_cond_value == 0:
+            float_cond_value = 1 
+        cond_value = str(float_cond_value)
+     
+    cond_value_size = col_ent_data[cond_col]['entities'][row]['size']
+    if cond_value_size > 30:
+        return None
+         
+    sql_cond = [int(cond_col), int(cond_op_idx), cond_value]
+    return sql_cond 
 
-        sql_cond_lst = []
-        row = random.sample(row_spaces, 1)[0]
-        for cond_col in cond_col_lst:
-            if cond_col is None:
-                sql_cond = [None, 0, table['documentTitle'].strip()]
-                sql_cond_lst.append(sql_cond)
-                continue
-
-            cond_col_type = col_ent_data[cond_col]['type_infered']
-            if cond_col_type == 'float':
-                cond_op_idx = random.sample(cond_op_idx_lst, 1)[0]
-            else:
-                cond_op_idx = 0
-            
-            cond_value = col_ent_data[cond_col]['entities'][row]['text'] 
-            cond_op = SqlQuery.cond_ops[cond_op_idx]
-            if cond_op == '>':
-                float_cond_value = float(cond_value)
-                if float_cond_value >= 0:
-                    float_cond_value = float_cond_value / 2
-                else:
-                    float_cond_value = float_cond_value * 2
-                if float_cond_value == 0:
-                    float_cond_value = -1
-                cond_value = str(float_cond_value)
-            elif cond_op == '<':
-                float_cond_value = float(cond_value)
-                if float_cond_value >= 0:
-                    float_cond_value = float_cond_value * 2
-                else:
-                    float_cond_value = float_cond_value / 2
-                if float_cond_value == 0:
-                    float_cond_value = 1 
-                cond_value = str(float_cond_value)
-             
-            cond_value_size = col_ent_data[cond_col]['entities'][row]['size']
-            if cond_value_size > 30:
-                continue
-                 
-            sql_cond = [int(cond_col), int(cond_op_idx), cond_value]
-            sql_cond_lst.append(sql_cond)
-        
-        sql_info = {
-            'conds':sql_cond_lst,
-            'sel':int(sel_col),
-            'agg':int(agg_op_idx),
-        }
-
-        query_info = {
-            'question':'N/A',
-            'sql':sql_info,
-            'table_id':table_id,
-            'row':row,
-        }
-        sample_query_lst.append(query_info)
-    return sample_query_lst
-
-def get_sample_row_space(row_data, col_ent_data, query_col_lst):
+def get_sample_row_space(row_data, col_ent_data, col_lst):
     row_spaces = []
     for row in range(len(row_data)):
-        if not is_row_data_missing(row, col_ent_data, query_col_lst):
+        if not is_row_data_missing(row, col_ent_data, col_lst):
             row_spaces.append(row)
     return row_spaces 
 
-def is_row_data_missing(row, col_ent_data, query_col_lst):
-    for col in query_col_lst:
+def is_row_data_missing(row, col_ent_data, col_lst):
+    for col in col_lst:
         if col_ent_data[col]['entities'][row] == '':
             return True
     return False
-      
+
+def get_train_dev_tables(args):
+    input_table_file = os.path.join('/home/cc/data', args.dataset, 'tables', args.table_file)
+    table_lst = read_tables(input_table_file, None)
+    num_tables = len(table_lst)
+    num_dev = int(num_tables * args.dev_table_pct)
+    dev_tables = random.sample(table_lst, num_dev)
+    dev_table_id_set = set([a['tableId'] for a in dev_tables])
+    train_tables = [a for a in table_lst if a['tableId'] not in dev_table_id_set] 
+    return (train_tables, dev_tables)
 
 def main():
     args = get_args()
@@ -307,26 +312,31 @@ def main():
     f_o_tar = open(out_file_tar, 'w')
     out_meta_file = os.path.join(out_dir, 'meta.txt')
     f_o_meta = open(out_meta_file, 'w')
+    
+    train_tables, dev_tables = get_train_dev_tables(args)
+    init_worker()
+    
+    train_query_lst = generate_queries('train', train_tables, args.num_train_queries) 
+    dev_query_lst = generate_queries('dev', dev_tables, args.num_dev_queries)
+        
+    write_query('train', train_query_lst, f_o_src, f_o_tar, f_o_meta)
+    write_query('dev', dev_query_lst, f_o_src, f_o_tar, f_o_meta)
 
-    table_file_name = args.table_file
-    input_tables = os.path.join('/home/cc/data', args.dataset, 'tables', table_file_name)
-    table_lst = read_tables(input_tables, None)
-
+    
+    '''
     DEBUG = True
     all_query_lst = []
     if not DEBUG:
         work_pool = ProcessPool(initializer=init_worker)
         for query_lst in tqdm(work_pool.imap_unordered(process_table, table_lst), total=len(table_lst)):
             all_query_lst.extend(query_lst)
-             
     else:
         init_worker()
         for table in tqdm(table_lst):
             query_lst = process_table(table)
             all_query_lst.extend(query_lst)
-    
-    sample_query_lst = get_table_queries(all_query_lst) 
-    write_query(sample_query_lst, f_o_src, f_o_tar, f_o_meta)
+    '''
+
      
     f_o_src.close()
     f_o_tar.close()
@@ -349,19 +359,25 @@ def get_table_queries(all_query_lst):
         all_sample_query_lst.extend(query_lst)
     return all_sample_query_lst
 
-def write_query(query_lst, f_o_src, f_o_tar, f_o_meta):
-    for query in query_lst:
+def write_query(mode, query_lst, f_o_src, f_o_tar, f_o_meta):
+    for idx, query in enumerate(query_lst):
+        qid = '%s_%d' % (mode, idx)
+        query['qid'] = qid
+        query['mode'] = mode
         f_o_src.write(query['sql_text'] + '\n')
         f_o_tar.write('a\n')
-        meta_info = query
-        f_o_meta.write(json.dumps(meta_info) + '\n')
+        f_o_meta.write(json.dumps(query) + '\n')
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str)
-    parser.add_argument('--table_file', type=str)
-    parser.add_argument('--experiment', type=str)
+    parser.add_argument('--dataset', type=str, required=True)
+    parser.add_argument('--table_file', type=str, required=True)
+    parser.add_argument('--experiment', type=str, required=True)
+    parser.add_argument('--dev_table_pct', type=float, default=0.2)
+    parser.add_argument('--num_dev_queries', type=int, default=2000)
+    parser.add_argument('--num_train_queries', type=int, default=10000)
+
     args = parser.parse_args()
     return args
 
