@@ -113,10 +113,63 @@ def process_data(mode, data_file, table_dict, table_title_dict):
 
 def main():
     dataset = 'nq_tables'
-    mode = 'test'
+    mode = 'dev'
     table_dict, table_title_dict = read_tables(dataset)
     data_file = '/home/cc/data/nq_tables/interactions/%s_qas.jsonl' % mode
     process_data(mode, data_file, table_dict,  table_title_dict)
 
+def get_labeled_tables():
+    labeled_data = {} 
+    with open('./test_other_table.csv') as f:
+        reader = csv.reader(f, delimiter=',')     
+        for row, item in enumerate(reader):
+            if row == 0:
+                continue
+            qid = item[0]
+            label = item[-1]
+            if label != 'Y':
+                continue
+            other_table_id = item[-2]
+            if qid not in labeled_data:
+                labeled_data[qid] = []
+            
+            table_id_lst = labeled_data[qid]
+            table_id_lst.append(other_table_id)  
+    return labeled_data
+
+def read_retr_data():
+    data_file = '/home/cc/code/open_table_discovery/table2txt/dataset/nq_tables/rel_graph/fusion_retrieved_test.jsonl'
+    retr_data = {}
+    item_data = []
+    with open(data_file) as f:
+        for line in tqdm(f):
+             item = json.loads(line)
+             qid = item['id']
+             retr_data[qid] = item
+             item_data.append(item)
+    return retr_data, item_data 
+    
+def update_retr_data():
+    out_file = '/home/cc/code/open_table_discovery/table2txt/dataset/nq_tables/rel_graph/fusion_retrieved_test.jsonl_other_table'
+    f_o = open(out_file, 'w')
+    labeled_data = get_labeled_tables()
+    table_dict, _ = read_tables('nq_tables')
+    retr_data, item_data = read_retr_data()
+    for qid in labeled_data:
+        ret_item = retr_data[qid]
+        other_table_id_lst = labeled_data[qid]
+        gold_table_id_lst = ret_item['table_id_lst']
+        for other_table_id in other_table_id_lst:
+            assert(other_table_id in table_dict)
+            if other_table_id not in gold_table_id_lst:
+                gold_table_id_lst.append(other_table_id)
+            
+    for item in item_data: 
+        f_o.write(json.dumps(item) + '\n')
+    f_o.close()
+
 if __name__ == '__main__':
     main()
+    #update_retr_data()
+
+
