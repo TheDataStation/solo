@@ -194,7 +194,7 @@ def try_sample_query(table, col_ent_data, col_lst):
         agg_op = ''
     agg_op_idx = SqlQuery.agg_ops.index(agg_op)
     
-    all_cond_cols = col_lst
+    all_cond_cols = [a for a in col_lst if a != sel_col]
     cond_col_num_lst = [0, 1, 2, 3] # the sql cond will also include the title as ('about', =, Title)
     cond_op_idx_lst = [a for a in range(len(SqlQuery.cond_ops)-1)] # ignore the last one 'op'
         
