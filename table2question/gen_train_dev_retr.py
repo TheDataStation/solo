@@ -10,6 +10,8 @@ def get_args():
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--expr', type=str)
     parser.add_argument('--sql_expr', type=str)
+    parser.add_argument('--top_n_train', type=int, default=100)
+    parser.add_argument('--top_n_dev', type=int, default=100)
     args = parser.parse_args()
     return args
 
@@ -31,22 +33,50 @@ def main():
     output_data(args, out_train_file, out_dev_file)
 
 def output_data(args, out_train_file, out_dev_file):
-    f_o_train = open(out_train_file, 'w')
-    f_o_dev = open(out_dev_file, 'w')
     data_file = os.path.join('dataset', args.dataset, args.sql_expr, args.expr, 'fusion_retrieved.jsonl')
+    train_data = []
+    dev_data = []
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
             qid = item['id']
             mode, _ = qid.split('_')
             if mode == 'train':
-                f_o_train.write(line)
+                train_data.append(item)
             elif mode == 'dev':
-                f_o_dev.write(line)
+                dev_data.append(item)
             else:
                 raise ValueError('qid (%s) unexpected' % qid)
-    f_o_train.close()
-    f_o_dev.close()
+   
+    updated_train_data = process_train(train_data, args) 
+    write_data(updated_train_data, out_train_file)
+    updated_dev_data = process_dev(dev_data, args)
+    write_data(updated_dev_data, out_dev_file)
+
+def process_train(train_data, args):
+    updated_train_data = []
+    for item in tqdm(train_data):
+        gold_table_lst = item['table_id_lst']
+        ctxs = item['ctxs'][:args.top_n_train]
+        labels = [int(a['tag']['table_id'] in gold_table_lst) for a in ctxs]
+        if (max(labels) < 1) or (min(labels) > 0):
+            continue
+        item['ctxs'] = ctxs
+        updated_train_data.append(item) 
+    return updated_train_data
+
+def process_dev(dev_data, args):
+    updated_dev_data = []
+    for item in tqdm(dev_data):
+        ctxs = item['ctxs'][:args.top_n_dev]
+        item['ctxs'] = ctxs
+        updated_dev_data.append(item)
+    return updated_dev_data 
+    
+def write_data(data, out_file):
+    with open(out_file, 'w') as f:
+        for item in tqdm(data):
+            f.write(json.dumps(item) + '\n')
 
 if __name__ == '__main__':
     main()
