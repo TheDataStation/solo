@@ -12,9 +12,7 @@ def read_tables(dataset):
             item = json.loads(line)
             table_id = item['tableId']
             table_dict[table_id] = item
-            parts = table_id.split('_')
-            assert(len(parts) == 2)
-            table_title = parts[0]
+            table_title = get_table_title(item) 
             if table_title not in table_title_dict:
                 table_title_dict[table_title] = []
             data_lst = table_title_dict[table_title]
@@ -62,9 +60,12 @@ def find_answer(answer, gold_table_lst, other_table):
 
     return False
 
+def get_table_title(table):
+    title = table['documentTitle'].strip().lower()
+    return title
 
-def process_data(mode, data_file, table_dict, table_title_dict):
-    out_csv_file = '%s_log.csv' % mode
+def process_data(dataset, mode, data_file, table_dict, table_title_dict):
+    out_csv_file = '%s_%s_log.csv' % (dataset, mode)
     f_o_csv = open(out_csv_file, 'w')
     csv_writer = csv.writer(f_o_csv, delimiter=',')
     csv_writer.writerow(['qid', 'question', 'table_id_lst', 'answer', 'other_table_id'])
@@ -80,8 +81,7 @@ def process_data(mode, data_file, table_dict, table_title_dict):
             table_title_lst = [] 
             for table_id in table_id_lst:
                 table_set.add(table_id)
-                parts = table_id.split('_')
-                table_title = parts[0]
+                table_title = get_table_title(table_dict[table_id])
                 table_title_lst.append(table_title)
             
             table_title_set = set(table_title_lst)
@@ -107,7 +107,7 @@ def process_data(mode, data_file, table_dict, table_title_dict):
     print('questions %d ' % len(qid_set))
 
     ref_table_lst = list(table_set)
-    with open('%s_table_id_lst.txt' % mode, 'w') as f_o:
+    with open('%s_%s_table_id_lst.txt' % (dataset, mode), 'w') as f_o:
         for table_id in ref_table_lst:
             f_o.write(table_id + '\n')
 
@@ -115,8 +115,8 @@ def main():
     dataset = 'nq_tables'
     mode = 'dev'
     table_dict, table_title_dict = read_tables(dataset)
-    data_file = '/home/cc/data/nq_tables/interactions/%s_qas.jsonl' % mode
-    process_data(mode, data_file, table_dict,  table_title_dict)
+    data_file = '/home/cc/data/%s/interactions/%s_qas.jsonl' % (dataset, mode)
+    process_data(dataset, mode, data_file, table_dict,  table_title_dict)
 
 def get_labeled_tables():
     labeled_data = {} 
