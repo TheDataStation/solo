@@ -4,6 +4,7 @@ import os
 from tqdm import tqdm
 import csv
 import argparse
+from table2txt.graph_strategy.rel_tags import RelationTag
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -56,11 +57,55 @@ def output_data(args, out_train_file, out_dev_file):
                 dev_data.append(item)
             else:
                 raise ValueError('qid (%s) unexpected' % qid)
-   
+  
+    table_dict = read_tables(args) 
     updated_train_data = process_train(train_data, args) 
+    update_data_text(updated_train_data, table_dict)
     write_data(updated_train_data, out_train_file)
+
     updated_dev_data = process_dev(dev_data, args)
+    update_data_text(updated_dev_data, table_dict)
     write_data(updated_dev_data, out_dev_file)
+
+def read_tables(args):
+    table_file = '/home/cc/data/%s/tables/tables.jsonl' % args.dataset
+    table_dict = {}
+    with open(table_file) as f:
+        for line in tqdm(f):
+            item = json.loads(line)
+            table_id = item['tableId']
+            table_dict[table_id] = item
+    return table_dict
+
+def get_table_title(table):
+    return table['documentTitle']
+
+def update_data_text(data, table_dict):
+    for item in tqdm(data):
+        update_passage(item, table_dict)
+
+def update_passage(item, table_dict):
+    passage_info_lst = item['ctxs']
+    for passage_info in passage_info_lst:
+        tag_info = passage_info['tag']
+        table_id = tag_info['table_id']
+        row = tag_info['row']
+        sub_col = tag_info['sub_col']
+        obj_col = tag_info['obj_col']
+        table_data = table_dict[table_id]
+        title = get_table_title(table_data) 
+        
+        if sub_col is None:
+            sub_name = ''
+            sub = ''
+        else:
+            sub_name = table_data['columns'][sub_col]['text']
+            sub = table_data['rows'][row]['cells'][sub_col]['text']
+
+        obj_name = table_data['columns'][obj_col]['text']
+        obj = table_data['rows'][row]['cells'][obj_col]['text'] 
+        tagged_text = RelationTag.get_tagged_text(title, sub_name, sub, obj_name, obj)        
+        passage_info['text'] = tagged_text
 
 def process_train(train_data, args):
     updated_train_data = []
