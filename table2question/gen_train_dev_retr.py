@@ -20,6 +20,14 @@ def get_out_file(args, mode):
     out_file = os.path.join(out_dir, 'fusion_retrieved_%s.jsonl' % mode)
     return out_file 
 
+def print_args(args):
+    data = vars(args)
+    str_info = 'args ('
+    for name in data:
+        str_info += f' {name}={data[name]} ,'
+    str_info = str_info[:-1] + ')'
+    print(str_info) 
+
 def main():
     args = get_args()
     out_train_file = get_out_file(args, 'train')
@@ -30,6 +38,7 @@ def main():
     if os.path.exists(out_dev_file):
         print('(%s) already exists' % out_dev_file)
         return
+    print_args(args)
     output_data(args, out_train_file, out_dev_file)
 
 def output_data(args, out_train_file, out_dev_file):
