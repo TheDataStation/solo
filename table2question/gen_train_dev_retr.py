@@ -58,10 +58,13 @@ def output_data(args, out_train_file, out_dev_file):
             else:
                 raise ValueError('qid (%s) unexpected' % qid)
   
+    table_dict = read_tables(args) 
     updated_train_data = process_train(train_data, args) 
+    update_data_text(updated_train_data, table_dict)
     write_data(updated_train_data, out_train_file)
 
     updated_dev_data = process_dev(dev_data, args)
+    update_data_text(updated_dev_data, table_dict)
     write_data(updated_dev_data, out_dev_file)
 
 def read_tables(args):
