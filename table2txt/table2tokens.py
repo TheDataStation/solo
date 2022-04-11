@@ -10,6 +10,24 @@ import transformers
 
 MAX_NUM_TOKENS = 150
 
+def tag_slide_tokens(item, table_dict):
+    passage_info_lst = item['ctxs']
+    for passage_info in passage_info_lst:
+        tag_info = passage_info['tag']
+        table_id = tag_info['table_id']
+        row = tag_info['row']
+        col_lst = tag_info['cols']
+        table_data = table_dict[table_id]
+        columns = table_data['columns']
+        row_info_lst = table_data['rows']
+        col_name_lst = [a['text'] for a in columns]
+        title = table_data['documentTitle']
+        tagged_text = '[T] ' + title
+        for col in col_lst:
+            tagged_text += ' [CH] ' + col_name_lst[col] + ' [C] ' + row_info_lst[row]['cells'][col]['text']
+        passage_info['text'] = tagged_text
+
+
 class CellBuffer:
     def __init__(self, max_buffer_size=MAX_NUM_TOKENS, stride=1):
         self.max_buffer_size = max_buffer_size

@@ -5,11 +5,13 @@ from tqdm import tqdm
 import csv
 import argparse
 from table2txt.graph_strategy.rel_tags import RelationTag
+from table2txt.table2tokens import tag_slide_tokens
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--expr', type=str)
+    parser.add_argument('--strategy', type=str)
     parser.add_argument('--sql_expr', type=str)
     parser.add_argument('--top_n_train', type=int, default=100)
     parser.add_argument('--top_n_dev', type=int, default=100)
@@ -60,11 +62,11 @@ def output_data(args, out_train_file, out_dev_file):
   
     table_dict = read_tables(args) 
     updated_train_data = process_train(train_data, args) 
-    update_data_text(updated_train_data, table_dict)
+    update_data_text(updated_train_data, table_dict, args.strategy)
     write_data(updated_train_data, out_train_file)
 
     updated_dev_data = process_dev(dev_data, args)
-    update_data_text(updated_dev_data, table_dict)
+    update_data_text(updated_dev_data, table_dict, args.strategy)
     write_data(updated_dev_data, out_dev_file)
 
 def read_tables(args):
@@ -80,9 +82,17 @@ def read_tables(args):
 def get_table_title(table):
     return table['documentTitle']
 
-def update_data_text(data, table_dict):
+def update_data_text(data, table_dict, strategy):
+    tag_func = None
+    if strategy == 'rel_graph':
+        tag_func = update_passage
+    elif strategy == 'slide':
+        tag_func = tag_slide_tokens
+    else:
+        raise ValueError('strategy (%s) not supported')
+
     for item in tqdm(data):
-        update_passage(item, table_dict)
+        tag_func(item, table_dict)
 
 def update_passage(item, table_dict):
     passage_info_lst = item['ctxs']

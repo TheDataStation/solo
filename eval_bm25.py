@@ -92,8 +92,8 @@ def search(ir_ranker, query, args, spacy_nlp):
                         'table_id':a['_source']['table_id'], 
                         'p_id':int(a['_id']),
                         'row':a['_source']['row'],
-                        'sub_col':a['_source']['sub_col'],
-                        'obj_col':a['_source']['obj_col']
+                        'sub_col':a['_source'].get('sub_col', None),
+                        'obj_col':a['_source'].get('obj_col', None)
                     } for a in retr_source_data ]
     return (top_ir_passages, passage_tags)
 
