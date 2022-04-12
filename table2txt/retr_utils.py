@@ -1,3 +1,4 @@
+from tqdm import tqdm
 from table2txt.graph_strategy.rel_tags import RelationTag
 from table2txt.table2tokens import tag_slide_tokens
 

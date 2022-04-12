@@ -22,7 +22,7 @@ def get_data_dir(args):
 
 def get_out_file(args):
     data_dir = get_data_dir(args)
-    out_file = os.path.join(data_dir, 'fusion_retrieved_%s_tagged.jsonl' % args.mode
+    out_file = os.path.join(data_dir, 'fusion_retrieved_%s_tagged.jsonl' % args.mode)
     return out_file 
 
 def print_args(args):
@@ -60,7 +60,7 @@ def output_data(args, out_dev_file):
         process_func = process_dev
 
     updated_retr_data = process_func(retr_data, args.top_n, table_dict, args.strategy)
-    write_data(updated_dev_data, out_dev_file)
+    write_data(updated_retr_data, out_dev_file)
 
 def read_tables(args):
     table_file = '/home/cc/data/%s/tables/tables.jsonl' % args.dataset
