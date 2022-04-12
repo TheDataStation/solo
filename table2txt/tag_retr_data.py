@@ -35,12 +35,12 @@ def print_args(args):
 
 def main():
     args = get_args()
-    out_dev_file = get_out_file(args)
-    if os.path.exists(out_dev_file):
-        print('(%s) already exists' % out_dev_file)
+    out_file = get_out_file(args)
+    if os.path.exists(out_file):
+        print('(%s) already exists' % out_file)
         return
     print_args(args)
-    output_data(args, out_dev_file)
+    output_data(args, out_file)
 
 def output_data(args, out_dev_file):
     data_dir = get_data_dir(args)
