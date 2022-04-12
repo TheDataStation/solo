@@ -14,6 +14,15 @@ def tag_data_text(data, table_dict, strategy):
     for item in tqdm(data):
         tag_func(item, table_dict)
 
+def type_process(col):
+    ret_col = col
+    if isinstance(col, str):
+        if col == 'None':
+            ret_col = None
+        else:
+            ret_col = int(col)
+    return ret_col 
+
 def tag_rel_graph(item, table_dict):
     passage_info_lst = item['ctxs']
     for passage_info in passage_info_lst:
@@ -25,6 +34,9 @@ def tag_rel_graph(item, table_dict):
         table_data = table_dict[table_id]
         title = table_data['documentTitle']
         
+        sub_col = type_process(sub_col)
+        obj_col = type_process(obj_col) 
+         
         if sub_col is None:
             sub_name = ''
             sub = ''
