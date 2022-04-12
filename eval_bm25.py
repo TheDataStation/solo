@@ -132,7 +132,7 @@ def main():
             correct_retr_dict[k].append(correct)
 
         out_item = {
-            'qid':qid,
+            'id':qid,
             'question':query_info['question'],
             'table_id_lst':gold_table_id_lst,
             'answers':['N/A'],
