@@ -7,20 +7,14 @@ from fabric_qa.ir_ranker import IRRanker
 import logging
 import spacy
 
-def set_logger(args):
+def set_logger(args, out_dir):
     global logger
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.propagate = False
     console = logging.StreamHandler()
     logger.addHandler(console)
-    expt_path = os.path.join(args.out_dir)
-    if os.path.isdir(expt_path):
-        err_msg = ('[%s] already exists, please use a different value for [--expt_dir].\nThe full path [%s]\n'
-              % (args.out_dir, expt_path))
-        raise ValueError(err_msg)
-    os.makedirs(expt_path)
-    log_path = os.path.join(expt_path, 'log.txt')
+    log_path = os.path.join(out_dir, 'log.txt')
     file_hander = logging.FileHandler(log_path, 'w')
     logger.addHandler(file_hander)
     return True
@@ -38,9 +32,8 @@ def get_args():
     parser.add_argument('--index_name', type=str)
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--expr', type=str)
+    parser.add_argument('--sql_expr', type=str)
     parser.add_argument('--synthetic', type=int)
-    parser.add_argument('--mode', type=str)
-    parser.add_argument('--out_dir', type=str)
     args = parser.parse_args()
     return args
 
@@ -49,8 +42,8 @@ def get_questions(args):
     if (args.synthetic is None) or (args.synthetic == 0):
         qas_file = '/home/cc/data/%s/interactions/%s_qas.jsonl' % (args.dataset, args.mode)
     else:
-        dataset_dir = '/home/cc/code/open_table_discovery/table2question/dataset'
-        qas_file = dataset_dir + f'/{args.dataset}/sql_all_per_10/fusion_query_{args.mode}.jsonl'
+        data_dir = '/home/cc/code/open_table_discovery/table2question/dataset'
+        qas_file = os.path.join(data_dir, args.dataset, args.sql_expr, 'fusion_query.jsonl')
     with open(qas_file) as f:
         for line in f:
             q_item = json.loads(line)
@@ -97,10 +90,23 @@ def search(ir_ranker, query, args, spacy_nlp):
                     } for a in retr_source_data ]
     return (top_ir_passages, passage_tags)
 
+def get_out_dir(args):
+    out_dir = os.path.join('table2question/dataset', args.dataset, args.sql_expr, '%s_bm25' % args.expr)
+    return out_dir
+
 def main():
-    spacy_nlp = spacy.load("en_core_web_sm")
     args = get_args()
-    set_logger(args)
+    out_dir = get_out_dir(args)
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+
+    out_file = os.path.join(out_dir, 'fusion_retrieved.jsonl')
+    if os.path.exists(out_file):
+        print('(%s) already exists.' % out_file)
+        return
+
+    spacy_nlp = spacy.load("en_core_web_sm")
+    set_logger(args, out_dir)
     ir_ranker = get_ir(args)
     query_info_lst = get_questions(args)
     query_info_dict = {}
@@ -110,7 +116,6 @@ def main():
     correct_retr_dict = {}
     for k in k_lst:
         correct_retr_dict[k] = []
-    out_file = os.path.join(args.out_dir, 'bm25_fusion_retrieve_%s.jsonl' % args.mode)
     f_o = open(out_file, 'w')
     for query_info in tqdm(query_info_lst): 
         top_ir_passages, passage_tags = search(ir_ranker, query_info, args, spacy_nlp)
