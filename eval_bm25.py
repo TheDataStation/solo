@@ -31,6 +31,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--index_name', type=str)
     parser.add_argument('--dataset', type=str)
+    parser.add_argument('--mode', type=str)
     parser.add_argument('--expr', type=str)
     parser.add_argument('--sql_expr', type=str)
     parser.add_argument('--synthetic', type=int)
@@ -91,7 +92,10 @@ def search(ir_ranker, query, args, spacy_nlp):
     return (top_ir_passages, passage_tags)
 
 def get_out_dir(args):
-    out_dir = os.path.join('table2question/dataset', args.dataset, args.sql_expr, '%s_bm25' % args.expr)
+    if (args.synthetic is None) or (args.synthetic == 0):
+        out_dir = os.path.join('table2txt/dataset', args.dataset, '%s_bm25' % args.expr)
+    else:
+        out_dir = os.path.join('table2question/dataset', args.dataset, args.sql_expr, '%s_bm25' % args.expr)
     return out_dir
 
 def main():
@@ -100,7 +104,11 @@ def main():
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
 
-    out_file = os.path.join(out_dir, 'fusion_retrieved.jsonl')
+    if args.mode is None:
+        retr_file_name = 'fusion_retrieved.jsonl'
+    else:
+        retr_file_name = 'fusion_retrieved_%s.jsonl' % args.mode
+    out_file = os.path.join(out_dir, retr_file_name)
     if os.path.exists(out_file):
         print('(%s) already exists.' % out_file)
         return
