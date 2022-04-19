@@ -98,8 +98,8 @@ def get_sql_text(table_info, sql_info):
     return sql_text
 
 def get_files(mode):
-    sql_file = '/home/cc/data/wikisql/%s.jsonl' % mode
-    table_file = '/home/cc/data/wikisql/%s.tables.jsonl' % mode
+    sql_file = '/home/cc/data/WikiSQL/data/%s.jsonl' % mode
+    table_file = '/home/cc/data/WikiSQL/data/%s.tables.jsonl' % mode
     
     return sql_file, table_file
 
