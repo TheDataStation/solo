@@ -49,11 +49,81 @@ def tag_rel_graph(item, table_dict):
         tagged_text = RelationTag.get_tagged_text(title, sub_name, sub, obj_name, obj)        
         passage_info['text'] = tagged_text
 
+def group_passages(passage_lst):
+    table_dict = {}
+    table_lst = []
+    for passage_info in passage_lst:
+        table_id = passage_info['tag']['table_id']
+        if table_id not in table_dict:
+            table_dict[table_id] = []
+            table_lst.append(table_id)
+        sub_lst = table_dict[table_id]
+        sub_lst.append(passage_info)
+    return table_lst, table_dict 
+
+
+def update_min_tables(item, top_n, min_tables=5):
+    assert(top_n >= 100)
+    passage_lst = item['ctxs']
+    top_passage_lst = passage_lst[:top_n]
+    table_lst = [a['tag']['table_id'] for a in top_passage_lst]
+    table_set = set(table_lst)
+    top_n_tables = len(table_set)
+    if top_n_tables >= min_tables:
+        item['ctxs'] = top_passage_lst
+        return
+    
+    table_lst, table_dict = group_passages(passage_lst)
+    if len(table_lst) < min_tables:
+        item['ctxs'] = top_passage_lst
+        return
+    
+    min_passages = 3
+    num_added = 0
+    for idx in range(top_n_tables, min_tables):
+        table_id = table_lst[idx]
+        sub_lst = table_dict[table_id]
+        top_sub_lst = sub_lst[:min_passages]
+        table_dict[table_id] = top_sub_lst
+        num_added += len(top_sub_lst)
+
+    top_n_table_sub_total = 0
+    for idx in range(top_n_tables):
+        table_id = table_lst[idx]
+        top_n_table_sub_total += len(table_dict[table_id])
+         
+    num_subtract = top_n_table_sub_total - (top_n - num_added)
+    assert(num_subtract > 0)
+    
+    idx = top_n_tables - 1
+    while (idx >= 0) and (num_subtract > 0):
+        table_id = table_lst[idx]
+        sub_lst = table_dict[table_id]
+        num_subtract_sub = min(num_subtract, len(sub_lst) - min_passages)
+        if num_subtract_sub > 0:
+            sub_top_n = len(sub_lst) - num_subtract_sub
+            sub_lst = sub_lst[:sub_top_n]
+            table_dict[table_id] = sub_lst 
+            num_subtract -= num_subtract_sub
+        idx -= 1
+    
+    top_passage_lst = []
+    for table_id in table_lst:
+        top_passage_lst.extend(table_dict[table_id])
+        if len(top_passage_lst) >= top_n:
+            break
+    
+    top_passage_lst = top_passage_lst[:top_n]
+    assert(len(top_passage_lst) == top_n)
+    item['ctxs'] = top_passage_lst
+
+
 def process_train(train_data, top_n, table_dict, strategy):
     updated_train_data = []
     for item in tqdm(train_data):
+        update_min_tables(item, top_n)
         gold_table_lst = item['table_id_lst']
-        ctxs = item['ctxs'][:top_n]
+        ctxs = item['ctxs']
         labels = [int(a['tag']['table_id'] in gold_table_lst) for a in ctxs]
         if (max(labels) < 1) or (min(labels) > 0):
             continue
@@ -63,10 +133,11 @@ def process_train(train_data, top_n, table_dict, strategy):
     tag_data_text(updated_train_data, table_dict, strategy)
     return updated_train_data
 
-def process_dev(dev_data, top_n, table_dict, strategy):
+def process_dev(dev_data, top_n, table_dict, strategy, min_tables=5):
     updated_dev_data = []
     for item in tqdm(dev_data):
-        ctxs = item['ctxs'][:top_n]
+        update_min_tables(item, top_n)
+        ctxs = item['ctxs']
         item['ctxs'] = ctxs
         updated_dev_data.append(item)
     tag_data_text(updated_dev_data, table_dict, strategy)
