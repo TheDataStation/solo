@@ -35,6 +35,7 @@ def get_args():
     parser.add_argument('--expr', type=str)
     parser.add_argument('--sql_expr', type=str)
     parser.add_argument('--synthetic', type=int)
+    parser.add_argument('--min_tables', type=int, default=5)
     args = parser.parse_args()
     return args
 
@@ -53,12 +54,6 @@ def get_questions(args):
             q_item_lst.append(q_item)
     return q_item_lst
 
-def table_found(top_k_table_id_lst, gold_table_id_lst):
-    for table_id in top_k_table_id_lst:
-        if table_id in gold_table_id_lst:
-            return 1
-    return 0 
-
 def process_question(question):
     res = question.replace(u'\xa0', u' ')
     return res
@@ -69,17 +64,33 @@ def get_qry_question(spacy_nlp, question):
     qry_question = ' '.join(tokens)
     return qry_question
 
+def search_nin_tables(args, ir_ranker, qry_question, top_n, max_retr=1000):
+    num_retr = top_n
+    step = 100
+    step_mlp = 1
+    satified=False
+    while (not satified):
+        retr_source_data = ir_ranker.search(index_name=args.index_name,
+                                        question=qry_question,
+                                        entity=None,
+                                        k=num_retr,
+                                        ret_src=True)
+        table_lst = [a['_source']['table_id'] for a in retr_source_data] 
+        table_set = set(table_lst)
+        if len(table_set) < args.min_tables:
+            num_retr = top_n + step * step_mlp
+            step_mlp *= 2
+            if num_retr > max_retr:
+                satified = True
+        else:
+            satified = True
+    return retr_source_data 
+     
+
 def search(ir_ranker, query, args, spacy_nlp):
     question = process_question(query['question'])
     qry_question = get_qry_question(spacy_nlp, question)
-    sub_entity = None
-    if 'subject' in query:
-        sub_entity = query['subject']
-    retr_source_data = ir_ranker.search(index_name=args.index_name,
-                                        question=qry_question,
-                                        entity=sub_entity,
-                                        k=100,
-                                        ret_src=True)
+    retr_source_data = search_nin_tables(args, ir_ranker, qry_question, 100) 
     top_ir_passages = [a['_source']['body'] for a in retr_source_data]
     passage_tags = [
                     {
@@ -120,10 +131,10 @@ def main():
     query_info_dict = {}
     for query_info in query_info_lst:
         query_info_dict[query_info['qid']] = query_info 
-    k_lst = [1, 5]
-    correct_retr_dict = {}
-    for k in k_lst:
-        correct_retr_dict[k] = []
+    max_top_lst = [1, 3, 5]
+    metric_dict = {}
+    for max_top in max_top_lst:
+        metric_dict[max_top] = []
     f_o = open(out_file, 'w')
     for query_info in tqdm(query_info_lst): 
         top_ir_passages, passage_tags = search(ir_ranker, query_info, args, spacy_nlp)
@@ -131,13 +142,11 @@ def main():
         query_info = query_info_dict[qid]
         gold_table_id_lst = query_info['table_id_lst']
         retr_table_id_lst = [a['table_id'] for a in passage_tags]
+        correct_lst = [int(a in gold_table_id_lst) for a in retr_table_id_lst]
         retr_passage_id_lst = [a['p_id'] for a in passage_tags]
-        correct_info = {}
-        for k in k_lst:
-            top_k_table_id_lst = retr_table_id_lst[:k]
-            correct = table_found(top_k_table_id_lst, gold_table_id_lst)
-            correct_info[k] = correct
-            correct_retr_dict[k].append(correct)
+        for max_top in max_top_lst:
+            max_correct = max(correct_lst[:max_top])
+            metric_dict[max_top].append(max_correct)
 
         out_item = {
             'id':qid,
@@ -158,9 +167,11 @@ def main():
         out_item['ctxs'] = out_passage_lst
         f_o.write(json.dumps(out_item) + '\n')
 
-    for k in correct_retr_dict:
-        precision = np.mean(correct_retr_dict[k]) * 100
-        logger.info('p@%d = %.2f' % (k, precision))
+    str_info = ''
+    for max_top in metric_dict:
+        precision = np.mean(metric_dict[max_top]) * 100
+        str_info += 'P@%d=%.2f ' % (max_top, precision)
+    logger.info(str_info)
 
     f_o.close()
 
