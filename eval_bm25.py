@@ -64,7 +64,7 @@ def get_qry_question(spacy_nlp, question):
     qry_question = ' '.join(tokens)
     return qry_question
 
-def search_nin_tables(args, ir_ranker, qry_question, top_n, max_retr=1000):
+def search_min_tables(args, ir_ranker, qry_question, top_n, max_retr=1000):
     num_retr = top_n
     step = 100
     step_mlp = 1
@@ -90,7 +90,7 @@ def search_nin_tables(args, ir_ranker, qry_question, top_n, max_retr=1000):
 def search(ir_ranker, query, args, spacy_nlp):
     question = process_question(query['question'])
     qry_question = get_qry_question(spacy_nlp, question)
-    retr_source_data = search_nin_tables(args, ir_ranker, qry_question, 100) 
+    retr_source_data = search_min_tables(args, ir_ranker, qry_question, 100) 
     top_ir_passages = [a['_source']['body'] for a in retr_source_data]
     passage_tags = [
                     {
