@@ -9,6 +9,7 @@ from multiprocessing import Pool as ProcessPool
 from table2question.sql_data import SqlQuery 
 from table2question.wikisql_preprocess import get_sql_text
 import re
+import time
 
 g_tokenizer = None
 
@@ -53,27 +54,36 @@ def is_good_col_name(col_name):
         return False
     return True
 
-def get_key_cols(col_ent_data, ent_num_lst):
-    sorted_col_idxes = np.argsort(ent_num_lst)
-    N = len(col_ent_data)
-    idx = N - 1
-    key_ent_num = -1
-    kget_key_colsey_col_lst = []
-    while idx >= 0:
-        col = sorted_col_idxes[idx]
-        if is_good_col_name(col_ent_data[col]['col_name']):
-            if key_ent_num < 0:
-                key_ent_num = ent_num_lst[col]
-                key_col_lst.append(col)
-            else:
-                if key_ent_num == ent_num_lst[col]:
-                    key_col_lst.append(col)
+def get_outlier(data):
+    Q1 = np.percentile(data, 25)
+    Q3 = np.percentile(data, 75)
+    IQR = Q3 - Q1
+    lower = 1 # Q1 - 1.5 * IQR
+    if lower <= 0:
+        lower = 1
+    upper = Q3 + 1.5 * IQR
+    return (lower, upper)
 
-        idx -= 1
+def stat_tables(table_lst):
+    col_name_size_lst = []
+    cell_size_lst = []
+    for table in tqdm(table_lst):
+        columns = table['columns']
+        table_col_size_lst = [get_text_size(a['text']) for a in columns]
+        col_name_size_lst.extend(table_col_size_lst)
+        row_info_lst = table['rows']
+        for row_info in row_info_lst:
+            cell_lst = row_info['cells']
+            row_cell_size_lst = [get_text_size(a['text']) for a in cell_lst]
+            cell_size_lst.extend(row_cell_size_lst)
     
-    if len(key_col_lst) > 0:
-        key_col_lst.sort()
-    return key_col_lst
+    col_name_outlier = get_outlier(col_name_size_lst)
+    cell_outlier = get_outlier(cell_size_lst)
+    table_stat_info = {
+        'col_name_outlier':col_name_outlier,
+        'cell_outlier':cell_outlier
+    }
+    return table_stat_info
 
 def get_text_size(text):
     tokens = g_tokenizer.tokenize(text)
@@ -107,27 +117,6 @@ def get_good_cols(table):
             good_cols.append(col)
     return (col_ent_data, good_cols) 
 
-def infer_table_keys(table):
-    col_ent_data = get_col_entities(table)
-    ent_num_lst = []
-    for col_info in col_ent_data:
-        entities = col_info['entities']
-        ent_text_lst = [a['text'].lower() for a in entities]
-        ent_set = set(ent_text_lst)  
-        ent_num = len(ent_set)
-        ent_num_lst.append(ent_num)
-   
-    key_col_lst = get_key_cols(col_ent_data, ent_num_lst) 
-    key_col_lst = key_col_lst[:2]
-    key_col_set = set(key_col_lst)
-
-    non_key_col_lst = []
-    for col, col_info in enumerate(col_ent_data):
-        if is_good_col_name(col_info['col_name']) and (col not in key_col_set):
-            non_key_col_lst.append(col)
- 
-    return (col_ent_data, key_col_lst, non_key_col_lst)
-     
 def is_float(text):
     if text == '':
         return False
@@ -152,9 +141,9 @@ def get_query_table(table_id, col_ent_data):
     return query_table
 
 
-def generate_queries(mode, table_lst, num_queries):
+def generate_queries(mode, table_lst, num_queries, stat_info):
     query_lst = []
-    max_try_count = 1000000
+    max_try_count = 100000000
     try_count = 0
     while (len(query_lst) < num_queries) and (try_count < max_try_count):
         try_count += 1
@@ -163,7 +152,7 @@ def generate_queries(mode, table_lst, num_queries):
         if len(good_cols) == 0:
             continue 
         infer_column_type(col_ent_data)
-        query = sample_query(table, col_ent_data, good_cols)
+        query = sample_query(table, col_ent_data, good_cols, stat_info)
         if query is not None: 
             query_table = get_query_table(table['tableId'], col_ent_data)
             sql_info = query['sql']
@@ -173,17 +162,17 @@ def generate_queries(mode, table_lst, num_queries):
 
     return query_lst
 
-def sample_query(table, col_ent_data, col_lst):
+def sample_query(table, col_ent_data, col_lst, stat_info):
     max_num_try = 3
     num_try = 0 
     while num_try < max_num_try:
-        query = try_sample_query(table, col_ent_data, col_lst)
+        query = try_sample_query(table, col_ent_data, col_lst, stat_info)
         num_try += 1
         if query is not None:
             return query
     return None 
 
-def try_sample_query(table, col_ent_data, col_lst):
+def try_sample_query(table, col_ent_data, col_lst, stat_info):
     table_id = table['tableId']
     row_data = table['rows']
     sel_col = random.sample(col_lst, 1)[0]
@@ -214,7 +203,7 @@ def try_sample_query(table, col_ent_data, col_lst):
         if len(row_spaces) > 0:
             row = random.sample(row_spaces, 1)[0]
             for cond_col in cond_col_lst:
-                sql_cond = get_sql_cond(row, col_ent_data, cond_col, cond_op_idx_lst)
+                sql_cond = get_sql_cond(row, col_ent_data, cond_col, cond_op_idx_lst, stat_info)
                 if sql_cond is not None:
                     sql_cond_lst.append(sql_cond)
    
@@ -235,7 +224,7 @@ def try_sample_query(table, col_ent_data, col_lst):
     }
     return query_info
 
-def get_sql_cond(row, col_ent_data, cond_col, cond_op_idx_lst):
+def get_sql_cond(row, col_ent_data, cond_col, cond_op_idx_lst, stat_info):
     cond_col_type = col_ent_data[cond_col]['type_infered']
     if cond_col_type == 'float':
         cond_op_idx = random.sample(cond_op_idx_lst, 1)[0]
@@ -264,7 +253,8 @@ def get_sql_cond(row, col_ent_data, cond_col, cond_op_idx_lst):
         cond_value = str(float_cond_value)
      
     cond_value_size = col_ent_data[cond_col]['entities'][row]['size']
-    if cond_value_size > 30:
+    outlier_upper = stat_info['cell_outlier'][1]
+    if cond_value_size > outlier_upper:
         return None
          
     sql_cond = [int(cond_col), int(cond_op_idx), cond_value]
@@ -291,7 +281,7 @@ def get_train_dev_tables(args):
     dev_tables = random.sample(table_lst, num_dev)
     dev_table_id_set = set([a['tableId'] for a in dev_tables])
     train_tables = [a for a in table_lst if a['tableId'] not in dev_table_id_set] 
-    return (train_tables, dev_tables)
+    return (table_lst, train_tables, dev_tables)
 
 def main():
     args = get_args()
@@ -313,11 +303,13 @@ def main():
     out_meta_file = os.path.join(out_dir, 'meta.txt')
     f_o_meta = open(out_meta_file, 'w')
     
-    train_tables, dev_tables = get_train_dev_tables(args)
+    all_tables, train_tables, dev_tables = get_train_dev_tables(args)
     init_worker()
     
-    train_query_lst = generate_queries('train', train_tables, args.num_train_queries) 
-    dev_query_lst = generate_queries('dev', dev_tables, args.num_dev_queries)
+    stat_info = stat_tables(all_tables)
+    
+    train_query_lst = generate_queries('train', train_tables, args.num_train_queries, stat_info) 
+    dev_query_lst = generate_queries('dev', dev_tables, args.num_dev_queries, stat_info)
         
     write_query('train', train_query_lst, f_o_src, f_o_tar, f_o_meta)
     write_query('dev', dev_query_lst, f_o_src, f_o_tar, f_o_meta)
@@ -382,6 +374,9 @@ def get_args():
     return args
 
 if __name__ == '__main__':
+    t1 = time.time()
     main()
+    t2 = time.time()
+    print('%d seconds' % (t2 - t1))
 
 
