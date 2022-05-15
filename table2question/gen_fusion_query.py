@@ -131,16 +131,16 @@ def main():
         qid = meta_item['qid']
         table_id_lst = get_gold_tables(meta_item, table_dict, table_title_dict)
         answers = ['N/A']       
-        passage_info = {
-            'title':'',
-            'text':'This is a example passage',
-        }
+        #passage_info = {
+        #    'title':'',
+        #    'text':'This is a example passage',
+        #}
         out_item = {
             'id':qid,
             'question':question,
             'table_id_lst':table_id_lst,
             'answers':answers,
-            'ctxs':[passage_info]
+            'ctxs':[]
         }
         
         f_o_query.write(json.dumps(out_item) + '\n') 
@@ -148,5 +148,10 @@ def main():
     f_o_query.close()
 
 if __name__ == '__main__':
+    import time
+    t1 = time.time()
     main()
+    t2 = time.time()
+    print('%d seconds' % (t2 - t1))
+
 
