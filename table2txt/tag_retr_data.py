@@ -44,7 +44,7 @@ def main():
 
 def output_data(args, out_dev_file):
     data_dir = get_data_dir(args)
-    data_file = os.path.join(data_dir, 'fusion_retrieved_test.jsonl')
+    data_file = os.path.join(data_dir, 'fusion_retrieved_%s.jsonl' % args.mode)
     retr_data = []
     with open(data_file) as f:
         for line in tqdm(f):
