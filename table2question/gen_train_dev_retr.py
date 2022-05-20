@@ -19,7 +19,7 @@ def get_args():
 
 def get_out_file(args, mode):
     out_dir = os.path.join('dataset', args.dataset, args.sql_expr, args.expr)
-    out_file = os.path.join(out_dir, 'fusion_retrieved_%s.jsonl' % mode)
+    out_file = os.path.join(out_dir, 'fusion_retrieved_%s_tagged.jsonl' % mode)
     return out_file 
 
 def print_args(args):
