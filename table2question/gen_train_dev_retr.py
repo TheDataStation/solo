@@ -14,6 +14,7 @@ def get_args():
     parser.add_argument('--sql_expr', type=str)
     parser.add_argument('--top_n_train', type=int, default=100)
     parser.add_argument('--top_n_dev', type=int, default=100)
+    parser.add_argument('--min_tables', type=int, default=5)
     args = parser.parse_args()
     return args
 
@@ -60,10 +61,10 @@ def output_data(args, out_train_file, out_dev_file):
                 raise ValueError('qid (%s) unexpected' % qid)
   
     table_dict = read_tables(args) 
-    updated_train_data = process_train(train_data, args.top_n_train, table_dict, args.strategy) 
+    updated_train_data = process_train(train_data, args.top_n_train, table_dict, args.strategy, args.min_tables) 
     write_data(updated_train_data, out_train_file)
 
-    updated_dev_data = process_dev(dev_data, args.top_n_dev, table_dict, args.strategy)
+    updated_dev_data = process_dev(dev_data, args.top_n_dev, table_dict, args.strategy, args.min_tables)
     write_data(updated_dev_data, out_dev_file)
 
 def read_tables(args):
