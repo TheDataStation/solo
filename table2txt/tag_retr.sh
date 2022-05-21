@@ -13,3 +13,4 @@ python ./tag_retr_data.py \
 --strategy ${strategy} \
 --mode ${mode} \
 --top_n ${top_n}
+--min_tables 5 \

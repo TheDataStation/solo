@@ -13,6 +13,7 @@ def get_args():
     parser.add_argument('--strategy', type=str)
     parser.add_argument('--mode', type=str)
     parser.add_argument('--top_n', type=int, default=100)
+    parser.add_argument('--min_tables', type=int, default=5)
     args = parser.parse_args()
     return args
 
@@ -59,7 +60,7 @@ def output_data(args, out_dev_file):
     else:
         process_func = process_dev
 
-    updated_retr_data = process_func(retr_data, args.top_n, table_dict, args.strategy)
+    updated_retr_data = process_func(retr_data, args.top_n, table_dict, args.strategy, args.min_tables)
     write_data(updated_retr_data, out_dev_file)
 
 def read_tables(args):
