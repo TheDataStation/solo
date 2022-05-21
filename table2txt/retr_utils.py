@@ -62,7 +62,7 @@ def group_passages(passage_lst):
     return table_lst, table_dict 
 
 
-def update_min_tables(item, top_n, min_tables=10):
+def update_min_tables(item, top_n, min_tables):
     assert(top_n >= 100)
     passage_lst = item['ctxs']
     top_passage_lst = passage_lst[:top_n]
@@ -129,11 +129,11 @@ def collect_passages(item):
             neg_lst.append(passage_info)
     return pos_lst, neg_lst
 
-def process_train(train_data, top_n, table_dict, strategy):
+def process_train(train_data, top_n, table_dict, strategy, min_tables):
     updated_train_data = []
     for item in tqdm(train_data):
         pos_lst, neg_lst = collect_passages(item)
-        update_min_tables(item, top_n)
+        update_min_tables(item, top_n, min_tables)
         gold_table_lst = item['table_id_lst']
         ctxs = item['ctxs']
         labels = [int(a['tag']['table_id'] in gold_table_lst) for a in ctxs]
@@ -158,7 +158,7 @@ def process_train(train_data, top_n, table_dict, strategy):
     tag_data_text(updated_train_data, table_dict, strategy)
     return updated_train_data
 
-def process_dev(dev_data, top_n, table_dict, strategy):
+def process_dev(dev_data, top_n, table_dict, strategy, min_tables):
     updated_dev_data = []
     for item in tqdm(dev_data):
         update_min_tables(item, top_n)
