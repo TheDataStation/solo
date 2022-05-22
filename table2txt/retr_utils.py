@@ -161,7 +161,7 @@ def process_train(train_data, top_n, table_dict, strategy, min_tables):
 def process_dev(dev_data, top_n, table_dict, strategy, min_tables):
     updated_dev_data = []
     for item in tqdm(dev_data):
-        update_min_tables(item, top_n)
+        update_min_tables(item, top_n, min_tables)
         ctxs = item['ctxs']
         item['ctxs'] = ctxs
         updated_dev_data.append(item)
