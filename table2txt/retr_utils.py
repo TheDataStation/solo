@@ -132,26 +132,28 @@ def collect_passages(item):
 def process_train(train_data, top_n, table_dict, strategy, min_tables):
     updated_train_data = []
     for item in tqdm(train_data):
-        pos_lst, neg_lst = collect_passages(item)
+        #pos_lst, neg_lst = collect_passages(item)
         update_min_tables(item, top_n, min_tables)
         gold_table_lst = item['table_id_lst']
         ctxs = item['ctxs']
         labels = [int(a['tag']['table_id'] in gold_table_lst) for a in ctxs]
         
         if max(labels) < 1: # all negatives
-            if len(pos_lst) > 0:
-                M = min(top_n // 2, len(pos_lst))
-                item['ctxs'] = pos_lst[:M] + ctxs[:(len(ctxs)-M)]
-            else:
-                continue
+            continue
+            #if len(pos_lst) > 0:
+            #    M = min(top_n // 2, len(pos_lst))
+            #    item['ctxs'] = pos_lst[:M] + ctxs[:(len(ctxs)-M)]
+            #else:
+            #    continue
         
         if min(labels) > 0: # all positives
-            if len(neg_lst) > 0:
-                M = min(top_n // 2, len(neg_lst))
-                item['ctxs'] = ctxs[:(len(ctxs)-M)] + neg_lst[:M]
-            else:
-                continue
-      
+            continue
+            #if len(neg_lst) > 0:
+            #    M = min(top_n // 2, len(neg_lst))
+            #    item['ctxs'] = ctxs[:(len(ctxs)-M)] + neg_lst[:M]
+            #else:
+            #    continue
+
         assert(len(item['ctxs']) == top_n) 
         updated_train_data.append(item)
 
