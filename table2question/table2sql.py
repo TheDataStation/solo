@@ -140,10 +140,9 @@ def get_query_table(table_id, col_ent_data):
     }
     return query_table
 
-
-def generate_queries(mode, table_lst, num_queries, stat_info):
+def generate_queries(mode, table_lst, num_queries, stat_info, sql_dict):
     query_lst = []
-    max_try_count = 100000000
+    max_try_count = int(1E9)
     try_count = 0
     while (len(query_lst) < num_queries) and (try_count < max_try_count):
         try_count += 1
@@ -157,22 +156,15 @@ def generate_queries(mode, table_lst, num_queries, stat_info):
             query_table = get_query_table(table['tableId'], col_ent_data)
             sql_info = query['sql']
             sql_text = get_sql_text(query_table, sql_info)
-            query['sql_text'] = sql_text
-            query_lst.append(query)
+            sql_text_key = sql_text.lower()
+            if sql_text_key not in sql_dict:
+                sql_dict[sql_text_key] = 1 
+                query['sql_text'] = sql_text
+                query_lst.append(query)
 
     return query_lst
 
 def sample_query(table, col_ent_data, col_lst, stat_info):
-    max_num_try = 3
-    num_try = 0 
-    while num_try < max_num_try:
-        query = try_sample_query(table, col_ent_data, col_lst, stat_info)
-        num_try += 1
-        if query is not None:
-            return query
-    return None 
-
-def try_sample_query(table, col_ent_data, col_lst, stat_info):
     table_id = table['tableId']
     row_data = table['rows']
     sel_col = random.sample(col_lst, 1)[0]
@@ -307,9 +299,10 @@ def main():
     init_worker()
     
     stat_info = stat_tables(all_tables)
-    
-    train_query_lst = generate_queries('train', train_tables, args.num_train_queries, stat_info) 
-    dev_query_lst = generate_queries('dev', dev_tables, args.num_dev_queries, stat_info)
+   
+    sql_dict = {} 
+    train_query_lst = generate_queries('train', train_tables, args.num_train_queries, stat_info, sql_dict) 
+    dev_query_lst = generate_queries('dev', dev_tables, args.num_dev_queries, stat_info, sql_dict)
         
     write_query('train', train_query_lst, f_o_src, f_o_tar, f_o_meta)
     write_query('dev', dev_query_lst, f_o_src, f_o_tar, f_o_meta)
