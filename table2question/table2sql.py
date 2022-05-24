@@ -143,7 +143,12 @@ def get_query_table(table_id, col_ent_data):
 def generate_queries(mode, table_lst, num_queries, stat_info, sql_dict):
     query_lst = []
     max_try_count = int(1E9)
+    if num_queries > max_try_count:
+        raise ValueError('The %s query size %d must be less than %d ' % (mode, num_queries, max_try_count))
     try_count = 0
+    task_desc = '%s queries' % mode
+    pbar = tqdm(desc=task_desc, total=100)
+    progress = 0
     while (len(query_lst) < num_queries) and (try_count < max_try_count):
         try_count += 1
         table = random.sample(table_lst, 1)[0]
@@ -161,7 +166,12 @@ def generate_queries(mode, table_lst, num_queries, stat_info, sql_dict):
                 sql_dict[sql_text_key] = 1 
                 query['sql_text'] = sql_text
                 query_lst.append(query)
-
+                
+                progress_step = int((len(query_lst) - progress) * 100 / num_queries)
+                if progress_step > 0: 
+                    pbar.update(progress_step)
+                    progress = len(query_lst)
+    
     return query_lst
 
 def sample_query(table, col_ent_data, col_lst, stat_info):
@@ -275,6 +285,15 @@ def get_train_dev_tables(args):
     train_tables = [a for a in table_lst if a['tableId'] not in dev_table_id_set] 
     return (table_lst, train_tables, dev_tables)
 
+def write_dev_tables(out_dir, dev_tables):
+    file_name = 'dev_tables.jsonl' 
+    dev_table_file = os.path.join(out_dir, file_name)
+    with open(dev_table_file, 'w') as f_o:
+        for table in dev_tables:
+            table_id = table['tableId']
+            item = {'table_id':table_id}
+            f_o.write(json.dumps(item) + '\n')
+
 def main():
     args = get_args()
     table2question_dir = '/home/cc/code/open_table_discovery/table2question'
@@ -296,6 +315,8 @@ def main():
     f_o_meta = open(out_meta_file, 'w')
     
     all_tables, train_tables, dev_tables = get_train_dev_tables(args)
+    write_dev_tables(out_dir, dev_tables)
+
     init_worker()
     
     stat_info = stat_tables(all_tables)
@@ -327,25 +348,9 @@ def main():
     f_o_tar.close()
     f_o_meta.close()  
 
-def get_table_queries(all_query_lst):
-    table_query_dict = {}
-    for query in all_query_lst:
-        table_id = query['table_id']
-        if table_id not in table_query_dict:
-            table_query_dict[table_id] = []
-        query_lst = table_query_dict[table_id]
-        query_lst.append(query)
-    table_id_lst = list(table_query_dict.keys())
-    N = min(10000, len(table_id_lst))
-    sample_table_id_lst = random.sample(table_id_lst, N)
-    all_sample_query_lst = []
-    for sample_table_id in sample_table_id_lst:
-        query_lst = table_query_dict[sample_table_id]
-        all_sample_query_lst.extend(query_lst)
-    return all_sample_query_lst
 
 def write_query(mode, query_lst, f_o_src, f_o_tar, f_o_meta):
-    for idx, query in enumerate(query_lst):
+    for idx, query in tqdm(enumerate(query_lst), total=len(query_lst)):
         qid = '%s_%d' % (mode, idx)
         query['qid'] = qid
         query['mode'] = mode
