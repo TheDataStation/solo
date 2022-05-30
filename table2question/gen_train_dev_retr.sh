@@ -13,4 +13,7 @@ python ./gen_train_dev_retr.py \
 --expr ${expr} \
 --sql_expr ${sql_expr} \
 --strategy ${strategy} \
---min_tables 5 \
+--top_n_train 200 \
+--top_n_dev 200 \
+--min_tables 10 \
+
