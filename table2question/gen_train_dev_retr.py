@@ -12,8 +12,8 @@ def get_args():
     parser.add_argument('--expr', type=str)
     parser.add_argument('--strategy', type=str)
     parser.add_argument('--sql_expr', type=str)
-    parser.add_argument('--top_n_train', type=int, default=200)
-    parser.add_argument('--top_n_dev', type=int, default=200)
+    parser.add_argument('--top_n_train', type=int, default=100)
+    parser.add_argument('--top_n_dev', type=int, default=100)
     parser.add_argument('--min_tables', type=int, default=10)
     args = parser.parse_args()
     return args
