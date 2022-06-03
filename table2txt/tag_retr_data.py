@@ -13,7 +13,7 @@ def get_args():
     parser.add_argument('--strategy', type=str)
     parser.add_argument('--mode', type=str)
     parser.add_argument('--top_n', type=int, default=100)
-    parser.add_argument('--min_tables', type=int, default=5)
+    parser.add_argument('--min_tables', type=int, default=10)
     args = parser.parse_args()
     return args
 
