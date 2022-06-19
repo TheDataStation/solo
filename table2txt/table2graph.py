@@ -22,15 +22,14 @@ def init_worker(strategy_name):
 def process_table(table):
     return g_strategy.generate(table)
 
-def main():
-    args = get_args()
-    table2txt_dir = '/home/cc/code/open_table_discovery/table2txt'
+def main(args):
+    table2txt_dir = os.path.join(args.work_dir, 'open_table_discovery/table2txt')
     out_dir = os.path.join(table2txt_dir, 'dataset', args.dataset, args.experiment)
     if os.path.isdir(out_dir):
-        err_msg = ('[%s] already exists, please use a different value for [--out_dir].\n'
+        err_msg = ('(%s) already exists, please use a different value for [--out_dir].\n'
               % (out_dir))
         print(err_msg)
-        return
+        return {'state':False}
     os.makedirs(out_dir)
     
     out_passage_file = os.path.join(out_dir, 'passages.jsonl')
@@ -38,7 +37,7 @@ def main():
 
 
     table_file_name = args.table_file
-    input_table_file = os.path.join('/home/cc/data', args.dataset, 'tables', table_file_name)
+    input_table_file = os.path.join(args.work_dir, 'data', args.dataset, 'tables', table_file_name)
     table_lst = read_tables(input_table_file)
 
     multi_process = False
@@ -53,7 +52,13 @@ def main():
             graph_lst = process_table(table)
             write_graphs(graph_lst, f_o) 
 
-    f_o.close()            
+    f_o.close()
+    
+    msg_info = {
+        'state':True,
+        'out_file':out_passage_file
+    }
+    return msg_info 
 
 g_passage_id = 0
 
@@ -77,6 +82,7 @@ def write_graphs(graph_lst, f_o):
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--work_dir', type=str)
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--table_file', type=str)
     parser.add_argument('--experiment', type=str)
@@ -86,6 +92,7 @@ def get_args():
     return args
 
 if __name__ == '__main__':
-    main()
+    args = get_args()
+    main(args)
 
 
