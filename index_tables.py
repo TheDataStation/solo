@@ -1,5 +1,9 @@
 import argparse
+import os
+from tqdm import tqdm
+import glob
 from table2txt import table2graph
+import generate_passage_embeddings as passage_encoder
 
 def get_graph_args(work_dir, dataset):
     graph_args = argparse.Namespace(work_dir=work_dir, 
@@ -10,18 +14,52 @@ def get_graph_args(work_dir, dataset):
                                     )
     return graph_args
 
+def get_encoder_args(model_path):
+    encoder_args = argparse.Namespace(passages=None, 
+                                      output_path=None,
+                                      shard_id=0,
+                                      num_shards=1,
+                                      per_gpu_batch_size=32,
+                                      passage_maxlength=200,
+                                      model_path=model_path,
+                                      no_fp16=False
+                                     )
+    return encoder_args
+    
+
 def main():
     args = get_args()
+    print('Linearizing table rows')
     graph_args = get_graph_args(args.work_dir, args.dataset)
     msg_info = table2graph.main(graph_args)
     graph_ok = msg_info['state']
     if not graph_ok:
         return
+    graph_file = msg_info['out_file']
+    part_file_lst = split_graphs(graph_file, args.batch_size)
+    encoder_model = os.path.join(args.work_dir, 'models/tqa_retriever')
+    for part_file in part_file_lst:
+        print('Encoding %s' % part_file)
+        encoder_args = get_encoder_args(encoder_model)
+        encoder_args.passages = part_file
+        encoder_args.output_path = part_file + '_embeddings'
+        passage_encoder.main(encoder_args, is_main=False) 
+        os.remove(part_file) 
+               
+def split_graphs(graph_file, batch_size):
+    out_file_prefix = graph_file + '_part_'
+    cmd = 'split -l %d %s %s' % (batch_size, graph_file, out_file_prefix)
+    os.system(cmd)
+    part_file_lst = glob.glob(out_file_prefix + '*')
+    part_file_lst.sort()
+    assert(len(part_file_lst) > 0)
+    return part_file_lst 
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--work_dir', type=str, required=True)
     parser.add_argument('--dataset', type=str, required=True)
+    parser.add_argument('--batch_size', type=int, default=10000)
     args = parser.parse_args()
     return args
 
