@@ -4,6 +4,7 @@ from tqdm import tqdm
 import glob
 from table2txt import table2graph
 import generate_passage_embeddings as passage_encoder
+from src import ondisk_index
 
 def get_graph_args(work_dir, dataset):
     graph_args = argparse.Namespace(work_dir=work_dir, 
@@ -25,7 +26,14 @@ def get_encoder_args(model_path):
                                       no_fp16=False
                                      )
     return encoder_args
-    
+
+def get_index_args(work_dir, dataset, emb_file):
+    index_args = argparse.Namespace(work_dir=work_dir,
+                                    dataset=dataset,
+                                    experiment='rel_graph',
+                                    emb_file=emb_file
+                                    )
+    return index_args 
 
 def main():
     args = get_args()
@@ -35,16 +43,23 @@ def main():
     graph_ok = msg_info['state']
     if not graph_ok:
         return
+    
     graph_file = msg_info['out_file']
     part_file_lst = split_graphs(graph_file, args.batch_size)
     encoder_model = os.path.join(args.work_dir, 'models/tqa_retriever')
+    emd_file_suffix = '_embeddings'
     for part_file in part_file_lst:
         print('Encoding %s' % part_file)
         encoder_args = get_encoder_args(encoder_model)
         encoder_args.passages = part_file
-        encoder_args.output_path = part_file + '_embeddings'
+        encoder_args.output_path = part_file + emd_file_suffix
         passage_encoder.main(encoder_args, is_main=False) 
-        os.remove(part_file) 
+        os.remove(part_file)
+    
+    index_args = get_index_args(args.work_dir, args.dataset, '*' + emd_file_suffix + '_*')
+    msg_info = ondisk_index.main(index_args)
+    if not msg_info['state']:
+        print(msg_info['msg'])
                
 def split_graphs(graph_file, batch_size):
     out_file_prefix = graph_file + '_part_'
