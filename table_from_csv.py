@@ -24,10 +24,10 @@ def read_meta(meta_file):
                 text = line.strip()
                 if text.startswith(title_prefix):
                     pos = len(title_prefix)
-                    table_title = text[pos:].strip()
+                    table_title = text[pos:]
                 elif text.startswith(id_prefix):
                     pos = len(id_prefix)
-                    table_id = text[pos:].strip()
+                    table_id = text[pos:]
     return (table_title, table_id)
 
 def read_table(csv_file, meta_file):
@@ -54,7 +54,8 @@ def read_table(csv_file, meta_file):
             else:
                 assert(len(item) == len(col_name_lst))
                 cells = [{'text':a} for a in item]
-                row_data.append(cells)
+                cell_info = {'cells':cells}
+                row_data.append(cell_info)
     return table
 
 def main(args):
