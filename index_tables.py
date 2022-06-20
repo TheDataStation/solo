@@ -3,8 +3,16 @@ import os
 from tqdm import tqdm
 import glob
 from table2txt import table2graph
+import table_from_csv
 import generate_passage_embeddings as passage_encoder
 from src import ondisk_index
+import shutil
+
+def get_csv_args(work_dir, dataset):
+    csv_args = argparse.Namespace(work_dir=work_dir,
+                                  dataset=dataset
+                                 )
+    return csv_args 
 
 def get_graph_args(work_dir, dataset):
     graph_args = argparse.Namespace(work_dir=work_dir, 
@@ -37,6 +45,14 @@ def get_index_args(work_dir, dataset, emb_file):
 
 def main():
     args = get_args()
+    
+    print('Importing tables')
+    csv_args = get_csv_args(args.work_dir, args.dataset)
+    msg_info = table_from_csv.main(csv_args)
+    if not msg_info['state']:
+        print(msg_info['msg'])
+        return
+
     print('Linearizing table rows')
     graph_args = get_graph_args(args.work_dir, args.dataset)
     msg_info = table2graph.main(graph_args)
@@ -62,6 +78,9 @@ def main():
     msg_info = ondisk_index.main(index_args)
     if not msg_info['state']:
         print(msg_info['msg'])
+    index_dir = msg_info['index_dir']
+    assert(os.path.isdir(index_dir))
+    shutil.move(graph_file, index_dir)
     for out_emd_file in out_emd_file_lst:
         cmd = 'rm %s_*' % out_emd_file
         os.system(cmd)

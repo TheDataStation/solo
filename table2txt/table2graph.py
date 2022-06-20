@@ -35,7 +35,6 @@ def main(args):
     out_passage_file = os.path.join(out_dir, 'passages.jsonl')
     f_o = open(out_passage_file, 'w')
 
-
     table_file_name = args.table_file
     input_table_file = os.path.join(args.work_dir, 'data', args.dataset, 'tables', table_file_name)
     table_lst = read_tables(input_table_file)
