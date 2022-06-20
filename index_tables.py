@@ -48,11 +48,13 @@ def main():
     part_file_lst = split_graphs(graph_file, args.batch_size)
     encoder_model = os.path.join(args.work_dir, 'models/tqa_retriever')
     emd_file_suffix = '_embeddings'
+    out_emd_file_lst = []
     for part_file in part_file_lst:
         print('Encoding %s' % part_file)
         encoder_args = get_encoder_args(encoder_model)
         encoder_args.passages = part_file
         encoder_args.output_path = part_file + emd_file_suffix
+        out_emd_file_lst.append(encoder_args.output_path)
         passage_encoder.main(encoder_args, is_main=False) 
         os.remove(part_file)
     
@@ -60,6 +62,9 @@ def main():
     msg_info = ondisk_index.main(index_args)
     if not msg_info['state']:
         print(msg_info['msg'])
+    for out_emd_file in out_emd_file_lst:
+        cmd = 'rm %s_*' % out_emd_file
+        os.system(cmd)
                
 def split_graphs(graph_file, batch_size):
     out_file_prefix = graph_file + '_part_'
