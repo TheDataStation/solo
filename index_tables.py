@@ -129,7 +129,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--work_dir', type=str, required=True)
     parser.add_argument('--dataset', type=str, required=True)
-    parser.add_argument('--batch_size', type=int, default=10000)
+    parser.add_argument('--batch_size', type=int, default=5000000)
     args = parser.parse_args()
     return args
 
