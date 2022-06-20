@@ -25,14 +25,14 @@ def process_table(table):
 def main(args):
     table2txt_dir = os.path.join(args.work_dir, 'open_table_discovery/table2txt')
     out_dir = os.path.join(table2txt_dir, 'dataset', args.dataset, args.experiment)
-    if os.path.isdir(out_dir):
-        err_msg = ('(%s) already exists, please use a different value for [--out_dir].\n'
-              % (out_dir))
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+
+    out_passage_file = os.path.join(out_dir, 'passages.jsonl')
+    if os.path.exists(out_passage_file):
+        err_msg = ('(%s) already exists.\n' % out_passage_file)
         print(err_msg)
         return {'state':False}
-    os.makedirs(out_dir)
-    
-    out_passage_file = os.path.join(out_dir, 'passages.jsonl')
     f_o = open(out_passage_file, 'w')
 
     table_file_name = args.table_file

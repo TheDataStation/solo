@@ -43,9 +43,36 @@ def get_index_args(work_dir, dataset, emb_file):
                                     )
     return index_args 
 
+def confirm(args):
+    dataset_dir = os.path.join(args.work_dir, 'data', args.dataset)
+    tables_file = os.path.join(dataset_dir, 'tables/tables.jsonl')
+    passage_file = os.path.join(args.work_dir, 'open_table_discovery/table2txt/dataset', 
+                                args.dataset, 'rel_graph/passages.jsonl') 
+    index_dir = os.path.join(dataset_dir, 'index/on_disk_index_%s_rel_graph' % args.dataset)     
+    
+    table_exists = os.path.exists(tables_file)
+    passage_exists = os.path.exists(passage_file)
+    index_exists = os.path.exists(index_dir)
+    if table_exists or index_exists: 
+        confirmed = input('Tables or Index already exists, do you want to continue(y/n)? ')
+        if confirmed.lower().strip() == 'y':
+            if table_exists:
+                os.remove(tables_file)
+            if passage_exists:
+                os.remove(passage_file)
+            if index_exists:
+                shutil.rmtree(index_dir)
+            return True
+        else:
+            return False
+    else:
+        return True
+
 def main():
     args = get_args()
-    
+    if not confirm(args):
+        return
+     
     print('Importing tables')
     csv_args = get_csv_args(args.work_dir, args.dataset)
     msg_info = table_from_csv.main(csv_args)
@@ -87,6 +114,10 @@ def main():
                
 def split_graphs(graph_file, batch_size):
     out_file_prefix = graph_file + '_part_'
+    part_file_lst = glob.glob(out_file_prefix + '*')
+    if len(part_file_lst) > 0:
+        cmd = 'rm ' + out_file_prefix + '*'
+        os.system(cmd)
     cmd = 'split -l %d %s %s' % (batch_size, graph_file, out_file_prefix)
     os.system(cmd)
     part_file_lst = glob.glob(out_file_prefix + '*')
