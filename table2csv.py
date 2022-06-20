@@ -29,7 +29,18 @@ def main():
     table_id_dict = {}
     table_seq_no = 0
     for table in tqdm(read_table(args)):
-        out_file = os.path.join(args.output_dir, '%s.csv' % table_seq_no)
+        table_dir = os.path.join(args.output_dir, 'table_%d' % table_seq_no)
+        os.mkdir(table_dir)
+
+        table_title = table['documentTitle']
+        table_id = table['tableId']
+
+        out_file = os.path.join(table_dir, '%d.csv' % table_seq_no)
+        meta_file = os.path.join(table_dir, '%d.meta' % table_seq_no)
+        with open(meta_file, 'w') as f_m:
+            f_m.write("title=%s\n" % table_title)
+            f_m.write("id=%s\n" % table_id)
+
         table_seq_no += 1
         with open(out_file, 'w') as f_o:
             columns = table['columns']
