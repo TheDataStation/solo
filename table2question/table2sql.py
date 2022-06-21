@@ -140,7 +140,7 @@ def get_query_table(table_id, col_ent_data):
     }
     return query_table
 
-def generate_queries(mode, table_lst, num_queries, stat_info, sql_dict):
+def generate_queries(sql_dir, mode, table_lst, num_queries, stat_info, sql_dict):
     query_lst = []
     max_try_count = int(1E9)
     if num_queries > max_try_count:
@@ -171,8 +171,9 @@ def generate_queries(mode, table_lst, num_queries, stat_info, sql_dict):
                 if progress_step > 0: 
                     pbar.update(progress_step)
                     progress = len(query_lst)
-    
-    return query_lst
+   
+    f_o_src, f_o_tar, f_o_meta = create_sql_file(sql_dir)
+    write_query(mode, query_lst, f_o_src, f_o_tar, f_o_meta)
 
 def sample_query(table, col_ent_data, col_lst, stat_info):
     table_id = table['tableId']
@@ -276,7 +277,7 @@ def is_row_data_missing(row, col_ent_data, col_lst):
     return False
 
 def get_train_dev_tables(args):
-    input_table_file = os.path.join('/home/cc/data', args.dataset, 'tables', args.table_file)
+    input_table_file = os.path.join(args.work_dir, 'data', args.dataset, 'tables', args.table_file)
     table_lst = read_tables(input_table_file, None)
     num_tables = len(table_lst)
     num_dev = int(num_tables * args.dev_table_pct)
@@ -285,18 +286,32 @@ def get_train_dev_tables(args):
     train_tables = [a for a in table_lst if a['tableId'] not in dev_table_id_set] 
     return (table_lst, train_tables, dev_tables)
 
-def write_dev_tables(out_dir, dev_tables):
-    file_name = 'dev_tables.jsonl' 
-    dev_table_file = os.path.join(out_dir, file_name)
-    with open(dev_table_file, 'w') as f_o:
-        for table in dev_tables:
+def write_table_split(table_lst, out_dir, file_name):
+    out_file = os.path.join(out_dir, file_name)
+    with open(out_file, 'w') as f_o:
+        for table in table_lst:
             table_id = table['tableId']
             item = {'table_id':table_id}
             f_o.write(json.dumps(item) + '\n')
 
-def main():
-    args = get_args()
-    table2question_dir = '/home/cc/code/open_table_discovery/table2question'
+def write_stat_info(stat_info, out_dir, file_name):
+    out_file = os.path.join(out_dir, file_name)
+    with open(out_file, 'w') as f_o:
+        f_o.write(json.dumps(stat_info))
+
+def create_sql_file(sql_dir):
+    if not os.path.isdir(sql_dir):
+        os.mkdir(sql_dir)
+    out_file_src = os.path.join(sql_dir, 'test_unseen.source')
+    out_file_tar = os.path.join(sql_dir, 'test_unseen.target')
+    f_o_src = open(out_file_src, 'w')
+    f_o_tar = open(out_file_tar, 'w')
+    out_meta_file = os.path.join(sql_dir, 'meta.txt')
+    f_o_meta = open(out_meta_file, 'w')
+    return (f_o_src, f_o_tar, f_o_meta)
+
+def init_data(args):
+    table2question_dir = os.path.join(args.work_dir, 'open_table_discovery/table2question')
     dataset_dir = os.path.join(table2question_dir, 'dataset', args.dataset)
     if not os.path.exists(dataset_dir):
         os.makedirs(dataset_dir)
@@ -304,50 +319,33 @@ def main():
     if os.path.isdir(out_dir):
         err_msg = ('[%s] already exists, please use a different value for [--out_dir].\n'
               % (out_dir))
-        print(err_msg)
-        return
+        
+        msg_info = {
+            'state':False,
+            'msg':err_msg
+        }
+        return msg_info
     os.makedirs(out_dir)
-    out_file_src = os.path.join(out_dir, 'test_unseen.source')
-    out_file_tar = os.path.join(out_dir, 'test_unseen.target')
-    f_o_src = open(out_file_src, 'w')
-    f_o_tar = open(out_file_tar, 'w')
-    out_meta_file = os.path.join(out_dir, 'meta.txt')
-    f_o_meta = open(out_meta_file, 'w')
     
     all_tables, train_tables, dev_tables = get_train_dev_tables(args)
-    write_dev_tables(out_dir, dev_tables)
+    write_table_split(train_tables, out_dir, 'train_tables.jsonl')
+    write_table_split(dev_tables, out_dir, 'dev_tables.jsonl')
 
     init_worker()
-    
     stat_info = stat_tables(all_tables)
-   
-    sql_dict = {} 
-    train_query_lst = generate_queries('train', train_tables, args.num_train_queries, stat_info, sql_dict) 
-    dev_query_lst = generate_queries('dev', dev_tables, args.num_dev_queries, stat_info, sql_dict)
-        
-    write_query('train', train_query_lst, f_o_src, f_o_tar, f_o_meta)
-    write_query('dev', dev_query_lst, f_o_src, f_o_tar, f_o_meta)
-
+    write_stat_info(stat_info, out_dir, 'stat_info.json') 
     
-    '''
-    DEBUG = True
-    all_query_lst = []
-    if not DEBUG:
-        work_pool = ProcessPool(initializer=init_worker)
-        for query_lst in tqdm(work_pool.imap_unordered(process_table, table_lst), total=len(table_lst)):
-            all_query_lst.extend(query_lst)
-    else:
-        init_worker()
-        for table in tqdm(table_lst):
-            query_lst = process_table(table)
-            all_query_lst.extend(query_lst)
-    '''
-
-     
-    f_o_src.close()
-    f_o_tar.close()
-    f_o_meta.close()  
-
+    dev_sql_dir = os.path.join(out_dir, 'dev')
+    sql_dict = {}
+    generate_queries(dev_sql_dir, 'dev', dev_tables, args.num_dev_queries, stat_info, sql_dict)
+    msg_info = {
+        'state':True,
+        'sql_data_dir':out_dir,
+        'sql_dict':sql_dict,
+        'train_tables':train_tables,
+        'stat_info':stat_info
+    }
+    return msg_info
 
 def write_query(mode, query_lst, f_o_src, f_o_tar, f_o_meta):
     for idx, query in tqdm(enumerate(query_lst), total=len(query_lst)):
@@ -357,24 +355,5 @@ def write_query(mode, query_lst, f_o_src, f_o_tar, f_o_meta):
         f_o_src.write(query['sql_text'] + '\n')
         f_o_tar.write('a\n')
         f_o_meta.write(json.dumps(query) + '\n')
-
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, required=True)
-    parser.add_argument('--table_file', type=str, required=True)
-    parser.add_argument('--experiment', type=str, required=True)
-    parser.add_argument('--dev_table_pct', type=float, default=0.2)
-    parser.add_argument('--num_dev_queries', type=int, default=2000)
-    parser.add_argument('--num_train_queries', type=int, default=10000)
-
-    args = parser.parse_args()
-    return args
-
-if __name__ == '__main__':
-    t1 = time.time()
-    main()
-    t2 = time.time()
-    print('%d seconds' % (t2 - t1))
 
 
