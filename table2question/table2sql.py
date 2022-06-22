@@ -146,7 +146,7 @@ def generate_queries(sql_dir, mode, table_lst, num_queries, stat_info, sql_dict)
     if num_queries > max_try_count:
         raise ValueError('The %s query size %d must be less than %d ' % (mode, num_queries, max_try_count))
     try_count = 0
-    task_desc = '%s queries' % mode
+    task_desc = '%s sqls' % mode
     pbar = tqdm(desc=task_desc, total=100)
     progress = 0
     while (len(query_lst) < num_queries) and (try_count < max_try_count):

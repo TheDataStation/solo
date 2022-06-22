@@ -5,8 +5,9 @@ from tqdm import tqdm
 
 def get_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--work_dir', type=str)
     parser.add_argument('--dataset', type=str)
-    parser.add_argument('--expr', type=str)
+    parser.add_argument('--question_dir', type=str)
     args = parser.parse_args()
     return args
 
@@ -25,10 +26,10 @@ def read_questions(q_file):
             questions.append(line.strip())
     return questions
 
-def read_tables(dataset):
+def read_tables(work_dir, dataset):
     table_dict = {}
     table_title_dict = {} 
-    table_file = '/home/cc/data/%s/tables/tables.jsonl' % dataset
+    table_file = os.path.join(work_dir, 'data/%s/tables/tables.jsonl' % dataset)
     with open(table_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
@@ -111,21 +112,21 @@ def same_row_data(other_table, other_col_names, other_row_info,
 
     return True
 
-def main():
-    args = get_args()
-    data_dir = os.path.join('dataset', args.dataset, args.expr) 
+def main(args):
+    data_dir = args.question_dir 
     meta_file = os.path.join(data_dir, 'meta.txt')
     q_file = os.path.join(data_dir, 'questions.txt')
     out_query_file = os.path.join(data_dir, 'fusion_query.jsonl')
     if os.path.exists(out_query_file):
-        print('[%s] already exists' % out_query_file)
+        err_msg = '(%s) already exists' % out_query_file
+        print(err_msg)
         return 
      
     f_o_query = open(out_query_file, 'w') 
     meta_data = read_meta(meta_file)
     q_data = read_questions(q_file)
    
-    table_dict, table_title_dict = read_tables(args.dataset) 
+    table_dict, table_title_dict = read_tables(args.work_dir, args.dataset) 
     for idx, question in tqdm(enumerate(q_data)):
         meta_item = meta_data[idx]
         qid = meta_item['qid']
@@ -148,10 +149,7 @@ def main():
     f_o_query.close()
 
 if __name__ == '__main__':
-    import time
-    t1 = time.time()
-    main()
-    t2 = time.time()
-    print('%d seconds' % (t2 - t1))
+    args = get_args()
+    main(args)
 
 
