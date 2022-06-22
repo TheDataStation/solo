@@ -14,13 +14,13 @@ def read_config():
        config = json.load(f)
     return config
 
-def get_sql_args(work_dir, dataset):
+def get_sql_args(work_dir, dataset, config):
     sql_args = argparse.Namespace(work_dir=work_dir,
                                   dataset=dataset,
                                   table_file='tables.jsonl',
                                   experiment='sql_data',
-                                  dev_table_pct=0.2,
-                                  num_dev_queries=200
+                                  dev_table_pct=float(config['dev_table_pct']),
+                                  num_dev_queries=int(config['dev_n'])
                                  )
     return sql_args 
 
@@ -32,17 +32,17 @@ def get_fusion_query_args(work_dir, dataset, question_dir):
     return query_args
 
 
-def get_retr_args(work_dir, dataset, question_dir):
+def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
     model_path = os.path.join(work_dir, 'models/tqa_retriever')
     index_dir = os.path.join(work_dir, 'data', dataset, 'index/on_disk_index_%s_rel_graph' % dataset) 
     index_file = os.path.join(index_dir, 'populated.index')
     passage_file = os.path.join(index_dir, 'passages.jsonl')
     query_file = os.path.join(question_dir, 'fusion_query.jsonl')
-    output_path = os.path.join(question_dir, 'fusion_retrieved.jsonl')
-    top_n = 100
-    min_tables = 5
-    max_retr = 1000
-    question_maxlength=50
+    output_path = os.path.join(out_retr_dir, 'fusion_retrieved.jsonl')
+    top_n = int(config['retr_top_n'])
+    min_tables = int(config['min_tables'])
+    max_retr = int(config['max_retr'])
+    question_maxlength = int(config['question_maxlength'])
     retr_args = argparse.Namespace(model_path=model_path,
                                     index_dir=index_dir,
                                     index_file=index_file,
@@ -121,9 +121,11 @@ def sql2question(mode, sql_dir, work_dir, dataset):
     #result = subprocess.check_output(cmd, shell=True, text=True)
     #print(result)  
 
-def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, top_n, min_tables):
+def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, config):
     print('retrieving %s table triples' % mode)
-    retr_args = get_retr_args(work_dir, dataset, question_dir) 
+    out_retr_dir = os.path.join(question_dir, 'rel_graph')
+    os.mkdir(out_retr_dir)
+    retr_args = get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config) 
     passage_ondisk_retrieval.main(retr_args)
     
     process_func = None
@@ -133,15 +135,17 @@ def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, to
         process_func = process_dev
    
     retr_data = [] 
-    data_file = os.path.join(question_dir, 'fusion_retrieved.jsonl') 
+    data_file = os.path.join(out_retr_dir, 'fusion_retrieved.jsonl') 
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
             retr_data.append(item)
 
     strategy = 'rel_graph'
+    top_n = int(config['retr_top_n'])
+    min_tables = int(config['min_tables'])
     updated_retr_data = process_func(retr_data, top_n, table_dict, strategy, min_tables)
-    out_file = os.path.join(question_dir, 'fusion_retrieved_tagged.jsonl') 
+    out_file = os.path.join(out_retr_dir, 'fusion_retrieved_tagged.jsonl') 
     with open(out_file, 'w') as f:
         for item in tqdm(updated_retr_data):
             f.write(json.dumps(item) + '\n')
@@ -160,7 +164,8 @@ def read_tables(work_dir, dataset):
 
 def main():
     args = get_args()
-    sql_args = get_sql_args(args.work_dir, args.dataset)
+    config = read_config()
+    sql_args = get_sql_args(args.work_dir, args.dataset, config)
     msg_info = table2sql.init_data(sql_args)
     if not msg_info['state']:
         print(msg_info['msg'])
@@ -175,18 +180,22 @@ def main():
      
     dev_sql_dir = os.path.join(sql_data_dir, 'dev')
     sql2question('dev', dev_sql_dir, args.work_dir, args.dataset)
-    retr_triples('dev', args.work_dir, args.dataset, dev_sql_dir, table_dict, False, 100, 5)
+
+    top_n = int(config['retr_top_n'])
+    min_tables = int(config['min_tables'])
+    max_retr = int(config['max_retr'])
+    retr_triples('dev', args.work_dir, args.dataset, dev_sql_dir, table_dict, False, config)
     
     train_itr = 0
    
     while True:
         train_itr += 1
-        config = read_config()
+        train_config = read_config()
         num_train_queries = 0
         if train_itr <= 1:
-            num_train_queries = config['start_n']
+            num_train_queries = int(train_config['train_start_n'])
         else:
-            num_train_queries = config['step_n']
+            num_train_queries = int(train_config['train_step_n'])
         if num_train_queries <= 0:
             break
 
@@ -195,7 +204,7 @@ def main():
         table2sql.generate_queries(train_sql_dir, mode, train_tables, num_train_queries, stat_info, sql_dict) 
         
         sql2question(mode, train_sql_dir, args.work_dir, args.dataset) 
-        retr_triples(mode, args.work_dir, args.dataset, dev_sql_dir, table_dict, True, 100, 5)
+        retr_triples(mode, args.work_dir, args.dataset, train_sql_dir, table_dict, True, config)
          
         break
 
