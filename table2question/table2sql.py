@@ -147,7 +147,7 @@ def generate_queries(sql_dir, mode, table_lst, num_queries, stat_info, sql_dict)
         raise ValueError('The %s query size %d must be less than %d ' % (mode, num_queries, max_try_count))
     try_count = 0
     task_desc = '%s sqls' % mode
-    pbar = tqdm(desc=task_desc, total=100)
+    pbar = tqdm(desc=task_desc, total=num_queries)
     progress = 0
     while (len(query_lst) < num_queries) and (try_count < max_try_count):
         try_count += 1
@@ -167,7 +167,7 @@ def generate_queries(sql_dir, mode, table_lst, num_queries, stat_info, sql_dict)
                 query['sql_text'] = sql_text
                 query_lst.append(query)
                 
-                progress_step = int((len(query_lst) - progress) * 100 / num_queries)
+                progress_step = (len(query_lst) - progress)
                 if progress_step > 0: 
                     pbar.update(progress_step)
                     progress = len(query_lst)

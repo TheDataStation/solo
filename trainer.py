@@ -3,9 +3,11 @@ import json
 import os
 import shutil
 import subprocess
+from tqdm import tqdm
 import uuid
 from table2question import table2sql, gen_fusion_query
 import passage_ondisk_retrieval
+from table2txt.retr_utils import process_train, process_dev
 
 def read_config():
     with open('./trainer.config') as f:
@@ -119,10 +121,42 @@ def sql2question(mode, sql_dir, work_dir, dataset):
     #result = subprocess.check_output(cmd, shell=True, text=True)
     #print(result)  
 
-def retr_triples(mode, work_dir, dataset, question_dir, is_train):
+def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, top_n, min_tables):
     print('retrieving %s table triples' % mode)
     retr_args = get_retr_args(work_dir, dataset, question_dir) 
-    passage_ondisk_retrieval.main(retr_args) 
+    passage_ondisk_retrieval.main(retr_args)
+    
+    process_func = None
+    if is_train:
+        process_func = process_train
+    else:
+        process_func = process_dev
+   
+    retr_data = [] 
+    data_file = os.path.join(question_dir, 'fusion_retrieved.jsonl') 
+    with open(data_file) as f:
+        for line in tqdm(f):
+            item = json.loads(line)
+            retr_data.append(item)
+
+    strategy = 'rel_graph'
+    updated_retr_data = process_func(retr_data, top_n, table_dict, strategy, min_tables)
+    out_file = os.path.join(question_dir, 'fusion_retrieved_tagged.jsonl') 
+    with open(out_file, 'w') as f:
+        for item in tqdm(updated_retr_data):
+            f.write(json.dumps(item) + '\n')
+
+    os.remove(data_file) 
+
+def read_tables(work_dir, dataset):
+    table_file = os.path.join(work_dir, 'data', '%s/tables/tables.jsonl' % dataset)
+    table_dict = {}
+    with open(table_file) as f:
+        for line in tqdm(f):
+            item = json.loads(line)
+            table_id = item['tableId']
+            table_dict[table_id] = item
+    return table_dict
 
 def main():
     args = get_args()
@@ -136,10 +170,12 @@ def main():
     sql_dict = msg_info['sql_dict']
     train_tables = msg_info['train_tables']
     stat_info = msg_info['stat_info']
-    
+   
+    table_dict = read_tables(args.work_dir, args.dataset)
+     
     dev_sql_dir = os.path.join(sql_data_dir, 'dev')
     sql2question('dev', dev_sql_dir, args.work_dir, args.dataset)
-    retr_triples('dev', args.work_dir, args.dataset, dev_sql_dir, False)
+    retr_triples('dev', args.work_dir, args.dataset, dev_sql_dir, table_dict, False, 100, 5)
     
     train_itr = 0
    
@@ -159,7 +195,7 @@ def main():
         table2sql.generate_queries(train_sql_dir, mode, train_tables, num_train_queries, stat_info, sql_dict) 
         
         sql2question(mode, train_sql_dir, args.work_dir, args.dataset) 
-        retr_triples(mode, args.work_dir, args.dataset, dev_sql_dir, True)
+        retr_triples(mode, args.work_dir, args.dataset, dev_sql_dir, table_dict, True, 100, 5)
          
         break
 
