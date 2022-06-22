@@ -63,7 +63,7 @@ def group_passages(passage_lst):
 
 
 def update_min_tables(item, top_n, min_tables):
-    assert(top_n >= 100)
+    assert(top_n >= 25)
     passage_lst = item['ctxs']
     top_passage_lst = passage_lst[:top_n]
     table_lst = [a['tag']['table_id'] for a in top_passage_lst]
