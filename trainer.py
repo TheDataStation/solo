@@ -8,6 +8,7 @@ import uuid
 from table2question import table2sql, gen_fusion_query
 import passage_ondisk_retrieval
 from table2txt.retr_utils import process_train, process_dev
+import finetune_table_retr as model_trainer
 
 def read_config():
     with open('./trainer.config') as f:
@@ -56,6 +57,31 @@ def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
                                     no_fp16=False
                                    )
     return retr_args
+
+def get_train_args(train_itr, work_dir, dataset, retr_train_dir, retr_eval_dir, config):
+    file_name = 'fusion_retrieved_tagged.jsonl'
+    train_file = os.path.join(retr_train_dir, file_name)
+    eval_file = os.path.join(retr_eval_dir, file_name)
+    
+    checkpoint_dir = os.path.join(work_dir, 'fusion_in_decoder/output')
+    checkpoint_name = '%s_rel_graph_sql_data_train_%d' % (dataset, train_itr)
+     
+    train_args = argparse.Namespace(sql_batch_no=train_itr,
+                                    do_train=True,
+                                    model_path=os.path.join(work_dir, 'models/tqa_reader_base'),
+                                    train_data=train_file,
+                                    eval_data=eval_file,
+                                    n_context=int(config['retr_top_n']),
+                                    per_gpu_batch_size=int(config['train_batch_size']),
+                                    cuda=0,
+                                    name=checkpoint_name,
+                                    checkpoint_dir=checkpoint_dir,
+                                    max_epoch=int(config['max_epoch']),
+                                    patience_steps=int(config['patience_steps']),
+                                    text_maxlength=int(config['text_maxlength']),
+                                    fusion_retr_model=None
+                                    ) 
+    return train_args
 
 def count_lines(data_file):
     count = 0
@@ -186,8 +212,7 @@ def main():
     max_retr = int(config['max_retr'])
     retr_triples('dev', args.work_dir, args.dataset, dev_sql_dir, table_dict, False, config)
     
-    train_itr = 0
-   
+    train_itr = -1
     while True:
         train_itr += 1
         train_config = read_config()
@@ -205,8 +230,31 @@ def main():
         
         sql2question(mode, train_sql_dir, args.work_dir, args.dataset) 
         retr_triples(mode, args.work_dir, args.dataset, train_sql_dir, table_dict, True, config)
-         
+        
+        train_args = get_train_args(train_itr, args.work_dir, args.dataset, 
+                                    os.path.join(train_sql_dir, 'rel_graph'), 
+                                    os.path.join(dev_sql_dir, 'rel_graph'), 
+                                    config)
+        
+        model_trainer.main(train_args)
+        
         break
+
+def train():
+    args = get_args()
+    config = read_config()
+    train_itr = 0
+    train_sql_dir = '/home/cc/code/open_table_discovery/table2question/dataset/nq_tables_example/sql_data/train_0'
+    dev_sql_dir = '/home/cc/code/open_table_discovery/table2question/dataset/nq_tables_example/sql_data/dev'
+
+    train_args = get_train_args(train_itr, args.work_dir, args.dataset, 
+                                os.path.join(train_sql_dir, 'rel_graph'), 
+                                os.path.join(dev_sql_dir, 'rel_graph'), 
+                                config)
+    
+    msg_info = model_trainer.main(train_args)
+    if not msg_info['state']:
+        print(msg_info['msg'])
 
 def get_args():
     parser = argparse.ArgumentParser()
@@ -217,4 +265,5 @@ def get_args():
 
 if __name__ == '__main__':
     main()
+    #train()
 
