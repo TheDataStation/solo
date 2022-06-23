@@ -58,9 +58,10 @@ def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
                                    )
     return retr_args
 
-def get_train_args(train_itr, work_dir, dataset, retr_train_dir, retr_eval_dir, config):
+def get_train_args(train_itr, work_dir, dataset, retr_train_dir, retr_eval_dir, config, train_file_lst):
     file_name = 'fusion_retrieved_tagged.jsonl'
     train_file = os.path.join(retr_train_dir, file_name)
+    train_file_lst.append(train_file)
     eval_file = os.path.join(retr_eval_dir, file_name)
     
     checkpoint_dir = os.path.join(work_dir, 'fusion_in_decoder/output')
@@ -119,7 +120,7 @@ def sql2question(mode, sql_dir, work_dir, dataset):
     shutil.copy(sql_tar_file, part_dir)
          
     cmd = 'cd %s/plms_graph2text ;' % work_dir + \
-          ' . ~/pyenv/plms_graph2text/bin/activate ;' + \
+          ' . %s/pyenv/plms_graph2text/bin/activate ;' % work_dir + \
           ' ./decode_sql2nlg.sh t5-base %s/models/sql2nlg-t5-base_2022_01_21.ckpt' % work_dir + \
           ' 0 ' + dataset + ' sql_data ' + part_name
     os.system(cmd) 
@@ -188,6 +189,21 @@ def read_tables(work_dir, dataset):
             table_dict[table_id] = item
     return table_dict
 
+def merge_train_file(train_file_lst):
+    if len(train_file_lst) == 1:
+        return
+    cur_file = train_file_lst[-1]
+    
+    data = []
+    for data_file in train_file_lst:
+        with open(data_file) as f:
+            for line in f:
+                data.append(line)
+
+    with open(cur_file, 'w') as f_o: 
+        for item in data:
+            f_o.write(item)
+
 def main():
     args = get_args()
     config = read_config()
@@ -211,7 +227,9 @@ def main():
     min_tables = int(config['min_tables'])
     max_retr = int(config['max_retr'])
     retr_triples('dev', args.work_dir, args.dataset, dev_sql_dir, table_dict, False, config)
-    
+  
+    train_file_lst = [] 
+    best_metric = None 
     train_itr = -1
     while True:
         train_itr += 1
@@ -230,15 +248,43 @@ def main():
         
         sql2question(mode, train_sql_dir, args.work_dir, args.dataset) 
         retr_triples(mode, args.work_dir, args.dataset, train_sql_dir, table_dict, True, config)
-        
+       
         train_args = get_train_args(train_itr, args.work_dir, args.dataset, 
                                     os.path.join(train_sql_dir, 'rel_graph'), 
                                     os.path.join(dev_sql_dir, 'rel_graph'), 
-                                    config)
-        
-        model_trainer.main(train_args)
-        
-        break
+                                    config, train_file_lst)
+        merge_train_file(train_file_lst)
+        msg_info = model_trainer.main(train_args)
+        if not msg_info['state']:
+            print(msg_info['msg'])
+            break 
+       
+        train_metric = msg_info['best_metric'] 
+        if best_metric is None:
+            best_metric = train_metric
+            best_metric['train_itr'] = train_itr
+            best_metric['patience_itr'] = 0
+        else:
+            update_best_metric(best_metric, train_metric, train_itr)
+
+        if best_metric['patience_itr'] >= 1:
+            break
+    
+    print(best_metric)
+             
+def update_best_metric(best_metric, train_metric, train_itr):
+    best_metric['patience_itr'] += 1 
+    if train_metric['p@1'] > best_metric['p@1']:
+        best_metric['p@1'] = train_metric['p@1']
+        best_metric['p@5'] = train_metric['p@5']
+        best_metric['train_itr'] = train_itr
+        best_metric['patience_itr'] = 0
+
+    elif train_metric['p@1'] == best_metric['p@1']:
+        if train_metric['p@5'] > best_metric['p@5']:
+            best_metric['p@5'] = train_metric['p@5']
+            best_metric['train_itr'] = train_itr     
+            best_metric['patience_itr'] = 0        
 
 def train():
     args = get_args()
