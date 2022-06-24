@@ -54,7 +54,8 @@ def confirm(args):
     passage_exists = os.path.exists(passage_file)
     index_exists = os.path.exists(index_dir)
     if table_exists or index_exists: 
-        confirmed = input('Tables or Index already exists, do you want to continue(y/n)? ')
+        confirmed = input('Tables are already imported or Index already exists. If continue, index will berebuilt ' +
+                          'Do you want to continue(y/n)? ')
         if confirmed.lower().strip() == 'y':
             if table_exists:
                 os.remove(tables_file)

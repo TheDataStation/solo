@@ -210,8 +210,25 @@ def merge_train_file(train_file_lst):
         for item in data:
             f_o.write(item)
 
+def confirm(args):
+    data_dir = os.path.join(args.work_dir, 'open_table_discovery/table2question/dataset', args.dataset, 'sql_data')
+    if os.path.isdir(data_dir):
+        str_msg = ('Training data (%s) already exists. If continue, all these data will be deleted.\n' % data_dir) + \
+                  'Do you want to continue (y/n)? '
+        option = input(str_msg)
+        if option == 'y':
+            shutil.rmtree(data_dir)
+            return True
+        else:
+            return False 
+    else:
+        return True
+
 def main():
     args = get_args()
+    if not confirm(args):
+        return
+
     config = read_config()
     sql_args = get_sql_args(args.work_dir, args.dataset, config)
     msg_info = table2sql.init_data(sql_args)
@@ -296,7 +313,7 @@ def show_best_metric(checkpoint_dir, best_metric):
     assert(not os.path.isfile(best_model_file)) 
     shutil.copy(best_metric['model_file'], best_model_file) 
     print('Evaluation P@1=%.2f P@5=%.2f' % (p_at_1, p_at_5))
-    print('Best model file, %s ' % best_model_file)
+    print('Best model %s ' % best_model_file)
 
 def update_best_metric(best_metric, train_metric, train_itr):
     best_metric['patience_itr'] += 1 
