@@ -64,8 +64,8 @@ def get_train_args(train_itr, work_dir, dataset, retr_train_dir, retr_eval_dir, 
     train_file_lst.append(train_file)
     eval_file = os.path.join(retr_eval_dir, file_name)
     
-    checkpoint_dir = os.path.join(work_dir, 'fusion_in_decoder/output')
-    checkpoint_name = '%s_rel_graph_sql_data_train_%d' % (dataset, train_itr)
+    checkpoint_dir = os.path.join(work_dir, 'open_table_discovery/output', dataset)
+    checkpoint_name = 'train_sql_%d' % (train_itr)
      
     train_args = argparse.Namespace(sql_batch_no=train_itr,
                                     do_train=True,
@@ -269,9 +269,26 @@ def main():
 
         if best_metric['patience_itr'] >= 1:
             break
+    show_best_metric(train_args.checkpoint_dir, best_metric)
+
+def show_best_metric(checkpoint_dir, best_metric):
+    p_at_1 = best_metric['p@1'] * 100 / best_metric['N']
+    p_at_5 = best_metric['p@5'] * 100 / best_metric['N']
+    model_file = best_metric['model_file']
+
+    best_model_dir = os.path.join(checkpoint_dir, 'best_model')
+    os.mkdir(best_model_dir)
+    metric_info = {'p@1':p_at_1, 'p@5':p_at_5}
+    metric_file = os.path.join(best_model_dir, 'metric.json')
+    with open(metric_file, 'w') as f_o:
+        f_o.write(json.dumps(metric_info))
     
-    print(best_metric)
-             
+    best_model_file = os.path.join(best_model_dir, os.path.basename(best_metric['model_file']))
+    assert(not os.path.isfile(best_model_file)) 
+    shutil.copy(best_metric['model_file'], best_model_file) 
+    print('Evaluation P@1=%.2f P@5=%.2f' % (p_at_1, p_at_5))
+    print('Best model file, %s ' % best_model_file)
+
 def update_best_metric(best_metric, train_metric, train_itr):
     best_metric['patience_itr'] += 1 
     if train_metric['p@1'] > best_metric['p@1']:
@@ -285,22 +302,6 @@ def update_best_metric(best_metric, train_metric, train_itr):
             best_metric['p@5'] = train_metric['p@5']
             best_metric['train_itr'] = train_itr     
             best_metric['patience_itr'] = 0        
-
-def train():
-    args = get_args()
-    config = read_config()
-    train_itr = 0
-    train_sql_dir = '/home/cc/code/open_table_discovery/table2question/dataset/nq_tables_example/sql_data/train_0'
-    dev_sql_dir = '/home/cc/code/open_table_discovery/table2question/dataset/nq_tables_example/sql_data/dev'
-
-    train_args = get_train_args(train_itr, args.work_dir, args.dataset, 
-                                os.path.join(train_sql_dir, 'rel_graph'), 
-                                os.path.join(dev_sql_dir, 'rel_graph'), 
-                                config)
-    
-    msg_info = model_trainer.main(train_args)
-    if not msg_info['state']:
-        print(msg_info['msg'])
 
 def get_args():
     parser = argparse.ArgumentParser()
