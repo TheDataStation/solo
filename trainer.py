@@ -9,6 +9,7 @@ from table2question import table2sql, gen_fusion_query
 import passage_ondisk_retrieval
 from table2txt.retr_utils import process_train, process_dev
 import finetune_table_retr as model_trainer
+import datetime
 
 def read_config():
     with open('./trainer.config') as f:
@@ -58,13 +59,18 @@ def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
                                    )
     return retr_args
 
-def get_train_args(train_itr, work_dir, dataset, retr_train_dir, retr_eval_dir, config, train_file_lst):
+def get_train_date_dir():
+    a = datetime.datetime.now()
+    train_dir = '%d_%d_%d_%d_%d_%d_%d' % (a.year, a.month, a.day, a.hour, a.minute, a.second, a.microsecond) 
+    return train_dir
+
+def get_train_args(train_itr, work_dir, dataset, checkpoint_dir, 
+                   retr_train_dir, retr_eval_dir, config, train_file_lst):
     file_name = 'fusion_retrieved_tagged.jsonl'
     train_file = os.path.join(retr_train_dir, file_name)
     train_file_lst.append(train_file)
     eval_file = os.path.join(retr_eval_dir, file_name)
     
-    checkpoint_dir = os.path.join(work_dir, 'open_table_discovery/output', dataset)
     checkpoint_name = 'train_sql_%d' % (train_itr)
      
     train_args = argparse.Namespace(sql_batch_no=train_itr,
@@ -227,7 +233,10 @@ def main():
     min_tables = int(config['min_tables'])
     max_retr = int(config['max_retr'])
     retr_triples('dev', args.work_dir, args.dataset, dev_sql_dir, table_dict, False, config)
-  
+
+    checkpoint_dir = os.path.join(args.work_dir, 'open_table_discovery/output', args.dataset, get_train_date_dir())
+    assert(not os.path.isdir(checkpoint_dir))
+      
     train_file_lst = [] 
     best_metric = None 
     train_itr = -1
@@ -249,7 +258,7 @@ def main():
         sql2question(mode, train_sql_dir, args.work_dir, args.dataset) 
         retr_triples(mode, args.work_dir, args.dataset, train_sql_dir, table_dict, True, config)
        
-        train_args = get_train_args(train_itr, args.work_dir, args.dataset, 
+        train_args = get_train_args(train_itr, args.work_dir, args.dataset, checkpoint_dir, 
                                     os.path.join(train_sql_dir, 'rel_graph'), 
                                     os.path.join(dev_sql_dir, 'rel_graph'), 
                                     config, train_file_lst)
