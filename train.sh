@@ -1,10 +1,10 @@
 if [ "$#" -ne 1 ]; then
-  echo "Usage: ./index.sh <dataset>"
-  exit
+    echo "Usage: ./train.sh <dataset>"
+    exit
 fi
 work_dir="$(dirname "$PWD")"
 dataset=$1
 source ../pyenv/fusion_decoder/bin/activate
-python index_tables.py \
+python trainer.py \
 --work_dir ${work_dir} \
---dataset ${dataset} \
+--datset ${dataset} \
