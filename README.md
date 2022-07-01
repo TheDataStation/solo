@@ -4,7 +4,7 @@ S2LD is a self-supervised data discovery system that finds tables among a large 
 1. offline, where tables in csv formats are converted to vectors and then indexed.  
 2. online, where a user asks a question and it will return top 5 tables that most likely answers the question.
 
-Part of the code is changed from https://github.com/facebookresearch/FiD.git (OpenQA) and https://github.com/UKPLab/plms-graph2text.git (SQl2Question), big thanks to them.
+We use (changed) code from https://github.com/facebookresearch/FiD.git (OpenQA) and https://github.com/UKPLab/plms-graph2text.git (SQl2Question), big thanks to them.
 
 To try our system, follow the steps in Setup
 
