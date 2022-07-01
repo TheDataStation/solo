@@ -1,4 +1,4 @@
-#S2LD, Data Discovery using Natural Language Questions via a Self-Supervised Approach
+# S2LD, Data Discovery using Natural Language Questions via a Self-Supervised Approach
 S2LD is a self-supervised data discovery system that finds tables among a large collection given natural language questions. It consists of two separated stages:
 
 1. offline, where tables in csv formats are converted to vectors and then indexed.  
