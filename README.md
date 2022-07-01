@@ -35,6 +35,7 @@ d) Download models
    ```
 
 e) Download data
+
    There are two datasets, "fetaqa" which is smaller and "nq_tables" which is much larger. "fetaqa" is recommened to try.
      
    ```   bash
