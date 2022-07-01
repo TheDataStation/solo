@@ -47,12 +47,12 @@ e) Download data
 ## 2. Train
     
    ```   bash
-   ./train.sh fetqa
+   ./train.sh fetaqa
    ```
     
 ## 3. Test
    ```   bash
-   ./test.sh fetqa
+   ./test.sh fetaqa
    ```
     
 
