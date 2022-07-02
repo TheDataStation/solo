@@ -4,7 +4,7 @@ The system consists of two separated stages:
 
 1. Offline stage 
 
-   First, Tables in csv formats are converted to vectors and indexed. Second, during training, SQLs are automatically sampled from the table collection and translated to questions. Then traning questions and tables are collected to train the system.     
+   First, Tables in csv formats are converted to vectors and indexed. Second, during training, SQLs are automatically sampled from the table collection and translated to questions. Then traning questions and tables are automatically collected to train the system.     
 
 2. Online stage
 
