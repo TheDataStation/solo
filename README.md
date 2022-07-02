@@ -2,11 +2,11 @@
 S2LD is a self-supervised data discovery system that finds tables among a large collection given natural language questions. It automatically generates training dataset from the target table collection and then trains the relevance model.
 The system consists of two separated stages:
 
-. Offline stage 
+Offline stage 
 
    First, Tables in csv formats are converted to vectors and indexed. Second, during training, SQLs are automatically sampled from the table collection and translated to questions. Then traning questions and tables are automatically collected to train the system.     
 
-. Online stage
+Online stage
 
    A user asks a question and it will return top 5 tables that most likely answers the question.
 
