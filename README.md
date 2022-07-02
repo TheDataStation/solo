@@ -49,8 +49,7 @@ e) Download data
    ```   bash
    ./get_data.sh fetaqa
    ```
-    Each dataset correspondes to a directory "<work_dir>/data/<dataset>", 
-    where <dataset> is the placehold for dataset
+    Each dataset correspondes to a directory "<work_dir>/data/<dataset>". 
 
 ## 2. Indexing tables
    We provide indexed "fetaqa" and "nq_tables" by the "get_data.sh" script. 
