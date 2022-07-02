@@ -42,12 +42,11 @@ e) Download data
 
    There are two datasets, "fetaqa" which is smaller and "nq_tables" which is much larger. 
    "fetaqa" is recommended to try.
+   To download, run
    ```   bash
    ./get_data.sh fetaqa
    ```
-
-    Each dataset correspondes to a directory 
-    "<work_dir>/data/<dataset>", 
+    Each dataset correspondes to a directory "<work_dir>/data/<dataset>", 
     where <dataset> is the placehold for dataset
 
 ## 2. Indexing tables
