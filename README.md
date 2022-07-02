@@ -1,5 +1,6 @@
 # S2LD, Data Discovery using Natural Language Questions via a Self-Supervised Approach
-S2LD is a self-supervised data discovery system that finds tables among a large collection given natural language questions. It automatically generates training dataset from the target table collection and then trains a model. It consists of two separated stages:
+S2LD is a self-supervised data discovery system that finds tables among a large collection given natural language questions. It automatically generates training dataset from the target table collection and then trains the relevance model.
+The system consists of two separated stages:
 
 1. Offline stage 
 
@@ -66,7 +67,7 @@ e) Download data
    You can also reindex "fetaqa" and "nq_tables" by runing the script.
 
 ## 3. Train
-   The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by editing "train_batch_size" in file "trainer.config". Incremental training is disabled by default to reduce training cost. If you want to enable incremental training, update "train_step_n" to 5000 in "trainer.config". The default question size is 10000 by "train_start_n" in "trainer.config"
+   The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by editing "train_batch_size" in file "trainer.config". Incremental training is disabled by default to reduce training cost. If you want to enable incremental training, update step size "train_step_n" to 5000 in "trainer.config". The default start question size is 10000 by "train_start_n" in "trainer.config".
    To train the relevance model, run
    ```   bash
    ./train.sh <dataset>
