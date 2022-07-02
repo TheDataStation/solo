@@ -33,7 +33,7 @@ b) Create a new session using *tmux* or *screen*
    ```
    It takes time to run the following scripts, so it is better to create a session.
 
-c) Go to the "open_table_discovery" directory and run the folowing script in the new session.
+c) Go to the "open_table_discovery" directory and run the following script in the new session.
    ```   bash
    ./setup.sh
    ```
@@ -49,7 +49,7 @@ e) Download data
    ```   bash
    ./get_data.sh fetaqa
    ```
-    Each dataset correspondes to a directory "<work_dir>/data/<dataset>". 
+   Each dataset is corresponding to a directory "<work_dir>/data/<dataset>". 
 
 ## 2. Indexing tables
    We provide indexed "fetaqa" and "nq_tables" by the "get_data.sh" script. 
@@ -63,7 +63,7 @@ e) Download data
    ```   bash
    ./index.sh <dataset>
    ```
-   You can also reindex "fetaqa" and "nq_tables" by runing the script.
+   You can also reindex "fetaqa" and "nq_tables" by running the script.
 
 ## 3. Train
    The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by editing "train_batch_size" in file "trainer.config". Incremental training is disabled by default to reduce training cost. If you want to enable incremental training, update step size "train_step_n" to 5000 in "trainer.config". The default start question size is 10000 by "train_start_n" in "trainer.config". Feel free to try smaller "train_start_n" and "train_step_n" to reduce training time, e.g. update "train_start_n" to 2000 and "train_step_n" to 1000.
