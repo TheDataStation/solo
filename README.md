@@ -70,7 +70,7 @@ e) Download data
    
    Incremental training is disabled by default to reduce training cost.
    
-   If you want to enable incremental training, update step size "train_step_n" to 5000 in "trainer.config". The default start question size is 10000 by "train_start_n" in "trainer.config". Feel free to try other "train_start_n" and "train_step_n".
+   If you want to enable incremental training, update step size "train_step_n" to 5000 (0 if no incremental training) in "trainer.config". The default start question size is 10000 by "train_start_n" in "trainer.config". Feel free to try other "train_start_n" and "train_step_n".
     
    To train the relevance model, run
    ```   bash
