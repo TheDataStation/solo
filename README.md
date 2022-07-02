@@ -10,7 +10,7 @@ The system consists of two separated stages:
 
    A user asks a question and it will return top 5 tables that most likely answers the question.
 
-We use code (changed) from https://github.com/facebookresearch/FiD.git (OpenQA) and https://github.com/UKPLab/plms-graph2text.git (SQl2Question), big thanks to them.
+We use code (changed) from https://github.com/facebookresearch/FiD.git (OpenQA) and https://github.com/UKPLab/plms-graph2text.git (T5 finetuning), big thanks to them.
 
 To try our system, follow the following steps 
 
