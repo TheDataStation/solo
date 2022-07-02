@@ -55,9 +55,9 @@ e) Download data
    We provide indexed "fetaqa" and "nq_tables" by the "get_data.sh" script. 
    You can ignore this if you don't want to try indexing.
    To index a new dataset (table collection), create diretories 
-   "<work_dir>/data/<dataset>" and "<work_dir>/data/<dataset>/tables_csv". 
+   "<work_dir>/data/\<dataset\>" and "<work_dir>/data/\<dataset\>/tables_csv". 
    We expect each table is in csv format with the filename denoting the title (caption) 
-   and all csv files are in "<work_dir>/data/<dataset>/tables_csv" or 
+   and all csv files are in "<work_dir>/data/\<dataset\>/tables_csv" or 
    its offspring directories to allow same file names.
    Then run the script
    ```   bash
@@ -72,7 +72,7 @@ e) Download data
    ./train.sh <dataset>
    ```
    After training, The best model will be deployed automatically to 
-   "<work_dir>/models/<dataset>" 
+   "<work_dir>/models/\<dataset\>" 
 
 ## 4. Test
     This is used for "fetaqa" and "nq_tables"
@@ -80,8 +80,8 @@ e) Download data
    ./test.sh <dataset>
    ```
    We have pretrained models for "fetaqa" and "nq_tables" in 
-   "<work_dir>/models/\<dataset\>" with file name "<dataset>_relevance.pt". 
-   If you retrain "fetaqa" or "nq_tables", "<work_dir>/models/<dataset>" will have multiple models for each training. The script always loads the recent model (by create time), so if you want to use the pretrained models, mode the other mdoels in some other directory.
+   "<work_dir>/models/\<dataset\>" with file name "\<dataset\>_relevance.pt". 
+   If you retrain "fetaqa" or "nq_tables", "<work_dir>/models/\<dataset\>" will have multiple models for each training. The script always loads the recent model (by create time), so if you want to use the pretrained models, mode the other mdoels in some other directory.
     
 ## 5. Interactive demo 
     To be continued 
