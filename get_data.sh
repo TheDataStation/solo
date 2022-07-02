@@ -11,7 +11,7 @@ wget http://plover.cs.uchicago.edu/open_table_discovery/${dataset}.tar
 rm -rf ${dataset}
 tar -xf ${dataset}.tar
 rm ${dataset}.tar
-cd ${dataset}
+cd ${work_dir}
 mkdir -p index
 cd index
 index_dir=on_disk_index_${dataset}_rel_graph
