@@ -213,7 +213,7 @@ def merge_train_file(train_file_lst):
 def confirm(args):
     data_dir = os.path.join(args.work_dir, 'open_table_discovery/table2question/dataset', args.dataset, 'sql_data')
     if os.path.isdir(data_dir):
-        str_msg = ('Training data (%s) already exists. If continue, all these data will be deleted.\n' % data_dir) + \
+        str_msg = ('Training data (%s) already exists. If continue, all these auto-generated training data will be deleted.\n' % data_dir) + \
                   'Do you want to continue (y/n)? '
         option = input(str_msg)
         if option == 'y':
@@ -261,7 +261,7 @@ def main():
         train_itr += 1
         train_config = read_config()
         num_train_queries = 0
-        if train_itr <= 1:
+        if train_itr <= 0:
             num_train_queries = int(train_config['train_start_n'])
         else:
             num_train_queries = int(train_config['train_step_n'])
@@ -320,12 +320,12 @@ def show_best_metric(checkpoint_dir, best_metric, work_dir, dataset):
 
     deploy_file = os.path.join(deploy_dir, model_base_name)
     if os.path.isfile(deploy_file):
-        updated_model_base_name = '1_' + model_base_name
+        updated_model_base_name = ('%s_' % str(uuid.uuid4())) + model_base_name
         deploy_file = os.path.join(deploy_dir, updated_model_base_name)
     shutil.copy(best_metric['model_file'], deploy_file) 
     
     print('Evaluation P@1=%.2f P@5=%.2f' % (p_at_1, p_at_5))
-    print('Best model %s ' % best_model_file)
+    print('Best model %s ' % deploy_file)
 
 def update_best_metric(best_metric, train_metric, train_itr):
     best_metric['patience_itr'] += 1 
