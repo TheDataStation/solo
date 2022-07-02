@@ -15,9 +15,9 @@ Ubuntu 18.04(or above). GPU that supports CUDA 10.0 is needed.
 
 ### 1.2. Prepare enviroment
 
-a) Make sure the repository directory "open_table_discovery" in an empty parent directory
+a) Make sure the repository directory "open_table_discovery" in an empty work directory <work_dir>
  
-   A lot of data amd other code will be downloaded to the parent directory. If the parent directory has other subdirectories, there may be some collisions. After a new directory is created, move "open_table_discovery" to the new directory 
+   A lot of data and other code will be downloaded to <work_dir>. If <work_dir> has other child directories, there may be some collisions. After <work_dir> is created, move the "open_table_discovery" directory in <work_dir> 
    
 b) Create a new session using *tmux* or *screen*
    ```   bash
@@ -25,7 +25,7 @@ b) Create a new session using *tmux* or *screen*
    ```
    It takes time to run the following scripts, so it is better to create a session.
 
-c) Go to the "open_table_discovery" repository directory and run the folowing script in the new session.
+c) Go to the "open_table_discovery" directory and run the folowing script in the new session.
       
    ```   bash
    ./setup.sh
@@ -43,20 +43,40 @@ e) Download data
    ```   bash
    ./get_data.sh fetaqa
    ```
+
+    Each dataset correspondes to a directory "<work_dir>/data/<dataset>", where <dataset> is the placehold for dataset
+
 ## 2. Indexing tables
+    
     We provide indexed "fetaqa" and "nq_tables" by the "get_data.sh" script. You can ignore this if you don't want to try indexing.
-
-
-
-## 2. Train
     
+    To index a new dataset (table collection), create diretories "<work_dir>/data/<dataset>" and "<work_dir>/data/<dataset>/tables_csv". We expect each table is in csv format with the filename denoting the title (caption) and all csv files are in "<work_dir>/data/<dataset>/tables_csv" or its offspring directories to allow same file names. 
+
+    Then run the script
+
    ```   bash
-   ./train.sh fetaqa
+   ./index.sh <dataset>
    ```
-    
-## 3. Test
+
+   You can also reindex "fetaqa" and "nq_tables" by runing the script.
+
+## 3. Train
+   
+   The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by editing "train_batch_size" in file "trainer.config". Incremental training is disabled by default to reduce training cost. If you want to enable incremental training, update "train_step_n" to 5000 in "trainer.config". The default question size is 10000 by "train_start_n" in "trainer.config"
+     
    ```   bash
-   ./test.sh fetaqa
+   ./train.sh <dataset>
    ```
+   After training, The best model will be deployed automatically to "<work_dir>/models/<dataset>" 
     
+## 4. Test
+    This is used for "fetaqa" and "nq_tables"
+   ```   bash
+   ./test.sh <dataset>
+   ```
+   We have pretrained models for "fetaqa" and "nq_tables" in "<work_dir>/models/<dataset>" with 
+   file name "<dataset>_relevance.pt". If you retrain "fetaqa" or "nq_tables", "<work_dir>/models/<dataset>" will have multiple models for each training. The script always loads the recent model (by create time), so if you want to use the pretrained models, mode the other mdoels in some other directory.
+    
+## 5. Interactive demo 
+    To be continued 
 
