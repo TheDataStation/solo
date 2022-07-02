@@ -12,11 +12,11 @@ sudo make install
 cd ${cur_dir}
 sudo rm -rf downloads
 cd ..
-git clone git@github.com:mingqiwangcn/fusion_in_decoder.git
+git clone https://github.com/mingqiwangcn/fusion_in_decoder.git
 cd fusion_in_decoder
 bash prep_env.sh
 cd ..
-git clone git@github.com:mingqiwangcn/plms_graph2text.git
+git clone https://github.com/mingqiwangcn/plms_graph2text.git
 cd plms_graph2text
 bash prep_env.sh
 cd ${work_dir}
