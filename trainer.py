@@ -36,7 +36,7 @@ def get_fusion_query_args(work_dir, dataset, question_dir):
 
 def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
     model_path = os.path.join(work_dir, 'models/tqa_retriever')
-    index_dir = os.path.join(work_dir, 'data', dataset, 'index/on_disk_index_%s_rel_graph' % dataset) 
+    index_dir = os.path.join(work_dir, 'index/on_disk_index_%s_rel_graph' % dataset) 
     index_file = os.path.join(index_dir, 'populated.index')
     passage_file = os.path.join(index_dir, 'passages.jsonl')
     query_file = os.path.join(question_dir, 'fusion_query.jsonl')
