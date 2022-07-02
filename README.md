@@ -11,7 +11,7 @@ A user asks a question and it will return top 5 tables that most likely answers 
 
 We use code (changed) from https://github.com/facebookresearch/FiD.git (OpenQA) and https://github.com/UKPLab/plms-graph2text.git (SQl2Question), big thanks to them.
 
-To try our system, follow the steps in Setup
+To try our system, follow the following steps 
 
 ## 1. Setup
 ### 1.1. System requirements
@@ -39,13 +39,15 @@ d) Download models
    ./get_models.sh
    ```
 e) Download data
+
    There are two datasets, "fetaqa" which is smaller and "nq_tables" which is much larger. 
    "fetaqa" is recommended to try.
    ```   bash
    ./get_data.sh fetaqa
    ```
     Each dataset correspondes to a directory 
-    "<work_dir>/data/<dataset>", where <dataset> is the placehold for dataset
+    "<work_dir>/data/<dataset>", 
+    where <dataset> is the placehold for dataset
 
 ## 2. Indexing tables
    We provide indexed "fetaqa" and "nq_tables" by the "get_data.sh" script. 
@@ -63,6 +65,7 @@ e) Download data
 
 ## 3. Train
    The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by editing "train_batch_size" in file "trainer.config". Incremental training is disabled by default to reduce training cost. If you want to enable incremental training, update "train_step_n" to 5000 in "trainer.config". The default question size is 10000 by "train_start_n" in "trainer.config"
+   To train the relevance model, run
    ```   bash
    ./train.sh <dataset>
    ```
