@@ -2,11 +2,11 @@
 S2LD is a self-supervised data discovery system that finds tables among a large collection given natural language questions. It automatically generates training dataset from the target table collection and then trains the relevance model.
 The system consists of two separated stages:
 
-1. Offline stage 
+. Offline stage 
 
    First, Tables in csv formats are converted to vectors and indexed. Second, during training, SQLs are automatically sampled from the table collection and translated to questions. Then traning questions and tables are automatically collected to train the system.     
 
-2. Online stage
+. Online stage
 
    A user asks a question and it will return top 5 tables that most likely answers the question.
 
@@ -17,9 +17,9 @@ To try our system, follow the following steps
 ## 1. Setup
 ### 1.1. System requirements
 
-Ubuntu 18.04(or above). GPU that supports CUDA 10.0 is needed.
+Ubuntu 18.04(or above). GPU that supports CUDA 10.0 (above) is needed.
 
-If possble, use solid state drive (SSD). Disk storage should be more thn 200 G if you want to try all data released. 
+If possible, use solid state drive (SSD). Disk storage should be more than 200 G if you want to try all data released. 
 
 ### 1.2. Prepare enviroment
 
@@ -66,7 +66,12 @@ e) Download data
    You can also reindex "fetaqa" and "nq_tables" by running the script.
 
 ## 3. Train
-   The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by editing "train_batch_size" in file "trainer.config". Incremental training is disabled by default to reduce training cost. If you want to enable incremental training, update step size "train_step_n" to 5000 in "trainer.config". The default start question size is 10000 by "train_start_n" in "trainer.config". Feel free to try smaller "train_start_n" and "train_step_n" to reduce training time, e.g. update "train_start_n" to 2000 and "train_step_n" to 1000.
+   The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by updating "train_batch_size" in file "trainer.config". 
+   
+   Incremental training is disabled by default to reduce training cost.
+   
+   If you want to enable incremental training, update step size "train_step_n" to 5000 in "trainer.config". The default start question size is 10000 by "train_start_n" in "trainer.config". Feel free to try other "train_start_n" and "train_step_n".
+    
    To train the relevance model, run
    ```   bash
    ./train.sh <dataset>
