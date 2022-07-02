@@ -18,7 +18,7 @@ To try our system, follow the following steps
 
 Ubuntu 18.04(or above). GPU that supports CUDA 10.0 is needed.
 
-If possble, use solid state drive (SSD). Disk storage should be more thn 200 G if you wan to try all data released. 
+If possble, use solid state drive (SSD). Disk storage should be more thn 200 G if you want to try all data released. 
 
 ### 1.2. Prepare enviroment
 
