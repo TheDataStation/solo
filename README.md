@@ -66,12 +66,13 @@ e) Download data
    You can also reindex "fetaqa" and "nq_tables" by runing the script.
 
 ## 3. Train
-   The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by editing "train_batch_size" in file "trainer.config". Incremental training is disabled by default to reduce training cost. If you want to enable incremental training, update step size "train_step_n" to 5000 in "trainer.config". The default start question size is 10000 by "train_start_n" in "trainer.config".
+   The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by editing "train_batch_size" in file "trainer.config". Incremental training is disabled by default to reduce training cost. If you want to enable incremental training, update step size "train_step_n" to 5000 in "trainer.config". The default start question size is 10000 by "train_start_n" in "trainer.config". Feel free to try smaller "train_start_n" and "train_step_n" to reduce training time, e.g. "train_start_n:2000" and "train_step_n:2000". 
    To train the relevance model, run
    ```   bash
    ./train.sh <dataset>
    ```
-   After training, The best model will be deployed automatically to "<work_dir>/models/<dataset>" 
+   After training, The best model will be deployed automatically to 
+   "<work_dir>/models/<dataset>" 
 
 ## 4. Test
     This is used for "fetaqa" and "nq_tables"
