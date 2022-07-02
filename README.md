@@ -11,13 +11,13 @@ To try our system, follow the steps in Setup
 ## 1. Setup
 ### 1.1. System requirements
 
-Ubuntu 18.04(or above). GPU that supports CUDA 10.0 is needed to get good performance. CPU only also works but it will be very slow.
+Ubuntu 18.04(or above). GPU that supports CUDA 10.0 is needed.
 
 ### 1.2. Prepare enviroment
 
 a) Make sure the repository directory "open_table_discovery" in an empty parent directory
  
-   A lot of data will be downloaded to the parent directory. If the parent directory has other subdirectories, there may be some collisions. After a new directory is created, move "open_table_discovery" to the new directory 
+   A lot of data amd other code will be downloaded to the parent directory. If the parent directory has other subdirectories, there may be some collisions. After a new directory is created, move "open_table_discovery" to the new directory 
    
 b) Create a new session using *tmux* or *screen*
    ```   bash
@@ -25,7 +25,7 @@ b) Create a new session using *tmux* or *screen*
    ```
    It takes time to run the following scripts, so it is better to create a session.
 
-c) Go to the "open_table_discovery" directory and run the folowing script in the new session.
+c) Go to the "open_table_discovery" repository directory and run the folowing script in the new session.
       
    ```   bash
    ./setup.sh
@@ -43,6 +43,10 @@ e) Download data
    ```   bash
    ./get_data.sh fetaqa
    ```
+## 2. Indexing tables
+    We provide indexed "fetaqa" and "nq_tables" by the "get_data.sh" script. You can ignore this if you don't want to try indexing.
+
+
 
 ## 2. Train
     
