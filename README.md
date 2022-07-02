@@ -51,7 +51,7 @@ e) Download data
    ```
    Each dataset is corresponding to a directory "<work_dir>/data/<dataset>". 
 
-## 2. Indexing tables
+## 2. Index tables
    We provide indexed "fetaqa" and "nq_tables" by the "get_data.sh" script. 
    You can ignore this if you don't want to try indexing.
    To index a new dataset (table collection), create diretories 
