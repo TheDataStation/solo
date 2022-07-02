@@ -27,17 +27,16 @@ def get_date_dir():
     test_dir = 'test_%d_%d_%d_%d_%d_%d_%d' % (a.year, a.month, a.day, a.hour, a.minute, a.second, a.microsecond)
     return test_dir
 
+
 def get_model_file(file_pattern):
         file_lst = glob.glob(file_pattern)
         if len(file_lst) == 0:
             err_msg = 'There is no model file in (%s)' % file_pattern
             raise ValueError(err_msg)
-
-        if len(file_lst) > 1:
-            err_msg = 'There are more than 1 model files in (%s)' % file_pattern
-            raise ValueError(err_msg)
-
-        return file_lst[0]
+        file_lst.sort(key=os.path.getmtime)
+        recent_file = file_lst[-1]
+        print('loading recent model file (%s)' % recent_file) 
+        return recent_file
 
 def get_test_args(work_dir, dataset, retr_test_dir, config):
     file_name = 'fusion_retrieved_tagged.jsonl'

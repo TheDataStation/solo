@@ -295,9 +295,9 @@ def main():
 
         if best_metric['patience_itr'] >= 1:
             break
-    show_best_metric(train_args.checkpoint_dir, best_metric)
+    show_best_metric(train_args.checkpoint_dir, best_metric, args.work_dir, args.dataset)
 
-def show_best_metric(checkpoint_dir, best_metric):
+def show_best_metric(checkpoint_dir, best_metric, work_dir, dataset):
     p_at_1 = best_metric['p@1'] * 100 / best_metric['N']
     p_at_5 = best_metric['p@5'] * 100 / best_metric['N']
     model_file = best_metric['model_file']
@@ -308,10 +308,22 @@ def show_best_metric(checkpoint_dir, best_metric):
     metric_file = os.path.join(best_model_dir, 'metric.json')
     with open(metric_file, 'w') as f_o:
         f_o.write(json.dumps(metric_info))
-    
-    best_model_file = os.path.join(best_model_dir, os.path.basename(best_metric['model_file']))
+   
+    model_base_name = os.path.basename(best_metric['model_file']) 
+    best_model_file = os.path.join(best_model_dir, model_base_name)
     assert(not os.path.isfile(best_model_file)) 
-    shutil.copy(best_metric['model_file'], best_model_file) 
+    shutil.copy(best_metric['model_file'], best_model_file)
+
+    deploy_dir = os.path.join(work_dir, 'models', dataset)
+    if not os.path.isdir(deploy_dir):
+        os.makedirs(deploy_dir)
+
+    deploy_file = os.path.join(deploy_dir, model_base_name)
+    if os.path.isfile(deploy_file):
+        updated_model_base_name = '1_' + model_base_name
+        deploy_file = os.path.join(deploy_dir, updated_model_base_name)
+    shutil.copy(best_metric['model_file'], deploy_file) 
+    
     print('Evaluation P@1=%.2f P@5=%.2f' % (p_at_1, p_at_5))
     print('Best model %s ' % best_model_file)
 
