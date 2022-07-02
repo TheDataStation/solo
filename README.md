@@ -81,7 +81,7 @@ e) Download data
    ```
    We have pretrained models for "fetaqa" and "nq_tables" in 
    "<work_dir>/models/\<dataset\>" with file name "\<dataset\>_relevance.pt". 
-   If you retrain "fetaqa" or "nq_tables", "<work_dir>/models/\<dataset\>" will have multiple models for each training. The script always loads the recent model (by create time), so if you want to use the pretrained models, mode the other mdoels in some other directory.
+   If you retrain "fetaqa" or "nq_tables", "<work_dir>/models/\<dataset\>" will have a best model for each training. The script always loads the recent model (by create time), so if you want to use the pretrained models, move the other model in some other directory.
     
 ## 5. Interactive demo 
     To be continued 
