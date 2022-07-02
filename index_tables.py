@@ -43,22 +43,30 @@ def get_index_args(work_dir, dataset, emb_file):
                                     )
     return index_args 
 
+def exists_tables_csv(dataset_dir):
+    csv_file_pattern = os.path.join(dataset_dir, 'tables_csv', '**', '*.csv')
+    csv_file_lst = glob.glob(csv_file_pattern, recursive=True)
+    return len(csv_file_lst) > 0
+
 def confirm(args):
     dataset_dir = os.path.join(args.work_dir, 'data', args.dataset)
     tables_file = os.path.join(dataset_dir, 'tables/tables.jsonl')
     passage_file = os.path.join(args.work_dir, 'open_table_discovery/table2txt/dataset', 
                                 args.dataset, 'rel_graph/passages.jsonl') 
     index_dir = os.path.join(dataset_dir, 'index/on_disk_index_%s_rel_graph' % args.dataset)     
-    
+   
+    tables_csv_exists = exists_tables_csv(dataset_dir)
+    args.tables_csv_exists = tables_csv_exists 
     table_exists = os.path.exists(tables_file)
     passage_exists = os.path.exists(passage_file)
     index_exists = os.path.exists(index_dir)
-    if table_exists or index_exists: 
-        confirmed = input('Tables are already imported or Index already exists. If continue, index will berebuilt ' +
+    if index_exists: 
+        confirmed = input('Index already exists. If continue, index will be rebuilt. \n' +
                           'Do you want to continue(y/n)? ')
         if confirmed.lower().strip() == 'y':
-            if table_exists:
-                os.remove(tables_file)
+            if tables_csv_exists:
+                if table_exists:
+                    os.remove(tables_file)
             if passage_exists:
                 os.remove(passage_file)
             if index_exists:
@@ -73,13 +81,14 @@ def main():
     args = get_args()
     if not confirm(args):
         return
-     
-    print('Importing tables')
-    csv_args = get_csv_args(args.work_dir, args.dataset)
-    msg_info = table_from_csv.main(csv_args)
-    if not msg_info['state']:
-        print(msg_info['msg'])
-        return
+    
+    if args.tables_csv_exists:
+        print('Importing tables')
+        csv_args = get_csv_args(args.work_dir, args.dataset)
+        msg_info = table_from_csv.main(csv_args)
+        if not msg_info['state']:
+            print(msg_info['msg'])
+            return
 
     print('Linearizing table rows')
     graph_args = get_graph_args(args.work_dir, args.dataset)
