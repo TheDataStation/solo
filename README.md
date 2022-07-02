@@ -45,6 +45,7 @@ e) Download data
    ```   bash
    ./get_data.sh fetaqa
    ```
+
     Each dataset correspondes to a directory 
     "<work_dir>/data/<dataset>", 
     where <dataset> is the placehold for dataset
