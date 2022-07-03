@@ -104,4 +104,5 @@ e) Download data
    ssh -N -f -L localhost:8080:localhost:8080 <user>@<remote server>
    ```
    Then copy/paste the URL into your browser (client) to try
-
+    
+   After the jupyter notebook is shown in the browser, click menu "Cell"/"Run All" to run the application.
