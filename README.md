@@ -97,12 +97,14 @@ e) Download data
    ```
    If "./start_demo.sh" is run on the local machine, 
    follow the instruction on the console and 
-   copy/paste the URL (starting with  http://localhost:8080/? ...) into your browser to try.
+   copy/paste the URL (starting with  http://localhost:8080/? ...) into your browser.
    
    If the script is run on a remote machine, do the following setup on the client machine,
    ```   bash
    ssh -N -f -L localhost:8080:localhost:8080 <user>@<remote server>
    ```
-   Then copy/paste the URL into your browser (client) to try
+   Then copy/paste the URL into your browser (client).
     
    After the jupyter notebook is shown in the browser, click menu "Cell"/"Run All" to run the application.
+   Type a dataset, e.g. fetaqa and then type a question (e.g. one of the 3 example questions) to try.
+    
