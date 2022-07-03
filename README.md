@@ -90,14 +90,14 @@ e) Download data
     
 ## 5. Interactive demo 
    We use jupyter notebook to show the demo application.
-     
    The user inputs the dataset and also a question and then top 5 tables are returned and displayed. 
    3 example questions are list for fetaqa. To try the demo, run    
    ```   bash
    ./start_demo.sh
    ```
    If "./start_demo.sh" is run on the local machine, 
-   follow the instruction on the console and copy/paste the URL into your browser to try.
+   follow the instruction on the console and 
+   copy/paste the URL (http://localhost:8080/?token=...) into your browser to try.
    
    If the script is run on a remote machine, do the following setup on the client machine,
    ```   bash
