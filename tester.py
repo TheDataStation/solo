@@ -6,11 +6,10 @@ from trainer import read_config, read_tables, retr_triples, get_train_date_dir
 import shutil
 import finetune_table_retr as model_tester
 
-def main():
-    args = get_args()
+def main(args):
     config = read_config()
     table_dict = read_tables(args.work_dir, args.dataset)
-    test_query_dir = os.path.join(args.work_dir, 'data', args.dataset, 'query/test')
+    test_query_dir = os.path.join(args.work_dir, 'data', args.dataset, args.query_dir, 'test')
     
     retr_test_dir = os.path.join(test_query_dir, 'rel_graph')
     if os.path.isdir(retr_test_dir):
@@ -19,8 +18,8 @@ def main():
     retr_triples('test', args.work_dir, args.dataset, test_query_dir, table_dict, False, config)
     
     test_args = get_test_args(args.work_dir, args.dataset, retr_test_dir, config)
-    model_tester.main(test_args)
-
+    msg_info = model_tester.main(test_args)
+    return msg_info['out_dir'] 
 
 def get_date_dir():
     a = datetime.datetime.now()
@@ -64,10 +63,12 @@ def get_test_args(work_dir, dataset, retr_test_dir, config):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--work_dir', type=str, required=True)
+    parser.add_argument('--query_dir', type=str, default='query')
     parser.add_argument('--dataset', type=str, required=True)
     args = parser.parse_args()
     return args
 
 if __name__ == '__main__':
-    main()
+    args = get_args()
+    main(args)
 
