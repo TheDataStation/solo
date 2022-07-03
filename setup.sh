@@ -23,4 +23,4 @@ cd ${work_dir}
 mkdir -p index
 cd ${cur_dir}
 ln -s ${work_dir}/index data
-
+sudo apt-get -y install jupyter-notebook
