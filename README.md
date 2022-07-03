@@ -97,7 +97,7 @@ e) Download data
    ```
    If "./start_demo.sh" is run on the local machine, 
    follow the instruction on the console and 
-   copy/paste the URL (http://localhost:8080/?token=...) into your browser to try.
+   copy/paste the URL (starting with  http://localhost:8080/? ...) into your browser to try.
    
    If the script is run on a remote machine, do the following setup on the client machine,
    ```   bash
