@@ -89,17 +89,19 @@ e) Download data
    If you retrain "fetaqa" or "nq_tables", "<work_dir>/models/\<dataset\>" will have a best model for each training. The script always loads the recent model (by create time), so if you want to use the pretrained models, move the other model in some other directory.
     
 ## 5. Interactive demo 
-    We use jupyter notebook to show the demo application. 
+    We use jupyter notebook to show the demo application.
+     
     The user inputs the dataset and also a question and then top 5 tables are returned and displayed. 
     3 example questions are list for fetaqa. To try the demo, run    
    ```   bash
    ./start_demo.sh
    ```
    If "./start_demo.sh" is run on the local machine, 
-   follow the instruction on the console and copy/paste the URL into your browse to try.
+   follow the instruction on the console and copy/paste the URL into your browser to try.
    
-   If the script is run on a remote machine, do the following setup,
+   If the script is run on a remote machine, do the following setup on the client machine,
    ```   bash
    ssh -N -f -L localhost:8080:localhost:8080 <user>@<remote server>
    ```
-   Then copy/paste the URL into your browse to try
+   Then copy/paste the URL into your browser (client) to try
+
