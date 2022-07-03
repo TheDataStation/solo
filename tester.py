@@ -2,24 +2,36 @@ import os
 import argparse
 import datetime
 import glob
-from trainer import read_config, read_tables, retr_triples, get_train_date_dir
 import shutil
-import finetune_table_retr as model_tester
 
-def main(args):
+import finetune_table_retr as model_tester
+from trainer import read_config, read_tables, retr_triples, get_train_date_dir
+from src.ondisk_index import OndiskIndexer
+
+def main(args, table_data=None, index_obj=None):
     config = read_config()
-    table_dict = read_tables(args.work_dir, args.dataset)
+    if table_data is None: 
+        table_dict = read_tables(args.work_dir, args.dataset)
+    else:
+        table_dict = table_data
     test_query_dir = os.path.join(args.work_dir, 'data', args.dataset, args.query_dir, 'test')
     
     retr_test_dir = os.path.join(test_query_dir, 'rel_graph')
     if os.path.isdir(retr_test_dir):
         shutil.rmtree(retr_test_dir)
-
-    retr_triples('test', args.work_dir, args.dataset, test_query_dir, table_dict, False, config)
     
+    retr_triples('test', args.work_dir, args.dataset, test_query_dir, table_dict, False, config, index_obj=index_obj)
     test_args = get_test_args(args.work_dir, args.dataset, retr_test_dir, config)
     msg_info = model_tester.main(test_args)
     return msg_info['out_dir'] 
+
+def get_index_obj(work_dir, dataset):
+    index_dir = os.path.join(work_dir, 'index/on_disk_index_%s_rel_graph' % dataset)
+    index_file = os.path.join(index_dir, 'populated.index')
+    passage_file = os.path.join(index_dir, 'passages.jsonl')
+
+    index = OndiskIndexer(index_file, passage_file)
+    return index
 
 def get_date_dir():
     a = datetime.datetime.now()

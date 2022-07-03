@@ -154,12 +154,12 @@ def sql2question(mode, sql_dir, work_dir, dataset):
     #result = subprocess.check_output(cmd, shell=True, text=True)
     #print(result)  
 
-def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, config):
+def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, config, index_obj=None):
     print('retrieving %s table triples' % mode)
     out_retr_dir = os.path.join(question_dir, 'rel_graph')
     os.mkdir(out_retr_dir)
     retr_args = get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config) 
-    passage_ondisk_retrieval.main(retr_args)
+    passage_ondisk_retrieval.main(retr_args, index_obj=index_obj)
     
     process_func = None
     if is_train:
