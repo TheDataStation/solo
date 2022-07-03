@@ -80,7 +80,7 @@ e) Download data
    "<work_dir>/models/\<dataset\>" 
 
 ## 4. Test
-    This is used for "fetaqa" and "nq_tables"
+   This is used for "fetaqa" and "nq_tables"
    ```   bash
    ./test.sh <dataset>
    ```
@@ -89,10 +89,10 @@ e) Download data
    If you retrain "fetaqa" or "nq_tables", "<work_dir>/models/\<dataset\>" will have a best model for each training. The script always loads the recent model (by create time), so if you want to use the pretrained models, move the other model in some other directory.
     
 ## 5. Interactive demo 
-    We use jupyter notebook to show the demo application.
+   We use jupyter notebook to show the demo application.
      
-    The user inputs the dataset and also a question and then top 5 tables are returned and displayed. 
-    3 example questions are list for fetaqa. To try the demo, run    
+   The user inputs the dataset and also a question and then top 5 tables are returned and displayed. 
+   3 example questions are list for fetaqa. To try the demo, run    
    ```   bash
    ./start_demo.sh
    ```
