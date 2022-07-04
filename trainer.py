@@ -266,7 +266,8 @@ def main():
     while con_opt is None:
         print('type 1, 2 or q')
         con_opt = confirm(args)
-
+    if con_opt == ConfirmOption.Exit:
+        return
     config = read_config()
     if con_opt == ConfirmOption.CreateNew: 
         sql_args = get_sql_args(args.work_dir, args.dataset, config)
