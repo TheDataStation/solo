@@ -98,7 +98,7 @@ e) Download data
    The user inputs the dataset and also a question and then top 5 tables are returned and displayed. 
    3 example questions are list for fetaqa. To try the demo, run    
    ```   bash
-   ./start_demo.sh
+   ./run_demo.sh
    ```
    If "./start_demo.sh" is run on the local machine, 
    follow the instruction on the console and 
