@@ -10,11 +10,38 @@ import passage_ondisk_retrieval
 from table2txt.retr_utils import process_train, process_dev
 import finetune_table_retr as model_trainer
 import datetime
+from enum import Enum
+
+class ConfirmOption(Enum):
+    UseExisting = 1
+    CreateNew = 2
+    Exit = 3
 
 def read_config():
     with open('./trainer.config') as f:
        config = json.load(f)
     return config
+
+def get_sql_data_dir(work_dir, dataset):
+    data_dir = os.path.join(work_dir, 'open_table_discovery/table2question/dataset', dataset, 'sql_data')
+    return data_dir
+
+def train_data_ready(data_dir):
+    state_file = os.path.join(data_dir, 'state.json')
+    if not os.path.isfile(state_file):
+        return False
+    with open(state_file) as f:
+        state_info = json.load(f)
+    return state_info['data_ready']
+
+def update_data_state(work_dir, dataset):
+    data_dir = get_sql_data_dir(work_dir, dataset)
+    state_file = os.path.join(data_dir, 'state.json')
+    state_info = {
+        'data_ready':True
+    }
+    with open(state_file, 'w') as f_o:
+        f_o.write(json.dumps(state_info)) 
 
 def get_sql_args(work_dir, dataset, config):
     sql_args = argparse.Namespace(work_dir=work_dir,
@@ -211,45 +238,60 @@ def merge_train_file(train_file_lst):
             f_o.write(item)
 
 def confirm(args):
-    data_dir = os.path.join(args.work_dir, 'open_table_discovery/table2question/dataset', args.dataset, 'sql_data')
-    if os.path.isdir(data_dir):
-        str_msg = ('Training data (%s) already exists. If continue, all these auto-generated training data will be deleted.\n' % data_dir) + \
-                  'Do you want to continue (y/n)? '
-        option = input(str_msg)
-        if option == 'y':
+    data_dir = get_sql_data_dir(args.work_dir, args.dataset)
+    data_ready = train_data_ready(data_dir)
+    opt = None
+    if data_ready:
+        str_msg = 'Training data already exists, type \n' + \
+                  '1 - train with existing data \n' + \
+                  '2 - train with new data (existing training data will be deleted) \n' + \
+                  'q - exit\n' 
+        opt_str = input(str_msg)
+        if opt_str == '1':
+            opt = ConfirmOption.UseExisting
+        elif opt_str == '2':
             shutil.rmtree(data_dir)
-            return True
-        else:
-            return False 
+            opt = ConfirmOption.CreateNew
+        elif opt_str == 'q':
+            opt = ConfirmOption.Exit
     else:
-        return True
+        shutil.rmtree(data_dir)
+        opt = ConfirmOption.CreateNew
+                 
+    return opt
 
 def main():
     args = get_args()
-    if not confirm(args):
-        return
+    con_opt = confirm(args)
+    while con_opt is None:
+        print('type 1, 2 or q')
+        con_opt = confirm(args)
 
     config = read_config()
-    sql_args = get_sql_args(args.work_dir, args.dataset, config)
-    msg_info = table2sql.init_data(sql_args)
-    if not msg_info['state']:
-        print(msg_info['msg'])
-        return
+    if con_opt == ConfirmOption.CreateNew: 
+        sql_args = get_sql_args(args.work_dir, args.dataset, config)
+        msg_info = table2sql.init_data(sql_args)
+        if not msg_info['state']:
+            print(msg_info['msg'])
+            return
 
-    sql_data_dir = msg_info['sql_data_dir']
-    sql_dict = msg_info['sql_dict']
-    train_tables = msg_info['train_tables']
-    stat_info = msg_info['stat_info']
-   
-    table_dict = read_tables(args.work_dir, args.dataset)
-     
-    dev_sql_dir = os.path.join(sql_data_dir, 'dev')
-    sql2question('dev', dev_sql_dir, args.work_dir, args.dataset)
+        sql_data_dir = msg_info['sql_data_dir']
+        sql_dict = msg_info['sql_dict']
+        train_tables = msg_info['train_tables']
+        stat_info = msg_info['stat_info']
+       
+        table_dict = read_tables(args.work_dir, args.dataset)
+         
+        dev_sql_dir = os.path.join(sql_data_dir, 'dev')
+        sql2question('dev', dev_sql_dir, args.work_dir, args.dataset)
 
-    top_n = int(config['retr_top_n'])
-    min_tables = int(config['min_tables'])
-    max_retr = int(config['max_retr'])
-    retr_triples('dev', args.work_dir, args.dataset, dev_sql_dir, table_dict, False, config)
+        top_n = int(config['retr_top_n'])
+        min_tables = int(config['min_tables'])
+        max_retr = int(config['max_retr'])
+        retr_triples('dev', args.work_dir, args.dataset, dev_sql_dir, table_dict, False, config)
+    else:
+        sql_data_dir = get_sql_data_dir(args.work_dir, args.dataset)
+        dev_sql_dir = os.path.join(sql_data_dir, 'dev')
 
     checkpoint_dir = os.path.join(args.work_dir, 'open_table_discovery/output', args.dataset, get_train_date_dir())
     assert(not os.path.isdir(checkpoint_dir))
@@ -259,27 +301,37 @@ def main():
     train_itr = -1
     while True:
         train_itr += 1
-        train_config = read_config()
         num_train_queries = 0
         if train_itr <= 0:
-            num_train_queries = int(train_config['train_start_n'])
+            num_train_queries = int(config['train_start_n'])
         else:
-            num_train_queries = int(train_config['train_step_n'])
+            num_train_queries = int(config['train_step_n'])
         if num_train_queries <= 0:
             break
-
+        
         mode = 'train_%d' % train_itr
         train_sql_dir = os.path.join(sql_data_dir, mode)
-        table2sql.generate_queries(train_sql_dir, mode, train_tables, num_train_queries, stat_info, sql_dict) 
-        
-        sql2question(mode, train_sql_dir, args.work_dir, args.dataset) 
-        retr_triples(mode, args.work_dir, args.dataset, train_sql_dir, table_dict, True, config)
+        if con_opt == ConfirmOption.CreateNew:
+            table2sql.generate_queries(train_sql_dir, mode, train_tables, num_train_queries, stat_info, sql_dict) 
+            
+            sql2question(mode, train_sql_dir, args.work_dir, args.dataset) 
+            retr_triples(mode, args.work_dir, args.dataset, train_sql_dir, table_dict, True, config)
+
+            if int(config['train_step_n']) == 0:
+                update_data_state(args.work_dir, args.dataset)
        
         train_args = get_train_args(train_itr, args.work_dir, args.dataset, checkpoint_dir, 
                                     os.path.join(train_sql_dir, 'rel_graph'), 
                                     os.path.join(dev_sql_dir, 'rel_graph'), 
                                     config, train_file_lst)
-        merge_train_file(train_file_lst)
+        
+        if con_opt == ConfirmOption.CreateNew:
+            merge_train_file(train_file_lst)
+       
+        if not os.path.isfile(train_args.train_data):
+            print('No train data file (%s)' % train_args.train_data)
+            break
+             
         msg_info = model_trainer.main(train_args)
         if not msg_info['state']:
             print(msg_info['msg'])
@@ -295,6 +347,11 @@ def main():
 
         if best_metric['patience_itr'] >= 1:
             break
+    
+    if con_opt == ConfirmOption.CreateNew:
+        if int(config['train_step_n']) > 0:
+            update_data_state(args.work_dir, args.dataset)
+
     show_best_metric(train_args.checkpoint_dir, best_metric, args.work_dir, args.dataset)
 
 def show_best_metric(checkpoint_dir, best_metric, work_dir, dataset):
