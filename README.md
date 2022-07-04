@@ -100,7 +100,7 @@ e) Download data
    ```   bash
    ./run_demo.sh 8080
    ```
-   Where 8080 is the network port.  
+   Where 8080 is the network port. You can use other port (e.g. 8086) if it is used by other application. 
    If "./start_demo.sh" is run on the local machine, 
    follow the instruction on the console and 
    copy/paste the URL (starting with  http://localhost ...) into your browser.
@@ -113,12 +113,12 @@ e) Download data
 
    a) Stop the demo server by Control-C, and then rerun "./run_demo.sh <port>" using a different port, e.g. 8086
 
-   b) On client, redo "ssh -N -f -L ..." using the same port, e.g. 8086 
+   b) On client, change the two "8080" in "ssh -N -f -L ..." to the new port, e.g. 8086 and rerun "ssh -N -f -L ..."
 
    Then on client, copy/paste the URL shown on the server console into your browser.
     
    After the jupyter notebook is shown in the browser, 
-   open the file "demo.ipynb" and click menu "Cell"/"Run All" to run the demo application.
+   open the file "demo.ipynb" and click menu "Cell"/"Run All" to start the demo application.
 
    Type a dataset, e.g. fetaqa and then type a question (e.g. one of the 3 example questions) to try.
    
