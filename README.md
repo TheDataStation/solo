@@ -71,6 +71,9 @@ e) Download data
    You can also reindex "fetaqa" and "nq_tables" by running the script.
 
 ## 3. Train
+   We provide pretrained models for "fetaqa" and "nq_talbes" and 
+   you can ignore this if you just want to try table discovery (section 5).  
+    
    The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by updating "train_batch_size" in file "trainer.config". 
    
    Incremental training is disabled by default to reduce training cost.
@@ -109,7 +112,7 @@ e) Download data
    
    If the script is run a local machine where you can use a browser on it, 
    follow the instruction on the console and 
-   copy/paste the URL (starting with  http://localhost ...) into your browser. Then go to "5.3"
+   copy/paste the URL (starting with  http://localhost ...) into your browser. Then go to section 5.3
    
 ### 5.2. Client setting 
    If demo server is on a remote machine, do port routing on the client machine by runing the following script,
