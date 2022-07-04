@@ -91,22 +91,28 @@ e) Download data
    ```
    We have pretrained models for "fetaqa" and "nq_tables" in 
    "<work_dir>/models/\<dataset\>" with file name "\<dataset\>_relevance.pt". 
-   If you retrain "fetaqa" or "nq_tables", "<work_dir>/models/\<dataset\>" will have a best model for each training. The script always loads the recent model (by create time), so if you want to use the pretrained models, move the other model in some other directory.
+   If you retrain "fetaqa" or "nq_tables", "<work_dir>/models/\<dataset\>" will have a best model for each training. 
+   The script always loads the recent model (by create time), 
+   so if you want to use the pretrained models, move the other model in some other directory.
     
 ## 5. Interactive demo 
    We use jupyter notebook to show the demo application.
    The user inputs the dataset and also a question and then top 5 tables are returned and displayed. 
-   3 example questions are list for fetaqa. To try the demo, run    
+   3 example questions are list for fetaqa. To try the demo, follow the steps,
+
+### 5.1. Start demo server 
+   run the script
    ```   bash
    ./run_demo.sh 8080
    ```
    Where 8080 is the network port. You can use other port (e.g. 8086) if it is used by other application. 
    
-   If "./start_demo.sh" is run on the local machine, 
+   If the script is run a local machine where you can use a browser on it, 
    follow the instruction on the console and 
-   copy/paste the URL (starting with  http://localhost ...) into your browser.
+   copy/paste the URL (starting with  http://localhost ...) into your browser. Then go to "5.3"
    
-   If the script is run on a remote machine, do the following setup on the client machine,
+### 5.2. Client setting 
+   If demo server is on a remote machine, do port routing on the client machine by runing the following script,
    ```   bash
    ssh -N -f -L localhost:8080:localhost:8080 <user>@<remote server>
    ```
@@ -118,6 +124,7 @@ e) Download data
 
    Then on client, copy/paste the URL shown on the server console into your browser.
     
+### 5.3. Try demo 
    After the jupyter notebook is shown in the browser, 
    open the file "demo.ipynb" and click menu "Cell"/"Run All" to start the demo application.
 
