@@ -55,8 +55,11 @@ e) Download data
    We provide indexed "fetaqa" and "nq_tables" by the "get_data.sh" script. 
    You can ignore this if you don't want to try indexing.
    
-   To index a new dataset (table collection), create diretories 
-   "<work_dir>/data/\<dataset\>" and "<work_dir>/data/\<dataset\>/tables_csv". 
+   To index a new dataset (table collection), create diretories,
+    
+   "<work_dir>/data/\<dataset\>" and 
+   
+   "<work_dir>/data/\<dataset\>/tables_csv". 
    
    We expect each table is in csv format with the filename denoting the title (caption) 
    and all csv files are in "<work_dir>/data/\<dataset\>/tables_csv" or 
