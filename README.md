@@ -98,8 +98,9 @@ e) Download data
    The user inputs the dataset and also a question and then top 5 tables are returned and displayed. 
    3 example questions are list for fetaqa. To try the demo, run    
    ```   bash
-   ./run_demo.sh
+   ./run_demo.sh 8080
    ```
+   Where 8080 is the network port.  
    If "./start_demo.sh" is run on the local machine, 
    follow the instruction on the console and 
    copy/paste the URL (starting with  http://localhost:8080/? ...) into your browser.
@@ -108,8 +109,16 @@ e) Download data
    ```   bash
    ssh -N -f -L localhost:8080:localhost:8080 <user>@<remote server>
    ```
-   Then copy/paste the URL into your browser (client).
+   If there is error like "bind [127.0.0.1]:8080: Address already in use"
+
+   a) Stop the demo server by Control-C, and then rerun "./run_demo.sh <port>" using a different port, e.g. 8086
+
+   b) On client, redo "ssh -N -f -L ..." using the same port, e.g. 8086 
+
+   Then on client, copy/paste the URL shown on the server console into your browser.
     
-   After the jupyter notebook is shown in the browser, click menu "Cell"/"Run All" to run the application.
+   After the jupyter notebook is shown in the browser, 
+   open the file "demo.ipynb" and click menu "Cell"/"Run All" to run the demo application.
+
    Type a dataset, e.g. fetaqa and then type a question (e.g. one of the 3 example questions) to try.
-    
+   
