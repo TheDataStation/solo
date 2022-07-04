@@ -88,7 +88,7 @@ e) Download data
    "<work_dir>/models/\<dataset\>" 
 
 ## 4. Test
-   This is used for "fetaqa" and "nq_tables"
+   This is used to evaluate the retrieval accuracy of "fetaqa" and "nq_tables"
    ```   bash
    ./test.sh <dataset>
    ```
