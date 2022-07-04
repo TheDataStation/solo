@@ -61,7 +61,7 @@ def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
 
 def get_train_date_dir():
     a = datetime.datetime.now()
-    train_dir = '%d_%d_%d_%d_%d_%d_%d' % (a.year, a.month, a.day, a.hour, a.minute, a.second, a.microsecond) 
+    train_dir = 'train_%d_%d_%d_%d_%d_%d_%d' % (a.year, a.month, a.day, a.hour, a.minute, a.second, a.microsecond) 
     return train_dir
 
 def get_train_args(train_itr, work_dir, dataset, checkpoint_dir, 
