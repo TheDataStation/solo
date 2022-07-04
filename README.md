@@ -103,7 +103,7 @@ e) Download data
    Where 8080 is the network port.  
    If "./start_demo.sh" is run on the local machine, 
    follow the instruction on the console and 
-   copy/paste the URL (starting with  http://localhost:8080/? ...) into your browser.
+   copy/paste the URL (starting with  http://localhost ...) into your browser.
    
    If the script is run on a remote machine, do the following setup on the client machine,
    ```   bash
