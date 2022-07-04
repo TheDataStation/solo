@@ -101,6 +101,7 @@ e) Download data
    ./run_demo.sh 8080
    ```
    Where 8080 is the network port. You can use other port (e.g. 8086) if it is used by other application. 
+   
    If "./start_demo.sh" is run on the local machine, 
    follow the instruction on the console and 
    copy/paste the URL (starting with  http://localhost ...) into your browser.
