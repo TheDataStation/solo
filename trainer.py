@@ -112,7 +112,7 @@ def get_train_args(train_itr, work_dir, dataset, checkpoint_dir,
                                     checkpoint_dir=checkpoint_dir,
                                     max_epoch=int(config['max_epoch']),
                                     patience_steps=int(config['patience_steps']),
-                                    text_maxlength=int(config['text_maxlength']),
+                                    text_maxlength=int(config['train_text_maxlength']),
                                     fusion_retr_model=None
                                     ) 
     return train_args
