@@ -250,12 +250,14 @@ def confirm(args):
         if opt_str == '1':
             opt = ConfirmOption.UseExisting
         elif opt_str == '2':
-            shutil.rmtree(data_dir)
+            if os.path.isdir(data_dir):
+                shutil.rmtree(data_dir)
             opt = ConfirmOption.CreateNew
         elif opt_str == 'q':
             opt = ConfirmOption.Exit
     else:
-        shutil.rmtree(data_dir)
+        if os.path.isdir(data_dir):
+            shutil.rmtree(data_dir)
         opt = ConfirmOption.CreateNew
                  
     return opt
