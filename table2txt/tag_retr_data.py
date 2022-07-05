@@ -18,12 +18,13 @@ def get_args():
     return args
 
 def get_data_dir(args):
-    data_dir = '/home/cc/code/open_table_discovery/table2txt/dataset/%s/%s' % (args.dataset, args.expr)
+    dataset_dir = '/home/cc/code/open_table_discovery/table2question/dataset/'
+    data_dir = os.path.join(dataset_dir, '%s/%s/%s/rel_graph' % (args.dataset, args.expr, args.mode))
     return data_dir
 
 def get_out_file(args):
     data_dir = get_data_dir(args)
-    out_file = os.path.join(data_dir, 'fusion_retrieved_%s_tagged.jsonl' % args.mode)
+    out_file = os.path.join(data_dir, 'fusion_retrieved_tagged.jsonl')
     return out_file 
 
 def print_args(args):
@@ -45,7 +46,7 @@ def main():
 
 def output_data(args, out_dev_file):
     data_dir = get_data_dir(args)
-    data_file = os.path.join(data_dir, 'fusion_retrieved_%s.jsonl' % args.mode)
+    data_file = os.path.join(data_dir, 'fusion_retrieved.jsonl')
     retr_data = []
     with open(data_file) as f:
         for line in tqdm(f):
@@ -55,16 +56,18 @@ def output_data(args, out_dev_file):
     table_dict = read_tables(args) 
    
     process_func = None 
-    if args.mode == 'train':
+    if args.mode.startswith('train'):
         process_func = process_train
-    else:
+    elif args.mode == 'dev':
         process_func = process_dev
+    else:
+        raise ValueError('Unknown mode (%s)' % args.mode)
 
     updated_retr_data = process_func(retr_data, args.top_n, table_dict, args.strategy, args.min_tables)
     write_data(updated_retr_data, out_dev_file)
 
 def read_tables(args):
-    table_file = '/home/cc/data/%s/tables/tables.jsonl' % args.dataset
+    table_file = '/home/cc/code/data/%s/tables/tables.jsonl' % args.dataset
     table_dict = {}
     with open(table_file) as f:
         for line in tqdm(f):
