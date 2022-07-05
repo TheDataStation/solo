@@ -210,8 +210,6 @@ def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, co
         for item in tqdm(updated_retr_data):
             f.write(json.dumps(item) + '\n')
 
-    os.remove(data_file) 
-
 def read_tables(work_dir, dataset):
     table_file = os.path.join(work_dir, 'data', '%s/tables/tables.jsonl' % dataset)
     table_dict = {}
