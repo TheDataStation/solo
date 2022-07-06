@@ -78,7 +78,7 @@ def update_min_tables(item, top_n, min_tables):
         item['ctxs'] = top_passage_lst
         return
     
-    min_passages = 5
+    min_passages = 3
     num_added = 0
     for idx in range(top_n_tables, min_tables):
         table_id = table_lst[idx]
