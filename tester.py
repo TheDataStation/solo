@@ -10,17 +10,33 @@ from src.ondisk_index import OndiskIndexer
 
 def main(args, table_data=None, index_obj=None):
     config = read_config()
+    test_query_dir = os.path.join(args.work_dir, 'data', args.dataset, args.query_dir, 'test')
+    retr_test_dir = os.path.join(test_query_dir, 'rel_graph')
+    retr_file = os.path.join(retr_test_dir, 'fusion_retrieved_tagged.jsonl')
+    con_opt = '2' # retrieve new top tables by default
+    if (table_data is None) and os.path.isfile(retr_file):
+        str_msg = 'A set of top tables are already retrieved from Index. \n' + \
+                  'If the Index does not change, and also trainer.config does not change, ' + \
+                  'you can choose option 1 which takes less time. \n' + \
+                  '1 - use existing top tables \n' + \
+                  '2 - retrieve new top tables \n' + \
+                  'q - exit \n'
+        
+        con_opt = input(str_msg)
+        while (con_opt not in ['1', '2', 'q']):
+            print('type 1, 2 or q')
+            con_opt = input(str_msg)
+        if con_opt == 'q':
+            return
+         
     if table_data is None: 
         table_dict = read_tables(args.work_dir, args.dataset)
     else:
         table_dict = table_data
-    test_query_dir = os.path.join(args.work_dir, 'data', args.dataset, args.query_dir, 'test')
-    
-    retr_test_dir = os.path.join(test_query_dir, 'rel_graph')
-    if os.path.isdir(retr_test_dir):
-        shutil.rmtree(retr_test_dir)
-    
-    retr_triples('test', args.work_dir, args.dataset, test_query_dir, table_dict, False, config, index_obj=index_obj)
+    if con_opt == '2':
+        if os.path.isdir(retr_test_dir):
+            shutil.rmtree(retr_test_dir)
+        retr_triples('test', args.work_dir, args.dataset, test_query_dir, table_dict, False, config, index_obj=index_obj)
     test_args = get_test_args(args.work_dir, args.dataset, retr_test_dir, config)
     msg_info = model_tester.main(test_args)
     return msg_info['out_dir'] 
