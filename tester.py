@@ -63,7 +63,7 @@ def get_test_args(work_dir, dataset, retr_test_dir, config):
                                     fusion_retr_model=retr_model,
                                     eval_data=eval_file,
                                     n_context=int(config['retr_top_n']),
-                                    per_gpu_batch_size=int(config['train_batch_size']),
+                                    per_gpu_batch_size=1,
                                     cuda=0,
                                     name=checkpoint_name,
                                     checkpoint_dir=checkpoint_dir,
