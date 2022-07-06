@@ -12,7 +12,7 @@ Online stage
 
 We use code (changed) from https://github.com/facebookresearch/FiD.git (OpenQA) and https://github.com/UKPLab/plms-graph2text.git (T5 finetuning), big thanks to them.
 
-To try our system, follow the following steps 
+To try the system, follow the following steps,
 
 ## 1. Setup
 ### 1.1. System requirements
