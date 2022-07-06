@@ -88,8 +88,7 @@ e) Download data
    ```   bash
    ./train.sh <dataset>
    ```
-   After training, The best model will be deployed automatically to 
-   "<work_dir>/models/\<dataset\>" 
+   After training, the best model will be deployed automatically to "<work_dir>/models/\<dataset\>" 
 
 ## 4. Test
    This is used to evaluate the retrieval accuracy of "fetaqa" and "nq_tables"
