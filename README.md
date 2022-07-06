@@ -80,7 +80,7 @@ e) Download data
    
    If you want to enable incremental training, update step size "train_step_n" to 5000 (0 if no incremental training) in "trainer.config". The default start question size is 10000 by "train_start_n" in "trainer.config". Feel free to try other "train_start_n" and "train_step_n".
    
-   If you want to retrain on "fetaqa" or "nq_tables", download the data first by './get_data.sh'. 
+   If you want to retrain on "fetaqa" or "nq_tables", download the data first by "./get_data.sh". 
    
    If you want to train on other dataset, index the table collection first (section 2). 
 
