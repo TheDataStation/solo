@@ -83,6 +83,8 @@ def get_test_args(work_dir, dataset, retr_test_dir, config):
                                     cuda=0,
                                     name=checkpoint_name,
                                     checkpoint_dir=checkpoint_dir,
+                                    bnn=int(config['bnn']),
+                                    prior_model=None,
                                     text_maxlength=int(config['text_maxlength']),
                                     ) 
     return test_args 
