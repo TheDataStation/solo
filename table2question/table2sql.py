@@ -233,13 +233,12 @@ def get_sql_cond(row, col_ent_data, cond_col, cond_op_idx_lst, stat_info):
         cond_op_idx = random.sample(cond_op_idx_lst, 1)[0]
     else:
         cond_op_idx = 0
-    
     cond_value = col_ent_data[cond_col]['entities'][row]['text'] 
     cond_op = SqlQuery.cond_ops[cond_op_idx]
-    #cond_value_size = col_ent_data[cond_col]['entities'][row]['size']
-    #outlier_upper = stat_info['cell_outlier'][1]
-    #if cond_value_size > outlier_upper:
-    #    return None
+    cond_value_size = col_ent_data[cond_col]['entities'][row]['size']
+    outlier_upper = stat_info['cell_outlier'][1]
+    if cond_value_size > outlier_upper:
+        return None
     sql_cond = [int(cond_col), int(cond_op_idx), cond_value]
     return sql_cond 
 
@@ -312,8 +311,7 @@ def init_data(args):
     write_table_split(dev_tables, out_dir, 'dev_tables.jsonl')
 
     init_worker()
-    #stat_info = stat_tables(all_tables)
-    stat_info = None
+    stat_info = stat_tables(all_tables)
     write_stat_info(stat_info, out_dir, 'stat_info.json') 
     
     dev_sql_dir = os.path.join(out_dir, 'dev')
