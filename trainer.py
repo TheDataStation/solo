@@ -177,10 +177,23 @@ def sql2question(mode, sql_dir, work_dir, dataset):
    
     query_args = get_fusion_query_args(work_dir, dataset, sql_dir) 
     gen_fusion_query.main(query_args)
-     
-    #import pdb; pdb.set_trace()    
-    #result = subprocess.check_output(cmd, shell=True, text=True)
-    #print(result)  
+
+def read_meta(meta_file):
+    meta_map = {}
+    with open(meta_file) as f:
+        for line in f:
+            item = json.loads(line)
+            qid = item['qid']
+            meta_map[qid] = item
+    return meta_map
+ 
+def get_sql_triples(question_dir, data_file):
+    meta_file = os.path.join(question_dir, 'meta.txt')
+    meta_map = read_meta(meta_file)
+    with open(data_file) as f:
+        for line in f:
+            item = json.loads(line)
+    return null 
 
 def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, config, index_obj=None):
     print('retrieving %s table triples' % mode)
@@ -220,21 +233,6 @@ def read_tables(work_dir, dataset):
             table_id = item['tableId']
             table_dict[table_id] = item
     return table_dict
-
-def merge_train_file(train_file_lst):
-    if len(train_file_lst) == 1:
-        return
-    cur_file = train_file_lst[-1]
-    
-    data = []
-    for data_file in train_file_lst:
-        with open(data_file) as f:
-            for line in f:
-                data.append(line)
-
-    with open(cur_file, 'w') as f_o: 
-        for item in data:
-            f_o.write(item)
 
 def confirm(args):
     data_dir = get_sql_data_dir(args.work_dir, args.dataset)
@@ -326,9 +324,6 @@ def main():
                                     os.path.join(train_sql_dir, 'rel_graph'), 
                                     os.path.join(dev_sql_dir, 'rel_graph'), 
                                     config, train_file_lst)
-        
-        if con_opt == ConfirmOption.CreateNew:
-            merge_train_file(train_file_lst)
        
         if not os.path.isfile(train_args.train_data):
             print('No train data file (%s)' % train_args.train_data)
