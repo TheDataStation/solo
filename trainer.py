@@ -115,6 +115,7 @@ def get_train_args(train_itr, work_dir, dataset, checkpoint_dir,
                                     ckp_steps=int(config['ckp_steps']),
                                     bnn=int(config['bnn']),
                                     text_maxlength=int(config['text_maxlength']),
+                                    prior_model=None,
                                     ) 
     return train_args
 
