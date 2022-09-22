@@ -15,13 +15,13 @@ def read_small_table_set(data_file):
 
 def read_table(args):
     data_file = '/home/cc/code/data/%s/tables/tables.jsonl' % args.dataset
-    #small_table_set = read_small_table_set(args.input_tables)
+    small_table_set = read_small_table_set(args.input_tables)
     with open(data_file) as f:
         for line in f:
             table_data = json.loads(line)
             table_id = table_data['tableId']
-            #if table_id not in small_table_set:
-            #    continue
+            if table_id not in small_table_set:
+                continue
             yield table_data
 
 def main():
@@ -29,14 +29,14 @@ def main():
     table_id_dict = {}
     table_seq_no = 0
     for table in tqdm(read_table(args)):
-        table_dir = os.path.join(args.output_dir, 'table_%d' % table_seq_no)
-        os.mkdir(table_dir)
-
         table_title = table['documentTitle']
         table_id = table['tableId']
+        table_dir = os.path.join(args.output_dir, '%s' % table_id)
+        os.mkdir(table_dir)
 
-        out_file = os.path.join(table_dir, '%d.csv' % table_seq_no)
-        meta_file = os.path.join(table_dir, '%d.meta' % table_seq_no)
+
+        out_file = os.path.join(table_dir, '%s.csv' % table_id)
+        meta_file = os.path.join(table_dir, '%s.meta' % table_id)
         with open(meta_file, 'w') as f_m:
             f_m.write("title=%s\n" % table_title)
             f_m.write("id=%s\n" % table_id)
