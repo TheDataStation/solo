@@ -10,6 +10,7 @@ from table2question.sql_data import SqlQuery
 from table2question.wikisql_preprocess import get_sql_text
 import re
 import time
+from scipy.stats import bernoulli
 
 g_tokenizer = None
 
@@ -192,9 +193,6 @@ def sample_query(table, col_ent_data, col_lst, stat_info):
         
     sql_cond_lst = []
     title = table['documentTitle'].strip()
-    if title != '':
-        sql_cond = [None, 0, title]
-        sql_cond_lst.append(sql_cond)
     
     cond_col_num = random.sample(cond_col_num_lst, 1)[0]
     cond_col_lst = []
@@ -209,10 +207,22 @@ def sample_query(table, col_ent_data, col_lst, stat_info):
                 sql_cond = get_sql_cond(row, col_ent_data, cond_col, cond_op_idx_lst, stat_info)
                 if sql_cond is not None:
                     sql_cond_lst.append(sql_cond)
-   
+    
+        if len(sql_cond_lst) > 0:
+            title_cond_prob = 1 / (1 + len(sql_cond_lst))
+            use_title_cond = bernoulli.rvs(title_cond_prob, size=1)[0]
+            if use_title_cond > 0:
+                if title != '':
+                    sql_cond = [None, 0, title]
+                    sql_cond_lst.append(sql_cond)
+    else:
+        if title != '':
+            sql_cond = [None, 0, title]
+            sql_cond_lst.append(sql_cond)
+    
     if len(sql_cond_lst) == 0:
-        return None
-         
+        return None 
+     
     sql_info = {
         'conds':sql_cond_lst,
         'sel':int(sel_col),
