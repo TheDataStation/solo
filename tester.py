@@ -37,8 +37,12 @@ def main(args, table_data=None, index_obj=None):
         if os.path.isdir(retr_test_dir):
             shutil.rmtree(retr_test_dir)
         retr_triples('test', args.work_dir, args.dataset, test_query_dir, table_dict, False, config, index_obj=index_obj)
-    test_args = get_test_args(args.work_dir, args.dataset, retr_test_dir, config)
+    test_args = get_test_args(args.work_dir, args.dataset, retr_test_dir, config, args.tag)
     msg_info = model_tester.main(test_args)
+    
+    if not msg_info['state']:
+        print(msg_info['msg'])
+        return None
     return msg_info['out_dir'] 
 
 def get_index_obj(work_dir, dataset):
@@ -49,11 +53,9 @@ def get_index_obj(work_dir, dataset):
     index = OndiskIndexer(index_file, passage_file)
     return index
 
-def get_date_dir():
-    a = datetime.datetime.now()
-    test_dir = 'test_%d_%d_%d_%d_%d_%d_%d' % (a.year, a.month, a.day, a.hour, a.minute, a.second, a.microsecond)
+def get_date_dir(tag):
+    test_dir = 'test_%s' % (tag)
     return test_dir
-
 
 def get_model_file(file_pattern):
         file_lst = glob.glob(file_pattern)
@@ -65,11 +67,11 @@ def get_model_file(file_pattern):
         print('loading recent model file (%s)' % recent_file) 
         return recent_file
 
-def get_test_args(work_dir, dataset, retr_test_dir, config):
+def get_test_args(work_dir, dataset, retr_test_dir, config, tag):
     file_name = 'fusion_retrieved_tagged.jsonl'
     eval_file = os.path.join(retr_test_dir, file_name)
     checkpoint_dir = os.path.join(work_dir, 'open_table_discovery/output', dataset)
-    checkpoint_name = get_date_dir()
+    checkpoint_name = get_date_dir(tag)
  
     ret_model_file_pattern = os.path.join(work_dir, 'models', dataset, '*.pt') 
     retr_model = get_model_file(ret_model_file_pattern) 
@@ -77,6 +79,7 @@ def get_test_args(work_dir, dataset, retr_test_dir, config):
                                     do_train=False,
                                     model_path=os.path.join(work_dir, 'models/tqa_reader_base'),
                                     fusion_retr_model=retr_model,
+                                    train_data=None,
                                     eval_data=eval_file,
                                     n_context=int(config['retr_top_n']),
                                     per_gpu_batch_size=1,
@@ -95,6 +98,7 @@ def get_args():
     parser.add_argument('--work_dir', type=str, required=True)
     parser.add_argument('--query_dir', type=str, default='query')
     parser.add_argument('--dataset', type=str, required=True)
+    parser.add_argument('--tag', type=str, default='data')
     args = parser.parse_args()
     return args
 
