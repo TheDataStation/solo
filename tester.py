@@ -3,7 +3,7 @@ import argparse
 import datetime
 import glob
 import shutil
-
+import json
 import finetune_table_retr as model_tester
 from trainer import read_config, read_tables, retr_triples, get_train_date_dir
 from src.ondisk_index import OndiskIndexer
@@ -37,7 +37,7 @@ def main(args, table_data=None, index_obj=None):
         if os.path.isdir(retr_test_dir):
             shutil.rmtree(retr_test_dir)
         retr_triples('test', args.work_dir, args.dataset, test_query_dir, table_dict, False, config, index_obj=index_obj)
-    test_args = get_test_args(args.work_dir, args.dataset, retr_test_dir, config, args.tag)
+    test_args = get_test_args(args.work_dir, args.dataset, retr_test_dir, config, args)
     msg_info = model_tester.main(test_args)
     
     if not msg_info['state']:
@@ -53,8 +53,8 @@ def get_index_obj(work_dir, dataset):
     index = OndiskIndexer(index_file, passage_file)
     return index
 
-def get_date_dir(tag):
-    test_dir = 'test_%s' % (tag)
+def get_date_dir(train_model_dir):
+    test_dir = 'test_' + os.path.basename(train_model_dir)
     return test_dir
 
 def get_model_file(file_pattern):
@@ -67,14 +67,27 @@ def get_model_file(file_pattern):
         print('loading recent model file (%s)' % recent_file) 
         return recent_file
 
-def get_test_args(work_dir, dataset, retr_test_dir, config, tag):
+def get_train_best_model(train_model_dir):
+    best_metric_file = os.path.join(train_model_dir, 'best_metric_info.json')
+    with open(best_metric_file) as f:
+        best_metric_info = json.load(f)
+    model_file = best_metric_info['model_file']
+    base_file = os.path.basename(model_file)
+    model_file = os.path.join(train_model_dir, base_file)
+    print('loading model file (%s)' % model_file) 
+    return model_file 
+
+def get_test_args(work_dir, dataset, retr_test_dir, config, args):
     file_name = 'fusion_retrieved_tagged.jsonl'
     eval_file = os.path.join(retr_test_dir, file_name)
     checkpoint_dir = os.path.join(work_dir, 'open_table_discovery/output', dataset)
-    checkpoint_name = get_date_dir(tag)
- 
-    ret_model_file_pattern = os.path.join(work_dir, 'models', dataset, '*.pt') 
-    retr_model = get_model_file(ret_model_file_pattern) 
+    checkpoint_name = get_date_dir(args.train_model_dir)
+
+    if args.train_model_dir is None: 
+        ret_model_file_pattern = os.path.join(work_dir, 'models', dataset, '*.pt') 
+        retr_model = get_model_file(ret_model_file_pattern) 
+    else:
+        retr_model = get_train_best_model(args.train_model_dir)     
     test_args = argparse.Namespace(sql_batch_no=None,
                                     do_train=False,
                                     model_path=os.path.join(work_dir, 'models/tqa_reader_base'),
@@ -86,7 +99,7 @@ def get_test_args(work_dir, dataset, retr_test_dir, config, tag):
                                     cuda=0,
                                     name=checkpoint_name,
                                     checkpoint_dir=checkpoint_dir,
-                                    bnn=int(config['bnn']),
+                                    bnn=args.bnn,
                                     prior_model=None,
                                     text_maxlength=int(config['text_maxlength']),
                                     ) 
@@ -98,7 +111,8 @@ def get_args():
     parser.add_argument('--work_dir', type=str, required=True)
     parser.add_argument('--query_dir', type=str, default='query')
     parser.add_argument('--dataset', type=str, required=True)
-    parser.add_argument('--tag', type=str, default='data')
+    parser.add_argument('--train_model_dir', type=str, required=True)
+    parser.add_argument('--bnn', type=int, required=True)
     args = parser.parse_args()
     return args
 
