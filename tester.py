@@ -96,12 +96,14 @@ def get_test_args(work_dir, dataset, retr_test_dir, config, args):
                                     eval_data=eval_file,
                                     n_context=int(config['retr_top_n']),
                                     per_gpu_batch_size=1,
+                                    per_gpu_eval_batch_size=1,
                                     cuda=0,
                                     name=checkpoint_name,
                                     checkpoint_dir=checkpoint_dir,
                                     bnn=args.bnn,
                                     prior_model=None,
                                     text_maxlength=int(config['text_maxlength']),
+                                    multi_model_eval=0
                                     ) 
     return test_args 
 
