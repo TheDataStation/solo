@@ -35,8 +35,8 @@ def main():
     file_name = '%s.jsonl' % args.part_no
     data_file = os.path.join(data_part_dir, file_name)
    
-    out_file_name_tagged = '%s_tag_1_%d.jsonl' % (args.part_no, args.data_size) 
-    out_file_name_no_tag = '%s_tag_0_%d.jsonl' % (args.part_no, args.data_size)
+    out_file_name_tagged = '%s_tag_1.jsonl' % (args.part_no) 
+    out_file_name_no_tag = '%s_tag_0.jsonl' % (args.part_no)
     
     out_file_tagged = os.path.join(data_part_dir, out_file_name_tagged)
     out_file_no_tag = os.path.join(data_part_dir, out_file_name_no_tag)
