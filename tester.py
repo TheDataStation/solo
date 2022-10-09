@@ -103,6 +103,7 @@ def get_test_args(work_dir, dataset, retr_test_dir, config, args):
                                     bnn=args.bnn,
                                     prior_model=None,
                                     text_maxlength=int(config['text_maxlength']),
+                                    bnn_num_eval_sample=20,
                                     multi_model_eval=0
                                     ) 
     return test_args 
