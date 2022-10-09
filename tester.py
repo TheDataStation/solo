@@ -12,7 +12,7 @@ def main(args, table_data=None, index_obj=None):
     config = read_config()
     test_query_dir = os.path.join(args.work_dir, 'data', args.dataset, args.query_dir, 'test')
     retr_test_dir = os.path.join(test_query_dir, 'rel_graph')
-    retr_file = os.path.join(retr_test_dir, 'fusion_retrieved_tagged.jsonl')
+    retr_file = os.path.join(retr_test_dir, 'tag_0.jsonl')
     con_opt = '2' # retrieve new top tables by default
     if (table_data is None) and os.path.isfile(retr_file):
         str_msg = 'A set of top tables are already retrieved from Index. \n' + \
@@ -78,7 +78,7 @@ def get_train_best_model(train_model_dir):
     return model_file 
 
 def get_test_args(work_dir, dataset, retr_test_dir, config, args):
-    file_name = 'fusion_retrieved_tagged.jsonl'
+    file_name = 'tag_0.jsonl'
     eval_file = os.path.join(retr_test_dir, file_name)
     checkpoint_dir = os.path.join(work_dir, 'open_table_discovery/output', dataset)
     checkpoint_name = get_date_dir(args.train_model_dir)
