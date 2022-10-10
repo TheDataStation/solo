@@ -9,17 +9,17 @@ from table2txt.retr_utils import process_train, process_dev
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str)
-    parser.add_argument('--expr', type=str)
+    parser.add_argument('--table_expr', type=str)
     parser.add_argument('--strategy', type=str)
     parser.add_argument('--mode', type=str)
     parser.add_argument('--top_n', type=int, default=100)
-    parser.add_argument('--min_tables', type=int, default=10)
+    parser.add_argument('--min_tables', type=int, default=5)
     args = parser.parse_args()
     return args
 
 def get_data_dir(args):
     dataset_dir = '/home/cc/code/open_table_discovery/table2question/dataset/'
-    data_dir = os.path.join(dataset_dir, '%s/%s/%s/rel_graph' % (args.dataset, args.expr, args.mode))
+    data_dir = os.path.join(dataset_dir, '%s/sql_data/%s/%s' % (args.dataset, args.mode, args.table_expr))
     return data_dir
 
 def get_out_file(args):
