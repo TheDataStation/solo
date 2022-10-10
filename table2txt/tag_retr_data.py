@@ -39,7 +39,7 @@ def main():
     args = get_args()
     out_file = get_out_file(args)
     if os.path.exists(out_file):
-        print('(%s) already exists' % out_file)
+        print('%s already exists' % out_file)
         return
     print_args(args)
     output_data(args, out_file)
