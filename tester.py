@@ -42,6 +42,7 @@ def main(args, table_data=None, index_obj=None):
     else:
         table_dict = table_data
     if con_opt == '2':
+        assert(args.table_repre == 'rel_graph')
         if os.path.isdir(retr_test_dir):
             shutil.rmtree(retr_test_dir)
         retr_triples('test', args.work_dir, args.dataset, test_query_dir, table_dict, False, config, index_obj=index_obj)
