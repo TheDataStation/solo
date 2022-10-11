@@ -29,24 +29,37 @@ def get_ir(args):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--index_name', type=str)
-    parser.add_argument('--dataset', type=str)
-    parser.add_argument('--mode', type=str)
-    parser.add_argument('--expr', type=str)
-    parser.add_argument('--sql_expr', type=str)
-    parser.add_argument('--synthetic', type=int)
+    parser.add_argument('--index_name', type=str, required=True)
+    parser.add_argument('--dataset', type=str, required=True)
+    parser.add_argument('--mode', type=str, required=True)
+    parser.add_argument('--part_no', type=str)
+    parser.add_argument('--expr', type=str, default='rel_graph')
+    parser.add_argument('--synthetic', type=int, required=True)
     parser.add_argument('--min_tables', type=int, default=5)
     args = parser.parse_args()
     return args
 
+def get_query_dir(args):
+    if args.synthetic == 0:
+        data_dir = '/home/cc/data/%s/query/%s' % (args.dataset, args.mode) 
+    else:
+        mode_dir = '/home/cc/code/open_table_discovery/table2question/dataset/%s/sql_data/%s' % (args.dataset, args.mode)
+        if args.part_no is not None:
+            data_dir = os.path.join(mode_dir, args.expr, 'data_parts')
+        else:
+            data_dir = mode_dir
+    return data_dir
+
 def get_questions(args):
     q_item_lst = []
-    if (args.synthetic is None) or (args.synthetic == 0):
-        qas_file = '/home/cc/data/%s/interactions/%s_qas.jsonl' % (args.dataset, args.mode)
+    query_dir = get_query_dir(args)
+    if args.part_no is not None:
+        file_name = '%s.jsonl' % args.part_no
     else:
-        data_dir = '/home/cc/code/open_table_discovery/table2question/dataset'
-        qas_file = os.path.join(data_dir, args.dataset, args.sql_expr, 'fusion_query.jsonl')
-    with open(qas_file) as f:
+        file_name = 'fusion_query.jsonl'
+    
+    query_file = os.path.join(query_dir, file_name)
+    with open(query_file) as f:
         for line in f:
             q_item = json.loads(line)
             if args.synthetic:
@@ -66,8 +79,6 @@ def get_qry_question(spacy_nlp, question):
 
 def search_min_tables(args, ir_ranker, qry_question, top_n, max_retr=1000):
     num_retr = top_n
-    step = 100
-    step_mlp = 1
     satified=False
     while (not satified):
         retr_source_data = ir_ranker.search(index_name=args.index_name,
@@ -77,11 +88,8 @@ def search_min_tables(args, ir_ranker, qry_question, top_n, max_retr=1000):
                                         ret_src=True)
         table_lst = [a['_source']['table_id'] for a in retr_source_data] 
         table_set = set(table_lst)
-        if len(table_set) < args.min_tables:
-            num_retr = top_n + step * step_mlp
-            step_mlp *= 2
-            if num_retr > max_retr:
-                satified = True
+        if (len(table_set) < args.min_tables) and (num_retr < max_retr):
+            num_retr = max_retr
         else:
             satified = True
     return retr_source_data 
@@ -103,10 +111,11 @@ def search(ir_ranker, query, args, spacy_nlp):
     return (top_ir_passages, passage_tags)
 
 def get_out_dir(args):
-    if (args.synthetic is None) or (args.synthetic == 0):
-        out_dir = os.path.join('table2txt/dataset', args.dataset, '%s_bm25' % args.expr)
+    if args.synthetic == 0:
+        out_dir = '/home/cc/code/data/%s/query/%s/%s_bm25' % (args.dataset, args.mode, args.expr)
     else:
-        out_dir = os.path.join('table2question/dataset', args.dataset, args.sql_expr, '%s_bm25' % args.expr)
+        mode_dir = '/home/cc/code/open_table_discovery/table2question/dataset/%s/sql_data/%s' % (args.dataset, args.mode)
+        out_dir = os.path.join(mode_dir, args.expr)
     return out_dir
 
 def main():
@@ -114,11 +123,7 @@ def main():
     out_dir = get_out_dir(args)
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
-
-    if args.mode is None:
-        retr_file_name = 'fusion_retrieved.jsonl'
-    else:
-        retr_file_name = 'fusion_retrieved_%s.jsonl' % args.mode
+    retr_file_name = 'fusion_retrieved_bm25.jsonl'
     out_file = os.path.join(out_dir, retr_file_name)
     if os.path.exists(out_file):
         print('(%s) already exists.' % out_file)
