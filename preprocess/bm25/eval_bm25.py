@@ -32,7 +32,6 @@ def get_args():
     parser.add_argument('--index_name', type=str, required=True)
     parser.add_argument('--dataset', type=str, required=True)
     parser.add_argument('--mode', type=str, required=True)
-    parser.add_argument('--part_no', type=str)
     parser.add_argument('--expr', type=str, default='rel_graph')
     parser.add_argument('--synthetic', type=int, required=True)
     parser.add_argument('--min_tables', type=int, default=5)
@@ -43,20 +42,13 @@ def get_query_dir(args):
     if args.synthetic == 0:
         data_dir = '/home/cc/code/data/%s/query/%s' % (args.dataset, args.mode) 
     else:
-        mode_dir = '/home/cc/code/open_table_discovery/table2question/dataset/%s/sql_data/%s' % (args.dataset, args.mode)
-        if args.part_no is not None:
-            data_dir = os.path.join(mode_dir, args.expr, 'data_parts')
-        else:
-            data_dir = mode_dir
+        data_dir = '/home/cc/code/open_table_discovery/table2question/dataset/%s/sql_data/%s' % (args.dataset, args.mode)
     return data_dir
 
 def get_questions(args):
     q_item_lst = []
     query_dir = get_query_dir(args)
-    if args.part_no is not None:
-        file_name = '%s.jsonl' % args.part_no
-    else:
-        file_name = 'fusion_query.jsonl'
+    file_name = 'fusion_query.jsonl'
     
     query_file = os.path.join(query_dir, file_name)
     with open(query_file) as f:
