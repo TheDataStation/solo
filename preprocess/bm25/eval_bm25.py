@@ -41,7 +41,7 @@ def get_args():
 
 def get_query_dir(args):
     if args.synthetic == 0:
-        data_dir = '/home/cc/data/%s/query/%s' % (args.dataset, args.mode) 
+        data_dir = '/home/cc/code/data/%s/query/%s' % (args.dataset, args.mode) 
     else:
         mode_dir = '/home/cc/code/open_table_discovery/table2question/dataset/%s/sql_data/%s' % (args.dataset, args.mode)
         if args.part_no is not None:
@@ -62,8 +62,7 @@ def get_questions(args):
     with open(query_file) as f:
         for line in f:
             q_item = json.loads(line)
-            if args.synthetic:
-                q_item['qid'] = q_item['id']
+            q_item['qid'] = q_item['id']
             q_item_lst.append(q_item)
     return q_item_lst
 
@@ -112,7 +111,7 @@ def search(ir_ranker, query, args, spacy_nlp):
 
 def get_out_dir(args):
     if args.synthetic == 0:
-        out_dir = '/home/cc/code/data/%s/query/%s/%s_bm25' % (args.dataset, args.mode, args.expr)
+        out_dir = '/home/cc/code/data/%s/query/%s/%s' % (args.dataset, args.mode, args.expr)
     else:
         mode_dir = '/home/cc/code/open_table_discovery/table2question/dataset/%s/sql_data/%s' % (args.dataset, args.mode)
         out_dir = os.path.join(mode_dir, args.expr)
@@ -121,8 +120,6 @@ def get_out_dir(args):
 def main():
     args = get_args()
     out_dir = get_out_dir(args)
-    if not os.path.isdir(out_dir):
-        os.makedirs(out_dir)
     retr_file_name = 'fusion_retrieved_bm25.jsonl'
     out_file = os.path.join(out_dir, retr_file_name)
     if os.path.exists(out_file):
