@@ -46,13 +46,12 @@ def main():
     args = get_args()
     if args.synthetic:
         data_dir = '../table2question/dataset/%s/sql_data/%s/graph_text/' % (args.dataset, args.mode)
-        file_name = 'fusion_retrieved_tagged.jsonl'
-        out_file_name = 'fusion_retrieved_tagged_merged.jsonl'
-        out_file = os.path.join(data_dir, out_file_name)
     else:
-        data_dir = './dataset/%s/graph_text' % args.dataset
-        file_name = 'fusion_retrieved_%s_tagged.jsonl' % args.mode
-        out_file = os.path.join(data_dir, 'fusion_retrieved_%s_tagged_merged.jsonl' % args.mode)
+        data_dir = '/home/cc/code/data/%s/query/%s/graph_text' % (args.dataset, args.mode)
+    
+    file_name = 'fusion_retrieved_tagged.jsonl'
+    out_file_name = 'fusion_retrieved_tagged_merged.jsonl'
+    out_file = os.path.join(data_dir, out_file_name)
     
     if os.path.exists(out_file):
         print('(%s) already exists.' % out_file)

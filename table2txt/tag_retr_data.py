@@ -18,8 +18,11 @@ def get_args():
     return args
 
 def get_data_dir(args):
-    dataset_dir = '/home/cc/code/open_table_discovery/table2question/dataset/'
-    data_dir = os.path.join(dataset_dir, '%s/sql_data/%s/%s' % (args.dataset, args.mode, args.table_expr))
+    if args.mode == 'test':
+        data_dir = '/home/cc/code/data/%s/query/%s/%s' % (args.dataset, args.mode, args.table_expr) 
+    else:
+        dataset_dir = '/home/cc/code/open_table_discovery/table2question/dataset/'
+        data_dir = os.path.join(dataset_dir, '%s/sql_data/%s/%s' % (args.dataset, args.mode, args.table_expr))
     return data_dir
 
 def get_out_file(args):
@@ -59,6 +62,8 @@ def output_data(args, out_dev_file):
     if args.mode.startswith('train'):
         process_func = process_train
     elif args.mode == 'dev':
+        process_func = process_dev
+    elif args.mode == 'test':
         process_func = process_dev
     else:
         raise ValueError('Unknown mode (%s)' % args.mode)
