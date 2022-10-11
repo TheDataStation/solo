@@ -29,7 +29,10 @@ def main():
 def get_repre_data(dataset_dir, repre):
     data_map = {}
     q_set = set()
-    data_file = os.path.join(dataset_dir, repre, 'fusion_retrieved_tagged.jsonl')
+    file_name = 'fusion_retrieved_tagged.jsonl'
+    if repre == 'graph_text':
+        file_name = 'fusion_retrieved_tagged_merged.jsonl'
+    data_file = os.path.join(dataset_dir, repre, file_name)
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
