@@ -26,19 +26,20 @@ def get_sql_data_dir(work_dir, dataset):
     data_dir = os.path.join(work_dir, 'open_table_discovery/table2question/dataset', dataset, 'sql_data')
     return data_dir
 
-def train_data_ready(data_dir):
+def get_data_state(data_dir):
     state_file = os.path.join(data_dir, 'state.json')
     if not os.path.isfile(state_file):
-        return False
+        return None
     with open(state_file) as f:
         state_info = json.load(f)
-    return state_info['data_ready']
+    return state_info
 
-def update_data_state(work_dir, dataset):
+def update_data_state(work_dir, dataset, data_num):
     data_dir = get_sql_data_dir(work_dir, dataset)
     state_file = os.path.join(data_dir, 'state.json')
     state_info = {
         'data_ready':True
+        'data_num':data_num
     }
     with open(state_file, 'w') as f_o:
         f_o.write(json.dumps(state_info)) 
@@ -92,7 +93,7 @@ def get_train_date_dir():
     return train_dir
 
 def get_train_args(train_itr, work_dir, dataset, checkpoint_dir, 
-                   retr_train_dir, retr_eval_dir, config, train_file_lst):
+                   retr_train_dir, retr_eval_dir, config, prior_model):
     file_name = 'fusion_retrieved_tagged.jsonl'
     train_file = os.path.join(retr_train_dir, file_name)
     train_file_lst.append(train_file)
@@ -111,11 +112,11 @@ def get_train_args(train_itr, work_dir, dataset, checkpoint_dir,
                                     name=checkpoint_name,
                                     checkpoint_dir=checkpoint_dir,
                                     max_epoch=int(config['max_epoch']),
-                                    patience_steps=int(config['patience_steps']),
-                                    ckp_steps=int(config['ckp_steps']),
+                                    patience_epochs=int(config['patience_epochs']),
+                                    patience_datasets=int(config['patience_datasets']),
                                     bnn=int(config['bnn']),
                                     text_maxlength=int(config['text_maxlength']),
-                                    prior_model=None,
+                                    prior_model=prior_model,
                                     ) 
     return train_args
 
@@ -298,33 +299,33 @@ def main():
     assert(not os.path.isdir(checkpoint_dir))
       
     train_file_lst = [] 
+    prior_model = None
     best_metric = None 
     train_itr = -1
     while True:
         train_itr += 1
-        num_train_queries = 0
-        if train_itr <= 0:
-            num_train_queries = int(config['train_start_n'])
-        else:
-            num_train_queries = int(config['train_step_n'])
-        if num_train_queries <= 0:
-            break
-        
+        num_train_queries = int(config['train_incr_size'])
+        assert(num_train_queries > 0)
+         
         mode = 'train_%d' % train_itr
         train_sql_dir = os.path.join(sql_data_dir, mode)
         if con_opt == ConfirmOption.CreateNew:
             table2sql.generate_queries(train_sql_dir, mode, train_tables, num_train_queries, stat_info, sql_dict) 
             
             sql2question(mode, train_sql_dir, args.work_dir, args.dataset) 
+            
             retr_triples(mode, args.work_dir, args.dataset, train_sql_dir, table_dict, True, config)
-
-            if int(config['train_step_n']) == 0:
-                update_data_state(args.work_dir, args.dataset)
-       
+            
+            update_data_state(args.work_dir, args.dataset)
+      
+        if best_metric is None:
+            prior_model = None
+        else:
+            prior_model = best_metric['model_file']
         train_args = get_train_args(train_itr, args.work_dir, args.dataset, checkpoint_dir, 
                                     os.path.join(train_sql_dir, 'rel_graph'), 
                                     os.path.join(dev_sql_dir, 'rel_graph'), 
-                                    config, train_file_lst)
+                                    config, prior_model)
        
         if not os.path.isfile(train_args.train_data):
             print('No train data file (%s)' % train_args.train_data)
@@ -343,12 +344,8 @@ def main():
         else:
             update_best_metric(best_metric, train_metric, train_itr)
 
-        if best_metric['patience_itr'] >= 1:
+        if best_metric['patience_itr'] > config['patience_dataset']:
             break
-    
-    if con_opt == ConfirmOption.CreateNew:
-        if int(config['train_step_n']) > 0:
-            update_data_state(args.work_dir, args.dataset)
 
     show_best_metric(train_args.checkpoint_dir, best_metric, args.work_dir, args.dataset)
 
