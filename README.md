@@ -76,7 +76,7 @@ e) Download data
     
    The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by updating "train_batch_size" in file "trainer.config". 
    
-   By default, Incremental training each time gernerates a dataset with 1,000 questions.
+   By default, Incremental Training each time generates a dataset with 1,000 questions.
    
    If you want to retrain on "fetaqa" or "nq_tables", download the data first by "./get_data.sh". 
    
