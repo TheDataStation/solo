@@ -10,6 +10,7 @@ import passage_ondisk_retrieval
 from table2txt.retr_utils import process_train, process_dev
 import finetune_table_retr as model_trainer
 import datetime
+import torch
 from enum import Enum
 
 class ConfirmOption(Enum):
@@ -110,7 +111,6 @@ def get_fusion_query_args(work_dir, dataset, question_dir):
                                    )
     return query_args
 
-
 def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
     model_path = os.path.join(work_dir, 'models/tqa_retriever')
     index_dir = os.path.join(work_dir, 'index/on_disk_index_%s_rel_graph' % dataset) 
@@ -147,7 +147,7 @@ def get_train_args(train_itr, work_dir, dataset, checkpoint_dir,
     train_file = os.path.join(retr_train_dir, file_name)
     eval_file = os.path.join(retr_eval_dir, file_name)
     
-    checkpoint_name = 'train_sql_%d' % (train_itr)
+    checkpoint_name = 'train_%d' % (train_itr)
      
     train_args = argparse.Namespace(sql_batch_no=train_itr,
                                     do_train=True,
@@ -321,8 +321,6 @@ def confirm(args):
                  
     return opt, data_state
 
-
-
 def remove_train_data_dir(train_sql_dir):
     if os.path.isdir(train_sql_dir):
         shutil.rmtree(train_sql_dir) 
@@ -408,12 +406,11 @@ def main():
                                     os.path.join(train_sql_dir, 'rel_graph'), 
                                     os.path.join(dev_sql_dir, 'rel_graph'), 
                                     config, prior_model)
-       
         if not os.path.isfile(train_args.train_data):
             print('No train data file (%s)' % train_args.train_data)
             break
-             
         msg_info = model_trainer.main(train_args)
+        torch.cuda.empty_cache()
         if not msg_info['state']:
             print(msg_info['msg'])
             break 
