@@ -72,7 +72,11 @@ def get_index_obj(work_dir, dataset, args):
     return index
 
 def get_date_dir(train_model_dir):
-    test_dir = 'test_' + os.path.basename(train_model_dir)
+    if train_model_dir is not None:
+        test_dir = 'test_' + os.path.basename(train_model_dir)
+    else:
+        a = datetime.datetime.now()
+        test_dir = 'test_%d_%d_%d_%d_%d_%d_%d' % (a.year, a.month, a.day, a.hour, a.minute, a.second, a.microsecond)
     return test_dir
 
 def get_model_file(file_pattern):
@@ -113,8 +117,8 @@ def get_test_args(work_dir, dataset, retr_test_dir, config, args):
                                     train_data=None,
                                     eval_data=eval_file,
                                     n_context=int(config['retr_top_n']),
-                                    per_gpu_batch_size=1,
-                                    per_gpu_eval_batch_size=1,
+                                    per_gpu_batch_size=config['train_batch_size'],
+                                    per_gpu_eval_batch_size=config['eval_batch_size'],
                                     cuda=0,
                                     name=checkpoint_name,
                                     checkpoint_dir=checkpoint_dir,
@@ -122,7 +126,8 @@ def get_test_args(work_dir, dataset, retr_test_dir, config, args):
                                     prior_model=None,
                                     text_maxlength=int(config['text_maxlength']),
                                     bnn_num_eval_sample=6,
-                                    multi_model_eval=0
+                                    multi_model_eval=0,
+                                    debug=config['debug']
                                     ) 
     return test_args 
 
@@ -133,7 +138,7 @@ def get_args():
     parser.add_argument('--query_dir', type=str, default='query')
     parser.add_argument('--table_repre', type=str, required=True)
     parser.add_argument('--dataset', type=str, required=True)
-    parser.add_argument('--train_model_dir', type=str, required=True)
+    parser.add_argument('--train_model_dir', type=str)
     parser.add_argument('--bnn', type=int, required=True)
     args = parser.parse_args()
     return args
