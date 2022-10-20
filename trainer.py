@@ -26,6 +26,12 @@ def get_sql_data_dir(work_dir, dataset):
     data_dir = os.path.join(work_dir, 'open_table_discovery/table2question/dataset', dataset, 'sql_data')
     return data_dir
 
+def read_stat_info(data_dir):
+    data_file = os.path.join(data_dir, 'stat_info.json')
+    with open(data_file) as f:
+        stat_info = json.load(f)
+    return stat_info
+
 def get_data_state(data_dir):
     state_file = os.path.join(data_dir, 'state.json')
     if not os.path.isfile(state_file):
@@ -34,15 +40,58 @@ def get_data_state(data_dir):
         state_info = json.load(f)
     return state_info
 
-def update_data_state(work_dir, dataset, data_num):
+def update_data_state(work_dir, dataset, data_itr, sql_dict):
     data_dir = get_sql_data_dir(work_dir, dataset)
     state_file = os.path.join(data_dir, 'state.json')
     state_info = {
-        'data_ready':True
-        'data_num':data_num
+        'data_ready':True,
+        'data_itr':data_itr,
+        'sql_num':len(sql_dict),
     }
     with open(state_file, 'w') as f_o:
-        f_o.write(json.dumps(state_info)) 
+        f_o.write(json.dumps(state_info))
+
+    write_sql_dict(data_dir, sql_dict)
+
+def write_sql_dict(out_dir, sql_dict):
+    out_file = os.path.join(out_dir, 'sql_keys.jsonl')
+    with open(out_file, 'w') as f_o:
+        for sql_key in sql_dict:
+            item = {
+                'key':sql_key
+            }
+            f_o.write(json.dumps(item) + '\n')
+
+def read_sql_dict(data_state, data_dir):
+    sql_dict = {}
+    data_file = os.path.join(data_dir, 'sql_keys.jsonl')
+    with open(data_file) as f:
+        for line in tqdm(f):
+            item = json.loads(line) 
+            sql_dict[item['key']] = 1
+    assert(data_state['sql_num'] == len(sql_dict))
+    return sql_dict
+
+def read_train_tables(data_dir, dataset):
+    train_tables = []
+    data_file = os.path.join(data_dir, 'train_tables.jsonl')
+    train_table_dict = {}
+    with open(data_file) as f:
+        for line in tqdm(f):
+            item = json.loads(line)
+        train_table_dict[item['table_id']] = 1
+    
+    table_file = '../data/%s/tables/tables.jsonl' % dataset
+    table_dict = {}
+    with open(table_file) as f:
+        for line in f:
+            item = json.loads(line)
+            table_id = item['tableId']
+            table_dict[table_id] = item
+            if table_id in train_table_dict:
+                train_tables.append(item)
+    
+    return train_tables, table_dict
 
 def get_sql_args(work_dir, dataset, config):
     sql_args = argparse.Namespace(work_dir=work_dir,
@@ -96,7 +145,6 @@ def get_train_args(train_itr, work_dir, dataset, checkpoint_dir,
                    retr_train_dir, retr_eval_dir, config, prior_model):
     file_name = 'fusion_retrieved_tagged.jsonl'
     train_file = os.path.join(retr_train_dir, file_name)
-    train_file_lst.append(train_file)
     eval_file = os.path.join(retr_eval_dir, file_name)
     
     checkpoint_name = 'train_sql_%d' % (train_itr)
@@ -108,6 +156,7 @@ def get_train_args(train_itr, work_dir, dataset, checkpoint_dir,
                                     eval_data=eval_file,
                                     n_context=int(config['retr_top_n']),
                                     per_gpu_batch_size=int(config['train_batch_size']),
+                                    per_gpu_eval_batch_size=int(config['eval_batch_size']),
                                     cuda=0,
                                     name=checkpoint_name,
                                     checkpoint_dir=checkpoint_dir,
@@ -116,7 +165,9 @@ def get_train_args(train_itr, work_dir, dataset, checkpoint_dir,
                                     patience_datasets=int(config['patience_datasets']),
                                     bnn=int(config['bnn']),
                                     text_maxlength=int(config['text_maxlength']),
+                                    multi_model_eval=0,
                                     prior_model=prior_model,
+                                    fusion_retr_model=None
                                     ) 
     return train_args
 
@@ -171,7 +222,7 @@ def sql2question(mode, sql_dir, work_dir, dataset):
     
     sql_question_file = os.path.join(sql_dir, 'questions.txt')
     if os.path.exists(sql_question_file):
-        err_msg = '(%s) already exists, do you want to replace it (y/n)? '
+        err_msg = '(%s) already exists, do you want to replace it (y/n)? ' % sql_question_file
         raise ValueError(err_msg) 
     
     shutil.copy(out_question_file, sql_question_file)
@@ -236,13 +287,22 @@ def read_tables(work_dir, dataset):
             table_dict[table_id] = item
     return table_dict
 
+def get_train_itr_desp(data_itr):
+    if data_itr == 0:
+        return '(data 0)'
+    else:
+        return '(data 0-%d)' % data_itr
+
 def confirm(args):
     data_dir = get_sql_data_dir(args.work_dir, args.dataset)
-    data_ready = train_data_ready(data_dir)
+    data_state = get_data_state(data_dir)
+    data_ready = False
+    if (data_state is not None) and data_state['data_ready']:
+        data_ready = True
     opt = None
     if data_ready:
-        str_msg = 'Training data already exists, type \n' + \
-                  '1 - train with existing data \n' + \
+        str_msg = 'Training %s already exists, type \n' % get_train_itr_desp(data_state['data_itr']) + \
+                  '1 - Continue with existing data \n' + \
                   '2 - train with new data (existing training data will be deleted) \n' + \
                   'q - exit\n' 
         opt_str = input(str_msg)
@@ -259,17 +319,27 @@ def confirm(args):
             shutil.rmtree(data_dir)
         opt = ConfirmOption.CreateNew
                  
-    return opt
+    return opt, data_state
+
+
+
+def remove_train_data_dir(train_sql_dir):
+    if os.path.isdir(train_sql_dir):
+        shutil.rmtree(train_sql_dir) 
 
 def main():
     args = get_args()
-    con_opt = confirm(args)
+    con_opt, data_state = confirm(args)
     while con_opt is None:
         print('type 1, 2 or q')
         con_opt = confirm(args)
     if con_opt == ConfirmOption.Exit:
         return
     config = read_config()
+    sql_dict = None
+    stat_info = None
+    train_tables = None
+    table_dict = None
     if con_opt == ConfirmOption.CreateNew: 
         sql_args = get_sql_args(args.work_dir, args.dataset, config)
         msg_info = table2sql.init_data(sql_args)
@@ -300,7 +370,11 @@ def main():
       
     train_file_lst = [] 
     prior_model = None
-    best_metric = None 
+    best_metric = None
+    
+    existing_data_itr = -1
+    if data_state != None:
+        existing_data_itr = data_state['data_itr'] 
     train_itr = -1
     while True:
         train_itr += 1
@@ -309,14 +383,22 @@ def main():
          
         mode = 'train_%d' % train_itr
         train_sql_dir = os.path.join(sql_data_dir, mode)
-        if con_opt == ConfirmOption.CreateNew:
+        if train_itr > existing_data_itr: # need to create more questions
+            if sql_dict is None:
+                sql_dict = read_sql_dict(data_state, sql_data_dir)
+                train_tables, table_dict = read_train_tables(sql_data_dir, args.dataset)         
+                stat_info = read_stat_info(sql_data_dir)
+                table2sql.init_worker()
+            
+            remove_train_data_dir(train_sql_dir)
+
             table2sql.generate_queries(train_sql_dir, mode, train_tables, num_train_queries, stat_info, sql_dict) 
             
             sql2question(mode, train_sql_dir, args.work_dir, args.dataset) 
             
             retr_triples(mode, args.work_dir, args.dataset, train_sql_dir, table_dict, True, config)
             
-            update_data_state(args.work_dir, args.dataset)
+            update_data_state(args.work_dir, args.dataset, train_itr, sql_dict)
       
         if best_metric is None:
             prior_model = None
@@ -344,7 +426,7 @@ def main():
         else:
             update_best_metric(best_metric, train_metric, train_itr)
 
-        if best_metric['patience_itr'] > config['patience_dataset']:
+        if best_metric['patience_itr'] > config['patience_datasets']:
             break
 
     show_best_metric(train_args.checkpoint_dir, best_metric, args.work_dir, args.dataset)
