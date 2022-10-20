@@ -466,12 +466,14 @@ def update_best_metric(best_metric, train_metric, train_itr):
     if train_metric['p@1'] > best_metric['p@1']:
         best_metric['p@1'] = train_metric['p@1']
         best_metric['p@5'] = train_metric['p@5']
+        best_metric['model_file'] = train_metric['model_file']
         best_metric['train_itr'] = train_itr
         best_metric['patience_itr'] = 0
 
     elif train_metric['p@1'] == best_metric['p@1']:
         if train_metric['p@5'] > best_metric['p@5']:
             best_metric['p@5'] = train_metric['p@5']
+            best_metric['model_file'] = train_metric['model_file']
             best_metric['train_itr'] = train_itr     
             best_metric['patience_itr'] = 0        
 
