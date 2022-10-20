@@ -158,6 +158,7 @@ def get_train_args(train_itr, work_dir, dataset, checkpoint_dir,
                                     per_gpu_batch_size=int(config['train_batch_size']),
                                     per_gpu_eval_batch_size=int(config['eval_batch_size']),
                                     cuda=0,
+                                    debug=config['debug'],
                                     name=checkpoint_name,
                                     checkpoint_dir=checkpoint_dir,
                                     max_epoch=int(config['max_epoch']),
@@ -167,7 +168,7 @@ def get_train_args(train_itr, work_dir, dataset, checkpoint_dir,
                                     text_maxlength=int(config['text_maxlength']),
                                     multi_model_eval=0,
                                     prior_model=prior_model,
-                                    fusion_retr_model=None
+                                    fusion_retr_model=None,
                                     ) 
     return train_args
 
