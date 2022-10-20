@@ -311,6 +311,7 @@ def confirm(args):
         elif opt_str == '2':
             if os.path.isdir(data_dir):
                 shutil.rmtree(data_dir)
+            data_state = None
             opt = ConfirmOption.CreateNew
         elif opt_str == 'q':
             opt = ConfirmOption.Exit
