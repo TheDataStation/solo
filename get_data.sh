@@ -1,14 +1,15 @@
-if [ "$#" -ne 1 ]; then
-  echo "Usage: ./get_data.sh <dataset>"
+if [ "$#" -ne 2 ]; then
+  echo "Usage: ./get_data.sh <dataset> <server>"
   exit
 fi
 dataset=$1
+server=$2
 work_dir="$(dirname "$PWD")"
 data_dir=${work_dir}/data
 mkdir -p ${data_dir}
 cd ${data_dir}
 rm -f ${dataset}.tar
-wget http://plover.cs.uchicago.edu/open_table_discovery/${dataset}.tar
+wget http://${server}/open_table_discovery/${dataset}.tar
 rm -rf ${dataset}
 tar -xf ${dataset}.tar
 rm ${dataset}.tar
