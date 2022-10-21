@@ -181,8 +181,11 @@ def count_lines(data_file):
             count += 1
     return count
 
-def sql2question(mode, sql_dir, work_dir, dataset):
-    print('translating %s sql to question' % mode)
+def sql2question(mode, sql_dir, work_dir, dataset, train_itr=None):
+    if train_itr is None:
+        print('translating %s sql to question' % mode)
+    else:
+        print('translating data %d sql to question' % train_itr)
     target_dir = os.path.join(work_dir, 'plms_graph2text/sql2nlg/data', dataset, 'sql_data')
     if not os.path.isdir(target_dir):
         os.makedirs(target_dir)
@@ -394,7 +397,7 @@ def main():
 
             table2sql.generate_queries(train_sql_dir, mode, train_tables, num_train_queries, stat_info, sql_dict) 
             
-            sql2question(mode, train_sql_dir, args.work_dir, args.dataset) 
+            sql2question(mode, train_sql_dir, args.work_dir, args.dataset, train_itr) 
             
             retr_triples(mode, args.work_dir, args.dataset, train_sql_dir, table_dict, True, config)
             
