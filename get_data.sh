@@ -21,10 +21,10 @@ rm -rf ${index_dir}
 mkdir ${index_dir}
 cd ${index_dir}
 rm -f merged_index.ivfdata
-wget http://plover.cs.uchicago.edu/open_table_discovery/${index_dir}/merged_index.ivfdata
+wget http://${server}/open_table_discovery/${index_dir}/merged_index.ivfdata
 rm -f passages.jsonl
-wget http://plover.cs.uchicago.edu/open_table_discovery/${index_dir}/passages.jsonl
+wget http://${server}/open_table_discovery/${index_dir}/passages.jsonl
 rm -f populated.index
-wget http://plover.cs.uchicago.edu/open_table_discovery/${index_dir}/populated.index
+wget http://${server}/open_table_discovery/${index_dir}/populated.index
 
 
