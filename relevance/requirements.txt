@@ -1,0 +1,9 @@
+pandas
+numpy
+scipy
+ipykernel
+torch==1.6.0+cu101
+faiss-cpu
+transformers==3.0.2
+tensorboard
+gnureadline
