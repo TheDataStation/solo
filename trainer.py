@@ -186,7 +186,7 @@ def sql2question(mode, sql_dir, work_dir, dataset, train_itr=None):
         print('translating %s sql to question' % mode)
     else:
         print('translating data %d sql to question' % train_itr)
-    target_dir = os.path.join(work_dir, 'plms_graph2text/sql2nlg/data', dataset, 'sql_data')
+    target_dir = os.path.join(work_dir, 'open_table_discovery', 'sql2question/sql2nlg/data', dataset, 'sql_data')
     if not os.path.isdir(target_dir):
         os.makedirs(target_dir)
     
@@ -210,13 +210,13 @@ def sql2question(mode, sql_dir, work_dir, dataset, train_itr=None):
         os.remove(part_tar_file)
     shutil.copy(sql_tar_file, part_dir)
          
-    cmd = 'cd %s/plms_graph2text ;' % work_dir + \
-          ' . %s/pyenv/plms_graph2text/bin/activate ;' % work_dir + \
+    cmd = 'cd %s/open_table_discovery/sql2question ;' % work_dir + \
+          ' . %s/pyenv/sql2question/bin/activate ;' % work_dir + \
           ' ./decode_sql2nlg.sh t5-base %s/models/sql2nlg-t5-base_2022_01_21.ckpt' % work_dir + \
           ' 0 ' + dataset + ' sql_data ' + part_name
     os.system(cmd) 
 
-    out_dir = os.path.join(work_dir, 'plms_graph2text/sql2nlg/outputs/test_model', 
+    out_dir = os.path.join(work_dir, 'open_table_discovery', 'sql2question/sql2nlg/outputs/test_model', 
                            dataset, 'sql_data', part_name)
     out_question_file = os.path.join(out_dir, 'val_outputs/test_unseen_predictions.txt.debug')
 

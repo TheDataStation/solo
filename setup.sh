@@ -11,13 +11,9 @@ sudo ./configure --enable-loadable-sqlite-extensions
 sudo make install
 cd ${cur_dir}
 sudo rm -rf downloads
-cd ..
-git clone https://github.com/mingqiwangcn/fusion_in_decoder.git
-cd fusion_in_decoder
+
 bash prep_env.sh
-cd ..
-git clone https://github.com/mingqiwangcn/plms_graph2text.git
-cd plms_graph2text
+cd sql2question
 bash prep_env.sh
 cd ${work_dir}
 mkdir -p index
