@@ -609,7 +609,7 @@ def main(opt, coreset_method=None):
     init_global()
     
     src.slurm.init_distributed_mode(opt)
-    src.slurm.init_signal_handler()
+    #src.slurm.init_signal_handler()
     
     assert(opt.world_size == 1)
 

@@ -7,6 +7,7 @@ import json
 import finetune_table_retr as model_tester
 from trainer import read_config, read_tables, retr_triples, get_train_date_dir
 from src.ondisk_index import OndiskIndexer
+import uuid
 
 def get_file_name(args):
     if args.table_repre == 'graph_text':
@@ -55,14 +56,15 @@ def main(args, table_data=None, index_obj=None):
     return msg_info['out_dir'] 
 
 def get_index_passage_file(args):
+    file_name = None
     if args.table_repre == 'rel_graph':
         file_name = 'passages.jsonl'
     elif args.table_repre == 'graph_text':
         file_name = 'merged_passages.jsonl'
     elif args.table_repre == 'table_token_slide':
         file_name = 'token_text.jsonl'
-    else:
-        return None
+    
+    return file_name
 
 def get_index_obj(work_dir, dataset, args):
     index_dir = os.path.join(work_dir, 'index/on_disk_index_%s_%s' % (dataset, args.table_repre))
@@ -75,8 +77,7 @@ def get_date_dir(train_model_dir):
     if train_model_dir is not None:
         test_dir = 'test_' + os.path.basename(train_model_dir)
     else:
-        a = datetime.datetime.now()
-        test_dir = 'test_%d_%d_%d_%d_%d_%d_%d' % (a.year, a.month, a.day, a.hour, a.minute, a.second, a.microsecond)
+        test_dir = 'test_%s' % str(uuid.uuid4())
     return test_dir
 
 def get_model_file(file_pattern):
