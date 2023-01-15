@@ -1,3 +1,4 @@
+This is the repository for the paper [Data Discovery using Natural Language Questions via a Self-Supervised Approach](https://arxiv.org/abs/2301.03560).
 # S2LD, Data Discovery using Natural Language Questions via a Self-Supervised Approach
 S2LD is a self-supervised data discovery system that finds tables among a large collection given natural language questions. It automatically generates training dataset from the target table collection and then trains the relevance model.
 The system consists of two separated stages:
