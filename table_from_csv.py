@@ -3,6 +3,7 @@ import csv
 import argparse
 import os
 from tqdm import tqdm
+from multiprocessing import Pool as ProcessPool
 import uuid
 import glob
 
@@ -30,11 +31,14 @@ def read_meta(meta_file):
                     table_id = text[pos:]
     return (table_title, table_id)
 
-def read_table(csv_file, meta_file):
+def read_table(file_info, args):
+    csv_file = file_info['data_file']
+    meta_file = file_info['meta_file']
     file_name = os.path.basename(os.path.splitext(csv_file)[0])
     table_title, table_id = read_meta(meta_file)
     if table_title == '':
-        table_title = file_name
+        if args.file_name_title:
+            table_title = file_name
     if table_id == '':
         table_id = file_name + ' - ' + str(uuid.uuid4())
     table = {
@@ -69,13 +73,23 @@ def main(args):
         return msg_info
 
     f_o = open(out_file, 'w')
-
     dataset_dir = os.path.join(args.work_dir, 'data', args.dataset)
     csv_file_pattern = os.path.join(dataset_dir, 'tables_csv', '**', '*.csv')
     csv_file_lst = glob.glob(csv_file_pattern, recursive=True)
-    for csv_file in tqdm(csv_file_lst):
+   
+    num_wokers = min(os.cpu_count(), 10) 
+    work_pool = ProcessPool(num_wokers)
+    arg_info_lst = []
+    
+    for csv_file in csv_file_lst:
         meta_file = os.path.splitext(csv_file)[0] + '.meta'
-        table = read_table(csv_file, meta_file)
+        args_info = {
+            'data_file':csv_file,
+            'meta_file':meta_file,
+        }
+        arg_info_lst.append(args_info)
+    
+    for table in tqdm(work_pool.imap_unordered(read_table, arg_info_lst), total=len(arg_info_lst)):
         f_o.write(json.dumps(table) + '\n')
     
     f_o.close()
@@ -89,6 +103,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--work_dir', type=str)
     parser.add_argument('--dataset', type=str)
+    parser.add_argument('--file_name_title', type=int, default=1)
+
     args = parser.parse_args()
     return args
 

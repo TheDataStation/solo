@@ -1,9 +1,9 @@
 class RelationTag:
-    tag_title = '[T]'
-    tag_sub_name = '[SC]'
-    tag_sub = '[S]'
-    tag_obj_name = '[OC]'
-    tag_obj = '[O]'
+    tag_title = '[_T_]'
+    tag_sub_name = '[_SC_]'
+    tag_sub = '[_S_]'
+    tag_obj_name = '[_OC_]'
+    tag_obj = '[_O_]'
 
     sub_none = ''
     obj_none = ''

@@ -24,31 +24,26 @@ class RelationGraph(Strategy):
                 cell_info['text'] = cell_info['text'].strip()
 
     def gen_topic_entity_rels(self, table):
-        out_graph_lst = []
         topic_entity = self.get_topic_entity(table)
-        if topic_entity == '':
-            return []
-
-        col_data = table['columns']
-        row_data = table['rows']
-        for row_idx, row_info in enumerate(row_data):
-            for col_idx, col_info in enumerate(col_data):
-                rel_name = col_info['text']
-                obj = row_info['cells'][col_idx]['text'] 
-                graph = RelationTag.get_annotated_text(topic_entity, None, None, rel_name, obj) 
-                graph_info = {
-                    'table_id':table['tableId'],
-                    'row':row_idx,
-                    'sub_col':None,
-                    'obj_col':col_idx,
-                    'graph':graph
-                }
-                out_graph_lst.append(graph_info)
-        return out_graph_lst
+        if topic_entity != '':
+            col_data = table['columns']
+            row_data = table['rows']
+            for row_idx, row_info in enumerate(row_data):
+                for col_idx, col_info in enumerate(col_data):
+                    rel_name = col_info['text']
+                    obj = row_info['cells'][col_idx]['text'] 
+                    graph = RelationTag.get_annotated_text(topic_entity, None, None, rel_name, obj) 
+                    graph_info = {
+                        'table_id':table['tableId'],
+                        'row':row_idx,
+                        'sub_col':None,
+                        'obj_col':col_idx,
+                        'graph':graph
+                    }
+                    yield graph_info
 
     def gen_row_rels(self, table):
         topic_entity = self.get_topic_entity(table)
-        out_graph_lst = []
         col_data = table['columns']
         N = len(col_data)
         row_data = table['rows']
@@ -67,15 +62,21 @@ class RelationGraph(Strategy):
                         'obj_col':obj_col_idx,
                         'graph':graph
                     }
-                    out_graph_lst.append(graph_info)
-        
-        return out_graph_lst
+                    yield graph_info 
 
     def generate(self, table):
         self.update_cells(table)
-        graph_lst_1 = self.gen_topic_entity_rels(table)
-        graph_lst_2 = self.gen_row_rels(table)
-        return graph_lst_1 + graph_lst_2
-
-
+       
+        triple_dict = {} 
+        for graph_info_topic in self.gen_topic_entity_rels(table):
+            graph_key = graph_info_topic['graph'].strip().lower()
+            if graph_key not in triple_dict:
+                triple_dict[graph_key] = True
+                yield graph_info_topic
+        
+        for graph_info_row in self.gen_row_rels(table):
+            graph_key_row = graph_info_row['graph'].strip().lower()
+            if graph_key_row not in triple_dict:
+                triple_dict[graph_key_row] = True
+                yield graph_info_row
 
