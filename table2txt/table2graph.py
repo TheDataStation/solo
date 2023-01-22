@@ -7,6 +7,7 @@ import random
 from multiprocessing import Pool as ProcessPool
 from table2txt.graph_strategy.strategy_constructor import get_strategy
 import shutil
+import transformers
 
 def count_tables(data_file):
     count = 0
@@ -31,6 +32,9 @@ def read_tables(data_file, table_count, batch_size):
 def init_worker(strategy_name):
     global g_strategy
     g_strategy = get_strategy(strategy_name) 
+    tokenizer = transformers.T5Tokenizer.from_pretrained('t5-base', return_dict=False)    
+    g_strategy.set_tokenizer(tokenizer)
+    g_strategy.set_max_text_size(200)
 
 def process_table(arg_info):
     table = arg_info['table']
@@ -66,7 +70,7 @@ def main(args):
     
     out_file_lst = []
     batch_size = 10
-    multi_process = True
+    multi_process = False
     work_pool = None
     if multi_process:
         work_pool = ProcessPool(initializer=init_worker, initargs=(args.strategy,))
@@ -83,7 +87,7 @@ def main(args):
             arg_info_lst.append(args_info)
     
         if multi_process:
-            for out_graph_file in tqdm(work_pool.imap_unordered(process_table, arg_info_lst), total=len(arg_info_lst)):
+            for out_graph_file in work_pool.imap_unordered(process_table, arg_info_lst):
                 out_file_lst.append(out_graph_file)
         else:
             for arg_info in arg_info_lst:
@@ -118,13 +122,13 @@ def write_graphs(graph_lst, f_o):
         meta_info = {
             'table_id': graph_info['table_id'],
             'row': graph_info['row'],
-            'sub_col':graph_info['sub_col'],
-            'obj_col':graph_info['obj_col']
+            'sub_col_lst':graph_info['sub_col_lst'],
+            'obj_col_lst':graph_info['obj_col_lst']
         }
         passage_info = {
             'p_id':g_passage_id,
             'passage':passage,
-            'tag':meta_info    
+            'tag':meta_info 
         }
         f_o.write(json.dumps(passage_info) + '\n')
 
