@@ -6,6 +6,7 @@ from tqdm import tqdm
 from multiprocessing import Pool as ProcessPool
 import uuid
 import glob
+import random
 
 def get_out_file(args):
     data_dir = os.path.join(args.work_dir, 'data/%s/tables' % args.dataset)
@@ -31,13 +32,13 @@ def read_meta(meta_file):
                     table_id = text[pos:]
     return (table_title, table_id)
 
-def read_table(file_info, args):
-    csv_file = file_info['data_file']
-    meta_file = file_info['meta_file']
+def read_table(arg_info):
+    csv_file = arg_info['data_file']
+    meta_file = arg_info['meta_file']
     file_name = os.path.basename(os.path.splitext(csv_file)[0])
     table_title, table_id = read_meta(meta_file)
     if table_title == '':
-        if args.file_name_title:
+        if arg_info['file_name_title']:
             table_title = file_name
     if table_id == '':
         table_id = file_name + ' - ' + str(uuid.uuid4())
@@ -86,10 +87,15 @@ def main(args):
         args_info = {
             'data_file':csv_file,
             'meta_file':meta_file,
+            'file_name_title':args.file_name_title
         }
         arg_info_lst.append(args_info)
     
     for table in tqdm(work_pool.imap_unordered(read_table, arg_info_lst), total=len(arg_info_lst)):
+        if args.table_sample_rows is not None:
+            row_data = table['rows']
+            num_rows = len(row_data)
+            table['rows'] = random.sample(row_data, min(num_rows, args.table_sample_rows))
         f_o.write(json.dumps(table) + '\n')
     
     f_o.close()
@@ -104,6 +110,7 @@ def get_args():
     parser.add_argument('--work_dir', type=str)
     parser.add_argument('--dataset', type=str)
     parser.add_argument('--file_name_title', type=int, default=1)
+    parser.add_argument('--table_sample_rows', type=int, default=None)
 
     args = parser.parse_args()
     return args

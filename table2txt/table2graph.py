@@ -7,41 +7,51 @@ import random
 from multiprocessing import Pool as ProcessPool
 from table2txt.graph_strategy.strategy_constructor import get_strategy
 import shutil
-import transformers
+import copy
+import uuid
 
-def count_tables(data_file):
-    count = 0
-    with open(data_file) as f:
-        for line in f:
-            count += 1
-    return count
+def count_batchs(data_file, batch_size, chunk_size):
+    num_batch = 0
+    for _ in read_tables(data_file, batch_size, chunk_size):
+        num_batch += 1
+    return num_batch
 
-def read_tables(data_file, table_count, batch_size):
+def read_tables(data_file, batch_size, chunk_size):
     table_lst = []
-    num_batch = int(table_count / batch_size) + (1 if (table_count % batch_size) > 0 else 0)
     with open(data_file) as f:
-        for line in tqdm(f, total=num_batch):
+        for line in tqdm(f):
             table = json.loads(line)
-            table_lst.append(table)
-            if len(table_lst) >= batch_size:
-                yield table_lst
-                table_lst = []
+            for sub_table in chunk_tables(table, chunk_size):
+                table_lst.append(sub_table)
+                if len(table_lst) >= batch_size:
+                    yield table_lst
+                    table_lst = []
+
     if len(table_lst) > 0:
         yield table_lst
+
+def chunk_tables(table, chunk_size):
+    row_data = table['rows']
+    if len(table['rows']) <= chunk_size:
+        yield table
+
+    table['rows'] = []
+    for offset in range(0, len(row_data), chunk_size):
+        sub_table = copy.deepcopy(table)
+        sub_table['rows'] = row_data[offset:(offset+chunk_size)]
+        yield sub_table
 
 def init_worker(strategy_name):
     global g_strategy
     g_strategy = get_strategy(strategy_name) 
-    tokenizer = transformers.T5Tokenizer.from_pretrained('t5-base', return_dict=False)    
-    g_strategy.set_tokenizer(tokenizer)
-    g_strategy.set_max_text_size(200)
 
 def process_table(arg_info):
     table = arg_info['table']
+    table['show_progress'] = (arg_info['task_idx'] == 0)
     out_part_dir = arg_info['out_part_dir']
-    file_name = '%s_graph.jsonl' % table['tableId']
+    file_name = '%s_graph_%s.jsonl' % (table['tableId'], str(uuid.uuid4()))
     out_file = os.path.join(out_part_dir, file_name)
-    with open(out_file, 'w') as f_o:  
+    with open(out_file, 'w') as f_o: 
         for graph_info in g_strategy.generate(table):
             write_graphs([graph_info], f_o) 
     return out_file
@@ -61,7 +71,8 @@ def main(args):
 
     table_file_name = args.table_file
     input_table_file = os.path.join(args.work_dir, 'data', args.dataset, 'tables', table_file_name)
-    table_count = count_tables(input_table_file)
+    
+    num_batch = count_batchs(input_table_file, args.table_import_batch, args.table_chunk_size)
 
     out_part_dir = os.path.join(out_dir, 'table_parts')
     if os.path.isdir(out_part_dir):
@@ -69,20 +80,21 @@ def main(args):
     os.makedirs(out_part_dir)
     
     out_file_lst = []
-    batch_size = 10
-    multi_process = False
+    multi_process = True
     work_pool = None
     if multi_process:
         work_pool = ProcessPool(initializer=init_worker, initargs=(args.strategy,))
     else:
         init_worker(args.strategy)
     
-    for batch_table_lst in read_tables(input_table_file, table_count, batch_size):
+    for batch_table_lst in tqdm(read_tables(input_table_file, args.table_import_batch, args.table_chunk_size), 
+                                total=num_batch):
         arg_info_lst = []
-        for table in batch_table_lst:
+        for task_idx, table in enumerate(batch_table_lst):
             args_info = {
                 'table':table,
-                'out_part_dir':out_part_dir
+                'out_part_dir':out_part_dir,
+                'task_idx':task_idx
             }
             arg_info_lst.append(args_info)
     
@@ -122,8 +134,8 @@ def write_graphs(graph_lst, f_o):
         meta_info = {
             'table_id': graph_info['table_id'],
             'row': graph_info['row'],
-            'sub_col_lst':graph_info['sub_col_lst'],
-            'obj_col_lst':graph_info['obj_col_lst']
+            'sub_col':graph_info['sub_col'],
+            'obj_col':graph_info['obj_col']
         }
         passage_info = {
             'p_id':g_passage_id,
@@ -140,6 +152,8 @@ def get_args():
     parser.add_argument('--experiment', type=str)
     parser.add_argument('--strategy', type=str)
     parser.add_argument('--debug', type=int, default=0)
+    parser.add_argument('--table_import_batch', type=int)
+    parser.add_argument('--table_chunk_size', type=int)
     args = parser.parse_args()
     return args
 

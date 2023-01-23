@@ -7,19 +7,24 @@ import table_from_csv
 import generate_passage_embeddings as passage_encoder
 from src import ondisk_index
 import shutil
+from trainer import read_config
 
-def get_csv_args(work_dir, dataset):
+def get_csv_args(work_dir, dataset, config):
     csv_args = argparse.Namespace(work_dir=work_dir,
-                                  dataset=dataset
+                                  dataset=dataset,
+                                  file_name_title=config['file_name_title'],
+                                  table_sample_rows=config['table_sample_rows']
                                  )
     return csv_args 
 
-def get_graph_args(work_dir, dataset):
+def get_graph_args(work_dir, dataset, config):
     graph_args = argparse.Namespace(work_dir=work_dir, 
                                     dataset=dataset,
                                     experiment='rel_graph',
                                     table_file='tables.jsonl',
-                                    strategy='RelationGraph'
+                                    strategy='RelationGraph',
+                                    table_chunk_size=config['table_chunk_size'],
+                                    table_import_batch=config['table_import_batch']
                                     )
     return graph_args
 
@@ -80,17 +85,19 @@ def main():
     args = get_args()
     if not confirm(args):
         return
-    
+     
+    config = read_config()
     if args.tables_csv_exists:
-        print('Importing tables')
-        csv_args = get_csv_args(args.work_dir, args.dataset)
+        import_msg = 'Importing tables'
+        print(import_msg)    
+        csv_args = get_csv_args(args.work_dir, args.dataset, config)
         msg_info = table_from_csv.main(csv_args)
         if not msg_info['state']:
             print(msg_info['msg'])
             return
 
     print('Linearizing table rows')
-    graph_args = get_graph_args(args.work_dir, args.dataset)
+    graph_args = get_graph_args(args.work_dir, args.dataset, config)
     msg_info = table2graph.main(graph_args)
     graph_ok = msg_info['state']
     if not graph_ok:

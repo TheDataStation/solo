@@ -19,7 +19,7 @@ class ConfirmOption(Enum):
     Exit = 3
 
 def read_config():
-    with open('./trainer.config') as f:
+    with open('./system.config') as f:
        config = json.load(f)
     return config
 

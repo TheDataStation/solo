@@ -17,13 +17,12 @@ class RelationTag:
             sub = ''
         assert (obj_name is not None)
         assert(obj is not None)
-
-        sub_part = sub_name + '  ' + sub
-        obj_part = obj_name + '  ' + obj
-        out_text = title + '  ,  ' + sub_part.strip() + '  ' + obj_part.strip() + ' . '
-
+        sub_part = (sub_name + '  ' + sub).strip()
+        obj_part = (obj_name + '  ' + obj).strip()
+        out_text = title + ' , ' +  sub_part + ' , ' + obj_part + ' ; '
+        
         return out_text
-    
+
     @staticmethod
     def get_tagged_text(title, sub_name, sub, obj_name, obj):
         assert (title is not None)
