@@ -106,7 +106,6 @@ def main(args):
                 out_graph_file = process_table(arg_info)
                 out_file_lst.append(out_graph_file)
    
-    print('merging graph files') 
     merge_graph_files(out_file_lst, f_o) 
     shutil.rmtree(out_part_dir)
     f_o.close()

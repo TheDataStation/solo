@@ -7,7 +7,34 @@ import table_from_csv
 import generate_passage_embeddings as passage_encoder
 from src import ondisk_index
 import shutil
+import json
 from trainer import read_config
+
+StateImportCSV = 'import_csv'
+StateGenTriples = 'gen_triples'
+StateEncode = 'encode'
+StateIndex = 'index'
+
+def get_state_file(dataset):
+    return 'index_state_%s.json' % dataset 
+
+def read_state(state_file):
+    if os.path.isfile(state_file):
+        with open(state_file) as f:
+            state_info = json.load(f)
+    else:
+        state_info = {
+            StateImportCSV:False,
+            StateGenTriples:False,
+            StateEncode:False,
+            StateIndex:False
+        }
+    return state_info
+
+def update_state(state_info, state_key, state, state_file):
+    state_info[state_key] = state
+    with open(state_file, 'w') as f_o:
+        f_o.write(json.dumps(state_info))
 
 def get_csv_args(work_dir, dataset, config):
     csv_args = argparse.Namespace(work_dir=work_dir,
@@ -83,51 +110,71 @@ def confirm(args):
 
 def main():
     args = get_args()
+    pipe_sate_file = get_state_file(args.dataset)
+    pipe_state_info = read_state(pipe_sate_file)
     if not confirm(args):
         return
      
     config = read_config()
+    
     if args.tables_csv_exists:
-        import_msg = 'Importing tables'
-        print(import_msg)    
+        print('Importing tables')
         csv_args = get_csv_args(args.work_dir, args.dataset, config)
         msg_info = table_from_csv.main(csv_args)
         if not msg_info['state']:
+            update_state(pipe_state_info, StateImportCSV, False, pipe_sate_file)
             print(msg_info['msg'])
             return
-
-    print('Linearizing table rows')
+        else:
+            update_state(pipe_state_info, StateImportCSV, True, pipe_sate_file)
+    
+    print('Generating triples')
     graph_args = get_graph_args(args.work_dir, args.dataset, config)
     msg_info = table2graph.main(graph_args)
     graph_ok = msg_info['state']
     if not graph_ok:
+        update_state(pipe_state_info, StateGenTriples, False, pipe_sate_file)
         return
+    else:
+        update_state(pipe_state_info, StateGenTriples, True, pipe_sate_file)
     
-    graph_file = msg_info['out_file']
-    part_file_lst = split_graphs(graph_file, args.batch_size)
-    encoder_model = os.path.join(args.work_dir, 'models/tqa_retriever')
-    emd_file_suffix = '_embeddings'
-    out_emd_file_lst = []
-    for part_file in part_file_lst:
-        print('Encoding %s' % part_file)
-        encoder_args = get_encoder_args(encoder_model)
-        encoder_args.passages = part_file
-        encoder_args.output_path = part_file + emd_file_suffix
-        out_emd_file_lst.append(encoder_args.output_path)
-        passage_encoder.main(encoder_args, is_main=False) 
-        os.remove(part_file)
+    print('Encoding triples')
+    try: 
+        graph_file = msg_info['out_file']
+        part_file_lst = split_graphs(graph_file, args.batch_size)
+        encoder_model = os.path.join(args.work_dir, 'models/tqa_retriever')
+        emd_file_suffix = '_embeddings'
+        out_emd_file_lst = []
+        for part_file in part_file_lst:
+            print('Encoding %s' % part_file)
+            encoder_args = get_encoder_args(encoder_model)
+            encoder_args.passages = part_file
+            encoder_args.output_path = part_file + emd_file_suffix
+            out_emd_file_lst.append(encoder_args.output_path)
+            passage_encoder.main(encoder_args, is_main=False) 
+            os.remove(part_file)
+    except:
+        update_state(pipe_state_info, StateEncode, False, pipe_sate_file)
+        return
+    update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
     
+    #Indexing triples
     index_args = get_index_args(args.work_dir, args.dataset, '*' + emd_file_suffix + '_*')
     msg_info = ondisk_index.main(index_args)
     if not msg_info['state']:
+        update_state(pipe_state_info, StateIndex, False, pipe_sate_file)
         print(msg_info['msg'])
+    else:
+        update_state(pipe_state_info, StateIndex, True, pipe_sate_file)
+
     index_dir = msg_info['index_dir']
     assert(os.path.isdir(index_dir))
     shutil.move(graph_file, index_dir)
     for out_emd_file in out_emd_file_lst:
         cmd = 'rm %s_*' % out_emd_file
         os.system(cmd)
-               
+    print('Indexing done')
+ 
 def split_graphs(graph_file, batch_size):
     out_file_prefix = graph_file + '_part_'
     part_file_lst = glob.glob(out_file_prefix + '*')
