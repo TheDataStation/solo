@@ -118,7 +118,7 @@ def main():
     config = read_config()
     
     if args.tables_csv_exists:
-        print('Importing tables')
+        print('\nImporting tables')
         csv_args = get_csv_args(args.work_dir, args.dataset, config)
         msg_info = table_from_csv.main(csv_args)
         if not msg_info['state']:
@@ -128,7 +128,7 @@ def main():
         else:
             update_state(pipe_state_info, StateImportCSV, True, pipe_sate_file)
     
-    print('Generating triples')
+    print('\nGenerating triples')
     graph_args = get_graph_args(args.work_dir, args.dataset, config)
     msg_info = table2graph.main(graph_args)
     graph_ok = msg_info['state']
@@ -138,7 +138,7 @@ def main():
     else:
         update_state(pipe_state_info, StateGenTriples, True, pipe_sate_file)
     
-    print('Encoding triples')
+    print('\nEncoding triples')
     try: 
         graph_file = msg_info['out_file']
         part_file_lst = split_graphs(graph_file, args.batch_size)
@@ -158,7 +158,7 @@ def main():
         return
     update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
     
-    #Indexing triples
+    print('\nCreating disk index')
     index_args = get_index_args(args.work_dir, args.dataset, '*' + emd_file_suffix + '_*')
     msg_info = ondisk_index.main(index_args)
     if not msg_info['state']:
@@ -173,7 +173,7 @@ def main():
     for out_emd_file in out_emd_file_lst:
         cmd = 'rm %s_*' % out_emd_file
         os.system(cmd)
-    print('Indexing done')
+    print('\nIndexing done')
  
 def split_graphs(graph_file, batch_size):
     out_file_prefix = graph_file + '_part_'
