@@ -75,8 +75,7 @@ def index_data(index_file, data_file, index_out_dir, block_size=5000000):
     emb_file_lst.sort()
     for emb_file in emb_file_lst: 
         print('loading file [%s]' % emb_file)
-        with open(emb_file, 'rb') as f:
-            p_ids, p_embs = pickle.load(f)
+        p_ids, p_embs = load_emb(emb_file)
         N = len(p_ids)
         print('creating block indexes')
         for idx in range(0, N, block_size):
@@ -155,11 +154,26 @@ def get_num_vecs(emb_file_lst):
     print('collecting the number of vectors')
     num_vecs = 0
     for emb_file in emb_file_lst:
-        with open(emb_file, 'rb') as f:
-            _, p_embs = pickle.load(f)
+        _, p_embs = load_emb(emb_file)
         num_part_vecs = len(p_embs)
         num_vecs += num_part_vecs
     return num_vecs
+
+def load_emb(emb_file):
+    p_id_lst = []
+    p_emb_lst = []
+    with open(emb_file, 'rb') as f:
+        while True:
+            try:
+                batch_p_id, batch_p_emb = pickle.load(f)
+                p_id_lst.append(batch_p_id)
+                p_emb_lst.append(batch_p_emb)
+            except EOFError:
+                break
+    import pdb; pdb.set_trace()
+    all_p_id = [p_id for batch in p_id_lst for p_id in batch]
+    all_p_emb = np.concatenate(p_emb_lst, axis=0)
+    return all_p_id, all_p_emb 
 
 # create an empty index and train it
 def create_train(data_file, index_file):
@@ -177,8 +191,7 @@ def create_train(data_file, index_file):
 
     train_emb_lst = []
     for emb_file in emb_file_lst:
-        with open(emb_file, 'rb') as f:
-            _, p_embs = pickle.load(f)
+        _, p_embs = load_emb(emb_file)
         N = p_embs.shape[0]
         rows = list(np.arange(0, N))
 

@@ -29,11 +29,11 @@ csv.field_size_limit(sys.maxsize)
 
 logger = logging.getLogger(__name__)
 
-def embed_passages(opt, passages, model, tokenizer):
+def embed_passages(opt, passages, model, tokenizer, f_o):
     batch_size = opt.per_gpu_batch_size * opt.world_size
     collator = src.data.TextCollator(tokenizer, model.config.passage_maxlength)
     dataset = src.data.TextDataset(passages, title_prefix='title:', passage_prefix='context:')
-    dataloader = DataLoader(dataset, batch_size=batch_size, drop_last=False, num_workers=10, collate_fn=collator)
+    dataloader = DataLoader(dataset, batch_size=batch_size, drop_last=False, num_workers=0, collate_fn=collator) # no multiprocessing
     total = 0
     allids, allembeddings = [], []
     num_batch = len(dataloader)
@@ -45,17 +45,12 @@ def embed_passages(opt, passages, model, tokenizer):
                 apply_mask=model.config.apply_passage_mask,
                 extract_cls=model.config.extract_cls,
             )
-            embeddings = embeddings.cpu()
+            embeddings = embeddings.cpu().numpy()
             total += len(ids)
 
-            allids.append(ids)
-            allembeddings.append(embeddings)
+            pickle.dump((ids, embeddings), f_o, protocol=4)
             if k % 100 == 0:
                 logger.info('Encoded passages %d', total)
-
-    allembeddings = torch.cat(allembeddings, dim=0).numpy()
-    allids = [x for idlist in allids for x in idlist]
-    return allids, allembeddings
 
 def main(opt, is_main):
     src.slurm.init_distributed_mode(opt)
@@ -84,23 +79,10 @@ def main(opt, is_main):
 
     passages = src.util.load_passages(args.passages)
 
-    shard_size = len(passages) // args.num_shards
-    start_idx = args.shard_id * shard_size
-    end_idx = start_idx + shard_size
-    if args.shard_id == args.num_shards-1:
-        end_idx = len(passages)
-
-    passages = passages[start_idx:end_idx]
-    logger.info(f'Embedding generation for {len(passages)} passages from idx {start_idx} to {end_idx}')
-
-    allids, allembeddings = embed_passages(opt, passages, model, tokenizer)
-
     output_path.parent.mkdir(parents=True, exist_ok=True) 
-    logger.info(f'Saving {len(allids)} passage embeddings to {save_file}')
-    with open(save_file, mode='wb') as f:
-        pickle.dump((allids, allembeddings), f, protocol=4)
-
-    logger.info(f'Total passages processed {len(allids)}. Written to {save_file}.')
+    with open(save_file, mode='wb') as f_o:
+        embed_passages(opt, passages, model, tokenizer, f_o)
+        logger.info(f'Saving {len(passages)} passage embeddings to {save_file}')
 
     msg_info = {
         'state':True,
