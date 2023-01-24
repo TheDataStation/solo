@@ -116,9 +116,7 @@ def main():
     pipe_state_info = read_state(pipe_sate_file)
     if not confirm(args):
         return
-     
     config = read_config()
-    
     if args.tables_csv_exists:
         print('\nImporting tables')
         csv_args = get_csv_args(args.work_dir, args.dataset, config)
@@ -140,10 +138,12 @@ def main():
     else:
         update_state(pipe_state_info, StateGenTriples, True, pipe_sate_file)
     
+    num_triples = msg_info['num_triples'] 
+    
     print('\nEncoding triples')
     emb_file_suffix = '_embeddings'
     graph_file = msg_info['out_file']
-    out_emb_file_lst = encode_triples(args.work_dir, graph_file, config['encode_batch'], emb_file_suffix)
+    out_emb_file_lst = encode_triples(args.work_dir, graph_file, num_triples, config['num_encode_workers'], emb_file_suffix)
     update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
     
     print('\nCreating disk index')
@@ -164,8 +164,8 @@ def main():
     
     print('\nIndexing done')
 
-def encode_triples(work_dir, graph_file, batch_size, emb_file_suffix):
-    part_file_lst = split_graphs(graph_file, batch_size)
+def encode_triples(work_dir, graph_file, num_triples, num_encode_workers, emb_file_suffix):
+    part_file_lst = split_triples(graph_file, num_triples, num_encode_workers)
     encoder_model = os.path.join(work_dir, 'models/tqa_retriever')
     out_emb_file_lst = []
     part_info_lst = []
@@ -180,8 +180,7 @@ def encode_triples(work_dir, graph_file, batch_size, emb_file_suffix):
     
     multi_process = True
     if multi_process:
-        num_workers = len(part_info_lst)
-        work_pool = ProcessPool(num_workers)
+        work_pool = ProcessPool(num_encode_workers)
         for out_emb_file in tqdm(work_pool.imap_unordered(encode_part_trples, part_info_lst), total=len(part_info_lst)):
             out_emb_file_lst.append(out_emb_file)
     else:
@@ -203,13 +202,14 @@ def encode_part_trples(part_info):
     os.remove(part_file)
     return encoder_args.output_path
  
-def split_graphs(graph_file, batch_size):
-    out_file_prefix = graph_file + '_part_'
+def split_triples(triple_file, num_triples, num_workers):
+    out_file_prefix = triple_file + '_part_'
     part_file_lst = glob.glob(out_file_prefix + '*')
     if len(part_file_lst) > 0:
         cmd = 'rm ' + out_file_prefix + '*'
         os.system(cmd)
-    cmd = 'split -l %d %s %s' % (batch_size, graph_file, out_file_prefix)
+    batch_size = int(num_triples / num_workers) + (1 if num_triples % num_workers else 0)
+    cmd = 'split -l %d %s %s' % (batch_size, triple_file, out_file_prefix)
     os.system(cmd)
     part_file_lst = glob.glob(out_file_prefix + '*')
     part_file_lst.sort()

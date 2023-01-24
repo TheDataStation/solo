@@ -106,13 +106,14 @@ def main(args):
                 out_graph_file = process_table(arg_info)
                 out_file_lst.append(out_graph_file)
    
-    merge_graph_files(out_file_lst, f_o) 
+    num_triples = merge_graph_files(out_file_lst, f_o) 
     shutil.rmtree(out_part_dir)
     f_o.close()
     
     msg_info = {
         'state':True,
-        'out_file':out_passage_file
+        'out_file':out_passage_file,
+        'num_triples':num_triples
     }
     return msg_info 
 
@@ -128,6 +129,8 @@ def merge_graph_files(graph_file_list, f_merge):
                 triple_info['p_id'] = g_p_id
                 f_merge.write(json.dumps(triple_info) + '\n')
         os.remove(graph_file)
+    num_total_triples = g_p_id
+    return num_total_triples
 
 def write_graphs(graph_lst, f_o):
     for graph_info in graph_lst:
