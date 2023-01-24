@@ -56,7 +56,7 @@ def get_graph_args(work_dir, dataset, config):
                                     )
     return graph_args
 
-def get_encoder_args(model_path):
+def get_encoder_args(model_path, show_progress=True):
     encoder_args = argparse.Namespace(passages=None, 
                                       output_path=None,
                                       shard_id=0,
@@ -65,6 +65,7 @@ def get_encoder_args(model_path):
                                       passage_maxlength=200,
                                       model_path=model_path,
                                       no_fp16=False,
+                                      show_progress=show_progress
                                      )
     return encoder_args
 
@@ -168,11 +169,12 @@ def encode_triples(work_dir, graph_file, batch_size, emb_file_suffix):
     encoder_model = os.path.join(work_dir, 'models/tqa_retriever')
     out_emb_file_lst = []
     part_info_lst = []
-    for part_file in part_file_lst:
+    for part_idx, part_file in enumerate(part_file_lst):
         part_info = {
             'file_name':part_file,
             'encoder_model':encoder_model,
-            'emb_file_suffix':emb_file_suffix
+            'emb_file_suffix':emb_file_suffix,
+            'show_progress':(part_idx == 0)
         }
         part_info_lst.append(part_info)
     
@@ -193,8 +195,8 @@ def encode_part_trples(part_info):
     encoder_model = part_info['encoder_model']
     emb_file_suffix = part_info['emb_file_suffix']
 
-    print('Encoding %s' % part_file)
-    encoder_args = get_encoder_args(encoder_model)
+    print('Encoding %s' % os.path.basename(part_file))
+    encoder_args = get_encoder_args(encoder_model, part_info['show_progress'])
     encoder_args.passages = part_file
     encoder_args.output_path = part_file + emb_file_suffix
     passage_encoder.main(encoder_args, is_main=False) 

@@ -38,7 +38,7 @@ def embed_passages(opt, passages, model, tokenizer, f_o):
     allids, allembeddings = [], []
     num_batch = len(dataloader)
     with torch.no_grad():
-        for k, (ids, text_ids, text_mask) in tqdm(enumerate(dataloader), total=num_batch):
+        for k, (ids, text_ids, text_mask) in tqdm(enumerate(dataloader), total=num_batch, disable=(not opt.show_progress)):
             embeddings = model.embed_text(
                 text_ids=text_ids.cuda(), 
                 text_mask=text_mask.cuda(), 
@@ -92,7 +92,7 @@ def main(opt, is_main):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-
+    parser.add_argument('--show_progress', type=int, default=True)
     parser.add_argument('--passages', type=str, default=None, help='Path to passages (.jsonl file)')
     parser.add_argument('--output_path', type=str, default='wikipedia_embeddings/passages', help='prefix path to save embeddings')
     parser.add_argument('--shard_id', type=int, default=0, help="Id of the current shard")
