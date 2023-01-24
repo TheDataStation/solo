@@ -119,16 +119,18 @@ def main(args):
 g_passage_id = 0
 
 def merge_graph_files(graph_file_list, f_merge):
-    for graph_file in graph_file_list:
+    g_p_id = 0
+    for graph_file in tqdm(graph_file_list, desc='Merging triples'):
         with open(graph_file) as f_graph:
             for line in f_graph:
-                f_merge.write(line)
+                triple_info = json.loads(line)
+                g_p_id += 1
+                triple_info['p_id'] = g_p_id
+                f_merge.write(json.dumps(triple_info) + '\n')
         os.remove(graph_file)
 
 def write_graphs(graph_lst, f_o):
-    global g_passage_id
     for graph_info in graph_lst:
-        g_passage_id += 1
         passage = graph_info['graph']
         meta_info = {
             'table_id': graph_info['table_id'],
@@ -137,7 +139,7 @@ def write_graphs(graph_lst, f_o):
             'obj_col':graph_info['obj_col']
         }
         passage_info = {
-            'p_id':g_passage_id,
+            'p_id':None, #update when merging
             'passage':passage,
             'tag':meta_info 
         }
