@@ -37,7 +37,7 @@ class RelationGraph(Strategy):
                 
                 cell_info['text'] = row_cell_text
 
-    def get_topic_entity_rels(self, topic_entity, col_data, row_info, row_idx):
+    def get_topic_entity_rels(self, table, topic_entity, col_data, row_info, row_idx):
         topic_graph_lst = []
         for col_idx, col_info in enumerate(col_data):
             rel_name = col_info['text']
@@ -50,14 +50,14 @@ class RelationGraph(Strategy):
                 'obj_col':col_idx,
                 'graph':triple,
             }
-            topic_graph_lst.append(tripe_info)
+            topic_graph_lst.append(triple_info)
         return topic_graph_lst
 
     def gen_row_rels(self, table):
         topic_entity = self.get_topic_entity(table)
         topic_entity_size = 0
         if topic_entity != '':
-            if topic_entity.split() > 1:
+            if len(topic_entity.split()) > 1:
                 topic_entity = '" %s "' % topic_entity
 
         col_data = table['columns']
@@ -66,7 +66,7 @@ class RelationGraph(Strategy):
         for row_idx, row_info in enumerate(row_data):
             row_triple_lst = []
             if topic_entity != '':
-                topic_triple_lst = self.get_topic_entity_rels(topic_entity, col_data, row_info, row_idx)
+                topic_triple_lst = self.get_topic_entity_rels(table, topic_entity, col_data, row_info, row_idx)
                 row_triple_lst.extend(topic_triple_lst)
 
             for sub_col_idx in range(N-1):

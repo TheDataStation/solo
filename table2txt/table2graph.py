@@ -49,7 +49,7 @@ def process_table(arg_info):
     table = arg_info['table']
     table['show_progress'] = (arg_info['task_idx'] == 0)
     out_part_dir = arg_info['out_part_dir']
-    file_name = '%s_graph_%s.jsonl' % (table['tableId'], str(uuid.uuid4()))
+    file_name = 'triple_%s.jsonl' % str(uuid.uuid4())
     out_file = os.path.join(out_part_dir, file_name)
     with open(out_file, 'w') as f_o: 
         for graph_info in g_strategy.generate(table):
