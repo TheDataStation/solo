@@ -16,6 +16,7 @@ StateImportCSV = 'import_csv'
 StateGenTriples = 'gen_triples'
 StateEncode = 'encode'
 StateIndex = 'index'
+EmbFileSuffix = '_embeddings'
 
 def get_state_file(dataset):
     return 'index_state_%s.json' % dataset 
@@ -118,6 +119,14 @@ def main():
     if not confirm(args):
         return
     config = read_config()
+    if args.pipe_step != '':
+        if args.pipe_step != 'emb_to_index':
+            print('arg pipe_step only support "emb_to_index"')
+            return
+        else:
+            create_index(args, EmbFileSuffix)
+            return
+             
     if args.tables_csv_exists:
         print('\nImporting tables')
         csv_args = get_csv_args(args.work_dir, args.dataset, config)
@@ -147,10 +156,17 @@ def main():
         return
      
     print('\nEncoding triples')
-    emb_file_suffix = '_embeddings'
-    out_emb_file_lst = encode_triples(args.work_dir, triple_file, num_triples, config['num_encode_workers'], emb_file_suffix)
+    out_emb_file_lst = encode_triples(args.work_dir, triple_file, num_triples, config['num_encode_workers'], EmbFileSuffix)
     update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
-    
+   
+    #Creating index  
+    create_index(args) 
+
+def create_index(args, emb_file_suffix):
+    import pdb; pdb.set_trace()
+    emb_file_pattern = 'table2txt/dataset/%s/rel_graph/*%s_00' % (args.dataset, emb_file_suffix)
+    out_emb_file_lst = glob.glob(emb_file_pattern) 
+
     print('\nComputing space for creating disk index')
     if not check_index_space(out_emb_file_lst):
         print('Creating disk index is stopped.')
@@ -173,6 +189,7 @@ def main():
         os.system(cmd)
     
     print('\nIndexing done')
+     
 
 def encode_triples(work_dir, graph_file, num_triples, num_encode_workers, emb_file_suffix):
     part_file_lst = split_triples(graph_file, num_triples, num_encode_workers)
@@ -246,11 +263,16 @@ def check_encode_space(triple_file):
 
 def check_index_space(out_emb_file_lst):
     emb_size = 0
+    file_name_lst = []
     for emb_file in out_emb_file_lst:
-        emb_part_size = get_file_size(emb_file + '_00')
+        file_name = emb_file
+        if not file_name.endswith('_00'):
+            file_name = emb_file + '_00'
+        emb_part_size = get_file_size(file_name)
         emb_size += emb_part_size
+        file_name_lst.append(file_name)
 
-    free_space = get_free_space(out_emb_file_lst[0] + '_00')
+    free_space = get_free_space(file_name_lst[0])
     needed_space = emb_size * 3
     return check_space(free_space, needed_space, 'Creating disk index') 
 
@@ -270,6 +292,7 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--work_dir', type=str, required=True)
     parser.add_argument('--dataset', type=str, required=True)
+    parser.add_argument('--pipe_step', type=str)
     args = parser.parse_args()
     return args
 
