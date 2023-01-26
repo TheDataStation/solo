@@ -10,6 +10,7 @@ import shutil
 import json
 from trainer import read_config
 from multiprocessing import Pool as ProcessPool
+import math
 
 StateImportCSV = 'import_csv'
 StateGenTriples = 'gen_triples'
@@ -137,14 +138,23 @@ def main():
         return
     else:
         update_state(pipe_state_info, StateGenTriples, True, pipe_sate_file)
-    
     num_triples = msg_info['num_triples'] 
-    
+   
+    print('\nComputing space for encoding') 
+    triple_file = msg_info['out_file']
+    if not check_encode_space(triple_file):
+        print('Encoding is stopped.')
+        return
+     
     print('\nEncoding triples')
     emb_file_suffix = '_embeddings'
-    graph_file = msg_info['out_file']
-    out_emb_file_lst = encode_triples(args.work_dir, graph_file, num_triples, config['num_encode_workers'], emb_file_suffix)
+    out_emb_file_lst = encode_triples(args.work_dir, triple_file, num_triples, config['num_encode_workers'], emb_file_suffix)
     update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
+    
+    print('\nComputing space for creating disk index')
+    if not check_index_space(out_emb_file_lst):
+        print('Creating disk index is stopped.')
+        return
     
     print('\nCreating disk index')
     index_args = get_index_args(args.work_dir, args.dataset, '*' + emb_file_suffix + '_*')
@@ -157,7 +167,7 @@ def main():
 
     index_dir = msg_info['index_dir']
     assert(os.path.isdir(index_dir))
-    shutil.move(graph_file, index_dir)
+    shutil.move(triple_file, index_dir)
     for out_emb_file in out_emb_file_lst:
         cmd = 'rm %s_*' % out_emb_file
         os.system(cmd)
@@ -215,6 +225,46 @@ def split_triples(triple_file, num_triples, num_workers):
     part_file_lst.sort()
     assert(len(part_file_lst) > 0)
     return part_file_lst 
+
+def get_unit_size():
+    return (1024.0 * 1024.0 * 1024.0) 
+
+def get_file_size(triple_file):
+    file_gb = os.path.getsize(triple_file) / get_unit_size() 
+    return file_gb
+
+def get_free_space(triple_file):
+    _, _, free_space = shutil.disk_usage(triple_file)
+    free_gb = free_space / get_unit_size()
+    return free_gb
+
+def check_encode_space(triple_file):
+    triple_size = get_file_size(triple_file)
+    free_space = get_free_space(triple_file)
+    needed_space = triple_size * 6
+    return check_space(free_space, needed_space, 'Encoding')   
+
+def check_index_space(out_emb_file_lst):
+    emb_size = 0
+    for emb_file in out_emb_file_lst:
+        emb_part_size = get_file_size(emb_file + '_00')
+        emb_size += emb_part_size
+
+    free_space = get_free_space(out_emb_file_lst[0] + '_00')
+    needed_space = emb_size * 3
+    return check_space(free_space, needed_space, 'Creating disk index') 
+
+def check_space(free_space, needed_space, stage):
+    if free_space < needed_space:
+        msg = 'Free disk space (%.2f GB) is less than recommended %.2f GB. %s will fail. Continue?(y/n)' % \
+              (free_space, needed_space, stage)
+        user_opt = ''
+        while user_opt not in ['y', 'n']:
+            user_opt = input(msg)
+            user_opt = user_opt.strip().lower()
+        return user_opt == 'y'
+    else:
+        return True 
 
 def get_args():
     parser = argparse.ArgumentParser()
