@@ -32,14 +32,16 @@ def read_tables(data_file, batch_size, chunk_size):
 
 def chunk_tables(table, chunk_size):
     row_data = table['rows']
+    table['row_start_offset'] = 0
     if len(table['rows']) <= chunk_size:
         yield table
-
-    table['rows'] = []
-    for offset in range(0, len(row_data), chunk_size):
-        sub_table = copy.deepcopy(table)
-        sub_table['rows'] = row_data[offset:(offset+chunk_size)]
-        yield sub_table
+    else:
+        table['rows'] = []
+        for offset in range(0, len(row_data), chunk_size):
+            sub_table = copy.deepcopy(table)
+            sub_table['row_start_offset'] = offset
+            sub_table['rows'] = row_data[offset:(offset+chunk_size)]
+            yield sub_table
 
 def init_worker(strategy_name):
     global g_strategy
@@ -53,6 +55,8 @@ def process_table(arg_info):
     out_file = os.path.join(out_part_dir, file_name)
     with open(out_file, 'w') as f_o: 
         for graph_info in g_strategy.generate(table):
+            row_offset = graph_info['row']
+            graph_info['row'] = row_offset + table['row_start_offset']
             write_graphs([graph_info], f_o) 
     return out_file
 
