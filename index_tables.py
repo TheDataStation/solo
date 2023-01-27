@@ -87,33 +87,65 @@ def exists_tables_csv(dataset_dir):
 def confirm(args):
     dataset_dir = os.path.join(args.work_dir, 'data', args.dataset)
     tables_file = os.path.join(dataset_dir, 'tables/tables.jsonl')
-    passage_file = os.path.join(args.work_dir, 'open_table_discovery/table2txt/dataset', 
-                                args.dataset, 'rel_graph/passages.jsonl') 
+    passage_dir = os.path.join(args.work_dir, 'open_table_discovery/table2txt/dataset', 
+                                args.dataset, 'rel_graph')
+    passage_file = os.path.join(passage_dir, 'passages.jsonl') 
+    emb_file = os.path.join(passage_dir, '*_embeddings_*')
     index_dir = os.path.join(args.work_dir, 'index/on_disk_index_%s_rel_graph' % args.dataset)     
-  
+ 
+    check_data_lst = [] 
     if (args.pipe_step is None) or (args.pipe_step == ''): 
         tables_csv_exists = exists_tables_csv(dataset_dir)
         args.tables_csv_exists = tables_csv_exists 
         table_exists = os.path.exists(tables_file)
         passage_exists = os.path.exists(passage_file)
+        emb_file_lst = glob.glob(emb_file) 
+        emb_exists = len(emb_file_lst) > 0
         
         if tables_csv_exists:
             if table_exists:
-                os.remove(tables_file)
+                check_data = {'name': 'Tables', 'file_lst': [tables_file]}
+                check_data_lst.append(check_data) 
         if passage_exists:
-            os.remove(passage_file)
-    
+            check_data = {'name':'Triples', 'file_lst': [passage_file]}
+            check_data_lst.append(check_data) 
+        if emb_exists:
+            check_data = {'name':'Triple embeddings', 'file_lst':emb_file_lst}
+            check_data_lst.append(check_data) 
+         
     index_exists = os.path.exists(index_dir)
-    if index_exists: 
-        confirmed = input('Index already exists. If continue, index will be rebuilt. \n' +
+    if index_exists:
+        check_data = {'name':'Index', 'dir':index_dir}
+         
+    if len(check_data_lst) > 0:
+        check_data_desc = get_check_data_desc(check_data_lst) 
+        confirmed = input('%s already exists. If continue, these data will be removed and recreated. \n' % check_data_desc +
                           'Do you want to continue(y/n)? ')
         if confirmed.lower().strip() == 'y':
-            shutil.rmtree(index_dir)
+            clear_checked_data(check_data_lst)
             return True
         else:
             return False
     else:
         return True
+
+def clear_checked_data(check_data_lst):
+    for check_data in check_data_lst:
+        file_lst = check_data.get('file_lst', [])
+        for file_path in file_lst:
+            os.remove(file_path) 
+        data_dir = check_data.get('dir', None)
+        if data_dir is not None:
+            shutil.rmtree(data_dir)
+
+def get_check_data_desc(check_data_lst):
+    desc = '('
+    for offset, check_data in enumerate(check_data_lst):
+        desc += check_data['name']
+        if offset < len(check_data_lst) - 1:
+            desc += ' , '
+    desc += ')'
+    return desc
 
 def main():
     args = get_args()
