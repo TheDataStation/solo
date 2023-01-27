@@ -160,7 +160,7 @@ def main():
         return
      
     print('\nEncoding triples')
-    out_emb_file_lst = encode_triples(args.work_dir, triple_file, num_triples, config['num_encode_workers'], EmbFileSuffix)
+    encode_triples(args.work_dir, triple_file, num_triples, config['num_encode_workers'], EmbFileSuffix)
     update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
    
     #Creating index  
