@@ -104,7 +104,7 @@ def confirm(args):
         
         if tables_csv_exists:
             if table_exists:
-                check_data = {'name': 'Tables', 'file_lst': [tables_file]}
+                check_data = {'name': 'Tables imported', 'file_lst': [tables_file]}
                 check_data_lst.append(check_data) 
         if passage_exists:
             check_data = {'name':'Triples', 'file_lst': [passage_file]}
@@ -119,7 +119,7 @@ def confirm(args):
          
     if len(check_data_lst) > 0:
         check_data_desc = get_check_data_desc(check_data_lst) 
-        confirmed = input('%s already exists. If continue, these data will be removed and recreated. \n' % check_data_desc +
+        confirmed = input('%s already exists. If continue, the data will be removed and recreated. \n' % check_data_desc +
                           'Do you want to continue(y/n)? ')
         if confirmed.lower().strip() == 'y':
             clear_checked_data(check_data_lst)
