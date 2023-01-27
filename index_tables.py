@@ -279,7 +279,7 @@ def check_index_space(out_emb_file_lst):
         file_name_lst.append(file_name)
 
     free_space = get_free_space(file_name_lst[0])
-    needed_space = emb_size * 3
+    needed_space = emb_size * 3.6
     return check_space(free_space, needed_space, 'Creating disk index') 
 
 def check_space(free_space, needed_space, stage):
