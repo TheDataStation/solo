@@ -90,17 +90,20 @@ def confirm(args):
     passage_file = os.path.join(args.work_dir, 'open_table_discovery/table2txt/dataset', 
                                 args.dataset, 'rel_graph/passages.jsonl') 
     index_dir = os.path.join(args.work_dir, 'index/on_disk_index_%s_rel_graph' % args.dataset)     
-   
-    tables_csv_exists = exists_tables_csv(dataset_dir)
-    args.tables_csv_exists = tables_csv_exists 
-    table_exists = os.path.exists(tables_file)
-    passage_exists = os.path.exists(passage_file)
+  
+    if (args.pipe_step is None) or (args.pipe_step == ''): 
+        tables_csv_exists = exists_tables_csv(dataset_dir)
+        args.tables_csv_exists = tables_csv_exists 
+        table_exists = os.path.exists(tables_file)
+        passage_exists = os.path.exists(passage_file)
+        
+        if tables_csv_exists:
+            if table_exists:
+                os.remove(tables_file)
+        if passage_exists:
+            os.remove(passage_file)
+    
     index_exists = os.path.exists(index_dir)
-    if tables_csv_exists:
-        if table_exists:
-            os.remove(tables_file)
-    if passage_exists:
-        os.remove(passage_file)
     if index_exists: 
         confirmed = input('Index already exists. If continue, index will be rebuilt. \n' +
                           'Do you want to continue(y/n)? ')
@@ -119,12 +122,13 @@ def main():
     if not confirm(args):
         return
     config = read_config()
-    if args.pipe_step != '':
+    if (args.pipe_step is not None) and (args.pipe_step != ''):
         if args.pipe_step != 'emb_to_index':
             print('arg pipe_step only support "emb_to_index"')
             return
         else:
-            create_index(args, EmbFileSuffix)
+            pipe_triple_file = './table2txt/dataset/%s/rel_graph/passages.jsonl' % args.dataset
+            create_index(pipe_state_info, pipe_sate_file, args, pipe_triple_file, EmbFileSuffix)
             return
              
     if args.tables_csv_exists:
@@ -160,12 +164,14 @@ def main():
     update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
    
     #Creating index  
-    create_index(args) 
+    create_index(pipe_state_info, pipe_sate_file, args, triple_file, EmbFileSuffix) 
 
-def create_index(args, emb_file_suffix):
-    import pdb; pdb.set_trace()
+def create_index(pipe_state_info, pipe_sate_file, args, triple_file, emb_file_suffix):
     emb_file_pattern = 'table2txt/dataset/%s/rel_graph/*%s_00' % (args.dataset, emb_file_suffix)
     out_emb_file_lst = glob.glob(emb_file_pattern) 
+    if len(out_emb_file_lst) == 0:
+        print('There is no triple embedding files')
+        return
 
     print('\nComputing space for creating disk index')
     if not check_index_space(out_emb_file_lst):
@@ -175,18 +181,18 @@ def create_index(args, emb_file_suffix):
     print('\nCreating disk index')
     index_args = get_index_args(args.work_dir, args.dataset, '*' + emb_file_suffix + '_*')
     msg_info = ondisk_index.main(index_args)
-    if not msg_info['state']:
-        update_state(pipe_state_info, StateIndex, False, pipe_sate_file)
-        print(msg_info['msg'])
-    else:
-        update_state(pipe_state_info, StateIndex, True, pipe_sate_file)
+    if pipe_state_info is not None:
+        if not msg_info['state']:
+            update_state(pipe_state_info, StateIndex, False, pipe_sate_file)
+            print(msg_info['msg'])
+        else:
+            update_state(pipe_state_info, StateIndex, True, pipe_sate_file)
 
     index_dir = msg_info['index_dir']
     assert(os.path.isdir(index_dir))
     shutil.move(triple_file, index_dir)
     for out_emb_file in out_emb_file_lst:
-        cmd = 'rm %s_*' % out_emb_file
-        os.system(cmd)
+        os.remove(out_emb_file)
     
     print('\nIndexing done')
      
