@@ -125,7 +125,7 @@ g_passage_id = 0
 
 def merge_graph_files(graph_file_list, f_merge):
     g_p_id = 0
-    for graph_file in tqdm(graph_file_list, desc='Merging triples'):
+    for graph_file in tqdm(graph_file_list, desc='merging triples'):
         with open(graph_file) as f_graph:
             for line in f_graph:
                 triple_info = json.loads(line)
