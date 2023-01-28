@@ -112,11 +112,12 @@ def confirm(args):
         if emb_exists:
             check_data = {'name':'Triple embeddings', 'file_lst':emb_file_lst}
             check_data_lst.append(check_data) 
-         
+    
     index_exists = os.path.exists(index_dir)
     if index_exists:
         check_data = {'name':'Index', 'dir':index_dir}
-         
+        check_data_lst.append(check_data)
+             
     if len(check_data_lst) > 0:
         check_data_desc = get_check_data_desc(check_data_lst) 
         confirmed = input('%s already exists. If continue, the data will be removed and recreated. \n' % check_data_desc +
