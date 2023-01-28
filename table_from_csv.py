@@ -16,27 +16,23 @@ def get_out_file(args):
     return data_file
 
 def read_meta(meta_file):
-    table_title = ''
-    table_id = ''
-    title_prefix = 'title='
-    id_prefix = 'id='
-    if os.path.exists(meta_file):
-        with open(meta_file) as f:
-            for line in f:
-                text = line.strip()
-                if text.startswith(title_prefix):
-                    pos = len(title_prefix)
-                    table_title = text[pos:]
-                elif text.startswith(id_prefix):
-                    pos = len(id_prefix)
-                    table_id = text[pos:]
-    return (table_title, table_id)
+    if not os.path.exists(meta_file):
+        return None
+    with open(meta_file) as f:
+        meta_data = json.load(f)
+    return meta_data
 
 def read_table(arg_info):
     csv_file = arg_info['data_file']
     meta_file = arg_info['meta_file']
     file_name = os.path.basename(os.path.splitext(csv_file)[0])
-    table_title, table_id = read_meta(meta_file)
+    table_title = '' 
+    table_id = ''
+    table_meta = read_meta(meta_file)
+    if table_meta is not None:
+        table_id = table_meta['table_id']
+        table_title = table_meta['title']
+        col_names = table_meta['col_names']
     if table_title == '':
         if arg_info['file_name_title']:
             table_title = file_name
@@ -55,12 +51,20 @@ def read_table(arg_info):
         for row, item in enumerate(reader):
             if row == 0:
                 col_name_lst = item
-                table['columns'] = [{'text':col_name} for col_name in col_name_lst]
             else:
                 assert(len(item) == len(col_name_lst))
                 cells = [{'text':a} for a in item]
                 cell_info = {'cells':cells}
                 row_data.append(cell_info)
+    
+    if table_meta is not None:
+        meta_col_names = table_meta.get('col_names', None)
+        if meta_col_names is not None:
+            if(len(col_name_lst) == len(meta_col_names)):
+                col_name_lst = meta_col_names
+    
+    table['columns'] = [{'text':col_name} for col_name in col_name_lst]
+    
     return table
 
 def main(args):
@@ -83,27 +87,40 @@ def main(args):
     arg_info_lst = []
     
     for csv_file in csv_file_lst:
-        meta_file = os.path.splitext(csv_file)[0] + '.meta'
+        meta_file = os.path.splitext(csv_file)[0] + '.meta.json'
         args_info = {
             'data_file':csv_file,
             'meta_file':meta_file,
             'file_name_title':args.file_name_title
         }
         arg_info_lst.append(args_info)
-    
-    for table in tqdm(work_pool.imap_unordered(read_table, arg_info_lst), total=len(arg_info_lst)):
-        if args.table_sample_rows is not None:
-            row_data = table['rows']
-            num_rows = len(row_data)
-            table['rows'] = random.sample(row_data, min(num_rows, args.table_sample_rows))
-        f_o.write(json.dumps(table) + '\n')
-    
+
+    multi_process = True
+    if multi_process:    
+        for table in tqdm(work_pool.imap_unordered(read_table, arg_info_lst), total=len(arg_info_lst)):
+            if table is None:
+                continue
+            output_table(table, args, f_o)
+    else:
+        for arg_info in tqdm(arg_info_lst):
+            table = read_table(arg_info)
+            if table is None:
+                continue
+            output_table(table, args, f_o)
+     
     f_o.close()
 
     msg_info = {
         'state':True,
     }
     return msg_info
+
+def output_table(table, args, f_o):
+    if args.table_sample_rows is not None:
+        row_data = table['rows']
+        num_rows = len(row_data)
+        table['rows'] = random.sample(row_data, min(num_rows, args.table_sample_rows))
+    f_o.write(json.dumps(table) + '\n')
 
 def get_args():
     parser = argparse.ArgumentParser()

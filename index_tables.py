@@ -164,7 +164,10 @@ def main():
             return
              
     if args.tables_csv_exists:
-        print('\nImporting tables')
+        import_table_msg = '\nImporting tables'
+        if config['table_sample_rows'] is not None:
+            import_table_msg += '(Sample rows)'
+        print(import_table_msg)
         csv_args = get_csv_args(args.work_dir, args.dataset, config)
         msg_info = table_from_csv.main(csv_args)
         if not msg_info['state']:
