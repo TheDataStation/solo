@@ -32,7 +32,6 @@ def read_table(arg_info):
     if table_meta is not None:
         table_id = table_meta['table_id']
         table_title = table_meta['title']
-        col_names = table_meta['col_names']
     if table_title == '':
         if arg_info['file_name_title']:
             table_title = file_name
