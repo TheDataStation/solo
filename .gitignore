@@ -1,0 +1,5 @@
+__pycache__
+sql2question/lightning_logs
+sql2question/sql2nlg/outputs
+table2question/dataset
+table2txt/dataset
