@@ -1,0 +1,34 @@
+{% for table_data in table_data_lst %}
+    <div class="table-responsive">
+      <table style="width:2000px">
+       <tbody>
+       <tr>
+       <td style="max-width:1800px; border:none">
+       <table id="top_table_{{ table_data['search_rank'] }}" class="table">
+          <caption style="font-weight: bold; width: 600px">Top {{ table_data['search_rank'] }} table : {{ table_data['documentTitle'] }}</caption>
+          <thead>
+            <tr>
+                {% for col_info in table_data.columns %}
+                  <th>{{ col_info['text'] }}</th>
+                {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row_info in table_data.rows %}
+            <tr>
+                {% for cell_info in row_info.cells %}
+                  <td>{{ cell_info['text'] }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+       </table>
+       </td>
+       <td style="max-width:1000px; border:none; padding-left:20px">
+       <input class="top_table_btn" table_rank="{{ table_data['search_rank'] }}" id="btn_top_{{ table_data['search_rank'] }}" type=button value='Export'/>
+       </td>
+       </tr>
+       </tbody>
+       </table>
+    </div>
+{% endfor %}
