@@ -27,10 +27,11 @@ def index():
         table_data_lst = query(input_data)
         file_name = 'top_tables.html'
     
-    output = render_template(file_name,
+    output = render_template(
+                           file_name,
                            example_question_lst=example_questions,
-                           table_data_lst=table_data_lst
-                          )
+                           table_data_lst=table_data_lst,
+                           dataset_name='fetaqa')
     return output
 
 def create_query_file(qry_data_dir, question):
