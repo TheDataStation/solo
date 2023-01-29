@@ -31,7 +31,7 @@ def index():
                            file_name,
                            example_question_lst=example_questions,
                            table_data_lst=table_data_lst,
-                           dataset_name='fetaqa')
+                           dataset_name=dataset)
     return output
 
 def create_query_file(qry_data_dir, question):
@@ -103,15 +103,18 @@ def load_index(args):
 def load_example_questions():
     question_lst = []
     data_file = os.path.join(data_dir, dataset, 'query/test/fusion_query.jsonl')
-    with open(data_file) as f:
-        for line in tqdm(f):
-            q_info = json.loads(line)
-            question = q_info['question']
-            question_lst.append(question)
+    if os.path.isfile(data_file):
+        with open(data_file) as f:
+            for line in tqdm(f):
+                q_info = json.loads(line)
+                question = q_info['question']
+                question_lst.append(question)
     
     global example_questions
-    example_questions = random.sample(question_lst, 100)
-
+    if len(question_lst) > 0:
+        example_questions = random.sample(question_lst, 100)
+    else:
+        example_questions = []
 
 def get_args():
     parser = argparse.ArgumentParser()
