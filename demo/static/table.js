@@ -29,10 +29,6 @@ $('#query_cmd').click(function() {
         alert('Please input a question.')
         return
     }
-    cursor_state = document.body.style.cursor
-    btn_cursor_state = document.getElementById('query_cmd').style.cursor
-    document.body.style.cursor = "progress"
-    document.getElementById('query_cmd').style.cursor = "progress"
     $('#query_cmd').prop("disabled",true);
 
     request = $.ajax({
@@ -49,22 +45,18 @@ $('#query_cmd').click(function() {
         });
 
         $('#query_cmd').prop("disabled",false);
-        document.body.style.cursor = cursor_state
-        document.getElementById('query_cmd').style.cursor = btn_cursor_state
     });
 
     request.fail(function (xhr, status, err){
         alert(status + '_' + err)
         $('#query_cmd').prop("disabled",false);
-        document.body.style.cursor = cursor_state
-        document.getElementById('query_cmd').style.cursor = btn_cursor_state
     });
 
 });
 
 function export_table(rank) {
     table_id = 'top_table_' + rank
-    caption = $($('#' + table_id).find('caption')[0]).text()
+    caption = $($('#' + table_id).find('caption')[0]).text().trim()
     file_name = caption + '.csv'
     csv_data = get_table_csv(table_id)
     var blob = new Blob([csv_data], {type:'text/csv;charset=utf-8'})
