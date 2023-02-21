@@ -187,12 +187,15 @@ def sample_query(table, col_ent_data, col_lst, stat_info):
         agg_op = ''
     agg_op_idx = SqlQuery.agg_ops.index(agg_op)
     
+    title = table['documentTitle'].strip()
     all_cond_cols = [a for a in col_lst if a != sel_col]
-    cond_col_num_lst = [0, 1, 2, 3] # the sql cond will also include the title as ('about', =, Title)
+    if title != '':
+        cond_col_num_lst = [0, 1, 2, 3] # the sql cond may include the title as ('about', =, Title)
+    else:
+        cond_col_num_lst = [1, 2, 3]
     cond_op_idx_lst = [a for a in range(len(SqlQuery.cond_ops)-1)] # ignore the last one 'op'
         
     sql_cond_lst = []
-    title = table['documentTitle'].strip()
     
     cond_col_num = random.sample(cond_col_num_lst, 1)[0]
     cond_col_lst = []
@@ -208,13 +211,12 @@ def sample_query(table, col_ent_data, col_lst, stat_info):
                 if sql_cond is not None:
                     sql_cond_lst.append(sql_cond)
     
-        if len(sql_cond_lst) > 0:
+        if (len(sql_cond_lst) > 0) and (title != ''):
             title_cond_prob = 1 / (1 + len(sql_cond_lst))
             use_title_cond = bernoulli.rvs(title_cond_prob, size=1)[0]
             if use_title_cond > 0:
-                if title != '':
-                    sql_cond = [None, 0, title]
-                    sql_cond_lst.append(sql_cond)
+                sql_cond = [None, 0, title]
+                sql_cond_lst.append(sql_cond)
     else:
         if title != '':
             sql_cond = [None, 0, title]
@@ -261,7 +263,7 @@ def get_sample_row_space(row_data, col_ent_data, col_lst):
 
 def is_row_data_missing(row, col_ent_data, col_lst):
     for col in col_lst:
-        if col_ent_data[col]['entities'][row] == '':
+        if col_ent_data[col]['entities'][row]['text'] == '':
             return True
     return False
 
@@ -341,7 +343,7 @@ def write_query(mode, query_lst, f_o_src, f_o_tar, f_o_meta):
         qid = '%s_%d' % (mode, idx)
         query['qid'] = qid
         query['mode'] = mode
-        f_o_src.write(query['sql_text'] + '\n')
+        f_o_src.write(query['sql_text'].replace('\n', ' ') + '\n')
         f_o_tar.write('a\n')
         f_o_meta.write(json.dumps(query) + '\n')
 

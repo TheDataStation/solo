@@ -75,8 +75,7 @@ def index_data(index_file, data_file, index_out_dir, block_size=5000000):
     emb_file_lst.sort()
     for emb_file in emb_file_lst: 
         print('loading file [%s]' % emb_file)
-        with open(emb_file, 'rb') as f:
-            p_ids, p_embs = pickle.load(f)
+        p_ids, p_embs = load_emb(emb_file)
         N = len(p_ids)
         print('creating block indexes')
         for idx in range(0, N, block_size):
@@ -155,37 +154,50 @@ def get_num_vecs(emb_file_lst):
     print('collecting the number of vectors')
     num_vecs = 0
     for emb_file in emb_file_lst:
-        with open(emb_file, 'rb') as f:
-            _, p_embs = pickle.load(f)
+        _, p_embs = load_emb(emb_file)
         num_part_vecs = len(p_embs)
         num_vecs += num_part_vecs
     return num_vecs
+
+def load_emb(emb_file):
+    p_id_lst = []
+    p_emb_lst = []
+    with open(emb_file, 'rb') as f:
+        while True:
+            try:
+                batch_p_id, batch_p_emb = pickle.load(f)
+                p_id_lst.append(batch_p_id)
+                p_emb_lst.append(batch_p_emb)
+            except EOFError:
+                break
+    all_p_id = [p_id for batch in p_id_lst for p_id in batch]
+    all_p_emb = np.concatenate(p_emb_lst, axis=0)
+    return all_p_id, all_p_emb 
 
 # create an empty index and train it
 def create_train(data_file, index_file):
     if os.path.exists(index_file):
         print('index file [%s] already exists' % index_file)
         return 
-    print('loading data')
+    #print('loading data')
     emb_file_lst = glob.glob(data_file)
     emb_file_lst.sort()
 
     num_vecs = get_num_vecs(emb_file_lst)
-    print('num_vecs=%d' % num_vecs)
+    #print('num_vecs=%d' % num_vecs)
     factory_string, num_train = get_index_options(num_vecs)
-    print('factory_string=%s, num_train=%d' % (factory_string, num_train))     
+    #print('factory_string=%s, num_train=%d' % (factory_string, num_train))     
 
     train_emb_lst = []
     for emb_file in emb_file_lst:
-        with open(emb_file, 'rb') as f:
-            _, p_embs = pickle.load(f)
+        _, p_embs = load_emb(emb_file)
         N = p_embs.shape[0]
         rows = list(np.arange(0, N))
 
         num_train_in_file = int(num_train * (N / num_vecs))
         num_sample_train = min(len(rows), num_train_in_file)
         
-        print('num_sample_train=', num_sample_train)
+        #print('num_sample_train=', num_sample_train)
         train_rows = random.sample(rows, num_sample_train)
         train_emb = p_embs[train_rows] 
         train_emb_lst.append(train_emb)
@@ -193,7 +205,7 @@ def create_train(data_file, index_file):
     train_all_embs = np.vstack(train_emb_lst)
     train_all_embs = np.float32(train_all_embs)
    
-    print('number of traing vectors = %d' % len(train_all_embs))
+    #print('number of traing vectors = %d' % len(train_all_embs))
     
     D = train_all_embs.shape[1]
     index = faiss.index_factory(D, factory_string, faiss.METRIC_INNER_PRODUCT)

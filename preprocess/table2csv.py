@@ -14,32 +14,36 @@ def read_small_table_set(data_file):
     return table_set
 
 def read_table(args):
-    data_file = '/home/cc/code/data/%s/tables/tables.jsonl' % args.dataset
-    small_table_set = read_small_table_set(args.input_tables)
+    data_file = '/home/cc/code/table_discovery_project/data/%s/tables/tables.jsonl' % args.dataset
+    #small_table_set = read_small_table_set(args.input_tables)
     with open(data_file) as f:
         for line in f:
             table_data = json.loads(line)
             table_id = table_data['tableId']
-            if table_id not in small_table_set:
-                continue
+            #if table_id not in small_table_set:
+            #    continue
             yield table_data
 
 def main():
     args = get_args()
     table_id_dict = {}
     table_seq_no = 0
+    
+    table_seq_no = 0
     for table in tqdm(read_table(args)):
+        table_seq_no += 1
         table_title = table['documentTitle']
         table_id = table['tableId']
-        table_dir = os.path.join(args.output_dir, '%s' % table_id)
-        os.mkdir(table_dir)
+        table_dir = os.path.join(args.output_dir)
 
-
-        out_file = os.path.join(table_dir, '%s.csv' % table_id)
-        meta_file = os.path.join(table_dir, '%s.meta' % table_id)
+        out_file = os.path.join(table_dir, '%d.csv' % table_seq_no)
+        meta_file = os.path.join(table_dir, '%d.meta.json' % table_seq_no)
         with open(meta_file, 'w') as f_m:
-            f_m.write("title=%s\n" % table_title)
-            f_m.write("id=%s\n" % table_id)
+            meta_info = {
+                'table_id':table_id,
+                'title':table_title
+            }
+            f_m.write(json.dumps(meta_info, indent=3))
 
         table_seq_no += 1
         with open(out_file, 'w') as f_o:

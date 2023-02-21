@@ -29,6 +29,7 @@ from src.retr_utils import MetricRecorder, get_top_metrics
 import logging
 import torch.nn.functional as F
 import glob
+import datetime
 
 #logging.basicConfig(level=logging.ERROR)
 
@@ -535,7 +536,9 @@ def get_batch_answers(batch_data):
     return batch_answers
 
 def save_model(output_dir, model, epoc, tag='step', opt=None):
-    file_name = 'sql_%d_epoc_%d_%s_model.pt' % (opt.sql_batch_no, epoc, tag)
+    stamp_info = datetime.datetime.now()
+    file_name = 'sql_%d_epoc_%d_%s_model_%d_%d_%d.pt' % (opt.sql_batch_no, epoc, tag, 
+                                                         stamp_info.month, stamp_info.day, stamp_info.year)
     out_path = os.path.join(output_dir, file_name)
     torch.save(model.state_dict(), out_path) 
     return out_path

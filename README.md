@@ -73,7 +73,7 @@ e) Download data
    We provide pretrained models for "fetaqa" and "nq_talbes" and 
    you can ignore this if you just want to try table discovery (section 5).  
     
-   The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by updating "train_batch_size" in file "trainer.config". 
+   The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by updating "train_batch_size" in file "system.config". 
    
    By default, Incremental Training each time generates a dataset with 1,200 questions.
    

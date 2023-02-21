@@ -1,9 +1,9 @@
 class RelationTag:
-    tag_title = '[T]'
-    tag_sub_name = '[SC]'
-    tag_sub = '[S]'
-    tag_obj_name = '[OC]'
-    tag_obj = '[O]'
+    tag_title = '[_T_]'
+    tag_sub_name = '[_SC_]'
+    tag_sub = '[_S_]'
+    tag_obj_name = '[_OC_]'
+    tag_obj = '[_O_]'
 
     sub_none = ''
     obj_none = ''
@@ -17,13 +17,12 @@ class RelationTag:
             sub = ''
         assert (obj_name is not None)
         assert(obj is not None)
-
-        sub_part = sub_name + '  ' + sub
-        obj_part = obj_name + '  ' + obj
-        out_text = title + '  ,  ' + sub_part.strip() + '  ' + obj_part.strip() + ' . '
-
+        sub_part = (sub_name + '  ' + sub).strip()
+        obj_part = (obj_name + '  ' + obj).strip()
+        out_text = title + ' , ' +  sub_part + ' , ' + obj_part + ' ; '
+        
         return out_text
-    
+
     @staticmethod
     def get_tagged_text(title, sub_name, sub, obj_name, obj):
         assert (title is not None)
