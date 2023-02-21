@@ -106,10 +106,8 @@ e) Download data
 ### 5.1. Start demo server 
    run the script
    ```   bash
-   ./run_demo.sh 8080
+   ./run_demo.sh <dataset>
    ```
-   Where 8080 is the network port. You can use other port (e.g. 8086) if it is used by other application. 
-   
    If the script is run a local machine where you can use a browser on it, 
    follow the instruction on the console and 
    copy/paste the URL (starting with  http://localhost ...) into your browser. Then go to section 5.3
@@ -117,19 +115,10 @@ e) Download data
 ### 5.2. Client setting 
    If demo server is on a remote machine, do port routing on the client machine by runing the following script,
    ```   bash
-   ssh -N -f -L localhost:8080:localhost:8080 <user>@<remote server>
+   ssh -N -f -L 127.0.0.1:5000:127.0.0.1:5000 <user>@<remote server>
    ```
-   If there is error like "bind [127.0.0.1]:8080: Address already in use"
-
-   a) Stop the demo server by Control-C, and then rerun "./run_demo.sh <port>" using a different port, e.g. 8086
-
-   b) On client, change the two "8080" in "ssh -N -f -L ..." to the new port, e.g. 8086 and rerun "ssh -N -f -L ..."
-
    Then on client, copy/paste the URL shown on the server console into your browser.
     
 ### 5.3. Try demo 
-   After the jupyter notebook is shown in the browser, 
-   open the file "demo.ipynb" and click menu "Cell"/"Run All" to start the demo application.
-
-   Type a dataset, e.g. fetaqa and then type a question (e.g. one of the 3 example questions) to try.
+   Type a question to try.
    
