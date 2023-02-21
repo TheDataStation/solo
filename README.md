@@ -109,15 +109,14 @@ e) Download data
    ./run_demo.sh <dataset>
    ```
    If the script is run a local machine where you can use a browser on it, 
-   follow the instruction on the console and 
-   copy/paste the URL (starting with  http://localhost ...) into your browser. Then go to section 5.3
+   open "http://127.0.0.1:5000" and then go to section 5.3
    
 ### 5.2. Client setting 
    If demo server is on a remote machine, do port routing on the client machine by runing the following script,
    ```   bash
    ssh -N -f -L 127.0.0.1:5000:127.0.0.1:5000 <user>@<remote server>
    ```
-   Then on client, copy/paste the URL shown on the server console into your browser.
+   Then on client, open "http://127.0.0.1:5000".
     
 ### 5.3. Try demo 
    Type a question to try.
