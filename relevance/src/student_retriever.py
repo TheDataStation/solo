@@ -13,12 +13,20 @@ class StudentRetriever(transformers.PreTrainedModel):
     base_model_prefix = "retriever"
 
     def __init__(self, config):
-        super().__init__(config)
+        super().__init__(config, teacher_model=None)
         assert config.projection or config.indexing_dimension == 768, \
             'If no projection then indexing dimension must be equal to 768'
+        self.teacher = None
         self.config = config
+        
         self.question_model = transformers.BertModel.from_pretrained('bert-base-uncased')
         self.ctx_model = transformers.BertModel.from_pretrained('bert-base-uncased') 
+       
+        if teacher_model is not None: 
+            self.copy_teacher_weights()
+        
+        StudentRetriever.prune_layers(self.ctx_model) 
+
         if self.config.projection:
             self.proj = nn.Linear(
                 self.model.config.hidden_size,
@@ -26,7 +34,24 @@ class StudentRetriever(transformers.PreTrainedModel):
             )
             self.norm = nn.LayerNorm(self.config.indexing_dimension)
         self.loss_fct = torch.nn.KLDivLoss()
-
+  
+    def copy_teacher_weights(self, teacher_model):
+        teacher_weights = teacher_model.state_dict() 
+        self.question_model.load_state_dict(teacher_weights)
+        self.ctx_model.load_state_dict(teacher_weights)
+   
+    @staticmethod
+    def prune_layers(model):
+        updated_layer = nn.ModuleList()
+        for idx, module in enumerate(model.encoder.layer):
+            if idx == 0:
+                updated_layer.append(module)
+                break
+        model.encoder.layer = updated_layer
+    
+    def set_teacher(teacher):
+        self.teacher = teacher
+     
     def forward(self,
                 question_ids,
                 question_mask,

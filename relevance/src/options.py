@@ -70,7 +70,8 @@ class Options():
         self.parser.add_argument('--no_title', action='store_true', 
                         help='article titles not included in passages')
         self.parser.add_argument('--n_context', type=int, default=1)
-
+        self.parser.add_argument('--teacher_model_path', type=str, default='none', help='path for teacher model')
+        
 
     def initialize_parser(self):
         # basic parameters

@@ -19,8 +19,13 @@ import src.slurm
 import src.util
 import src.evaluation
 import src.data
-import src.model
+from src.model import Retriever
+from src.student_retriever import StudentRetriever
 from src.options import Options
+
+class Teacher:
+    def __init__(def, model):
+        self.model = model
 
 
 def train(model, optimizer, scheduler, global_step,
@@ -70,6 +75,8 @@ def train(model, optimizer, scheduler, global_step,
 
             train_loss = src.util.average_main(train_loss, opt)
             curr_loss += train_loss.item()
+            
+            logger.info('loss = %f' % train_loss.item())    
 
             if global_step % opt.eval_freq == 0:
                 eval_loss, inversions, avg_topk, idx_topk = evaluate(model, dev_dataset, collator, opt)
@@ -142,6 +149,11 @@ def evaluate(model, dataset, collator, opt):
 
     return loss, inversions, avg_topk, idx_topk
 
+def load_teacher():
+    teacher_model = Retriever.from_pretrained(opt.teacher_model_path)
+    teacher = Teacher(teacher_model) 
+    return teacher 
+
 if __name__ == "__main__":
     options = Options()
     options.add_retriever_options()
@@ -169,8 +181,10 @@ if __name__ == "__main__":
         passage_maxlength=opt.passage_maxlength, 
         question_maxlength=opt.question_maxlength
     )
+    logger.info('loading %s' % opt.train_data)
     train_examples = src.data.load_data(opt.train_data)
     train_dataset = src.data.Dataset(train_examples, opt.n_context)
+    logger.info('loading %s' % opt.eval_data)
     eval_examples = src.data.load_data(
         opt.eval_data, 
         global_rank=opt.global_rank, 
@@ -187,9 +201,10 @@ if __name__ == "__main__":
         extract_cls=opt.extract_cls,
         projection=not opt.no_projection,
     )
-    model_class = src.model.Retriever
+    model_class = StudentRetriever
+    teacher = load_teacher()
     if not directory_exists and opt.model_path == "none":
-        model = model_class(config, initialize_wBERT=True)
+        model = model_class(config, teacher_model=teacher.model)
         src.util.set_dropout(model, opt.dropout)
         model = model.to(opt.device)
         optimizer, scheduler = src.util.set_optim(opt, model)
@@ -202,10 +217,12 @@ if __name__ == "__main__":
         model, optimizer, scheduler, opt_checkpoint, global_step, best_eval_loss = \
             src.util.load(model_class, opt.model_path, opt, reset_params=True)
         logger.info(f"Model loaded from {opt.model_path}")
+    
+    model.set_teacher(teacher)
 
-    model.proj = torch.nn.Linear(768, 256)
-    model.norm = torch.nn.LayerNorm(256)
-    model.config.indexing_dimension = 256
+    #model.proj = torch.nn.Linear(768, 256)
+    #model.norm = torch.nn.LayerNorm(256)
+    #model.config.indexing_dimension = 256
     model = model.to(opt.device)
     optimizer, scheduler = src.util.set_optim(opt, model)
 
