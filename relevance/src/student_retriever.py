@@ -8,10 +8,10 @@ import numpy as np
 from .model import RetrieverConfig
 
 class BertEncoder(nn.Module):
-    def __init__(self, name):
+    def __init__(self, config, name):
         super().__init__()
         self.name = name
-        self.model = transformers.BertModel.from_pretrained('bert-base-uncased')
+        self.model = transformers.BertModel(config, add_pooling_layer=False) 
 
 class StudentRetriever(transformers.PreTrainedModel):
 
@@ -20,24 +20,26 @@ class StudentRetriever(transformers.PreTrainedModel):
 
     def __init__(self, config, teacher_model=None):
         super().__init__(config)
-        import pdb; pdb.set_trace()
         assert config.projection or config.indexing_dimension == 768, \
             'If no projection then indexing dimension must be equal to 768'
         self.teacher = None
         self.config = config
         
-        self.question_encoder = BertEncoder('question') 
-        self.ctx_encoder = BertEncoder('passage') 
+        self.question_encoder = BertEncoder(config, 'question') 
+        self.ctx_encoder = BertEncoder(config, 'passage') 
        
         if teacher_model is not None: 
             self.copy_teacher_weights(teacher_model)
         
+        teacher_model.model.pooler = None
         StudentRetriever.prune_layers(self.ctx_encoder) 
         
-        self.loss_fct = torch.nn.KLDivLoss()
   
     def copy_teacher_weights(self, teacher_model):
         teacher_weights = teacher_model.state_dict() 
+        for key in ['model.pooler.dense.weight', 'model.pooler.dense.bias']:
+            del teacher_weights[key]
+             
         self.question_encoder.load_state_dict(teacher_weights)
         self.ctx_encoder.load_state_dict(teacher_weights)
    

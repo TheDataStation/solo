@@ -149,6 +149,7 @@ def evaluate(model, dataset, collator, opt):
     return loss, inversions, avg_topk, idx_topk
 
 def load_teacher():
+    import pdb; pdb.set_trace()
     teacher_model = Retriever.from_pretrained(opt.teacher_model_path)
     teacher = Teacher(teacher_model) 
     return teacher 
