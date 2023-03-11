@@ -7,49 +7,50 @@ from torch.nn import CrossEntropyLoss
 import numpy as np
 from .model import RetrieverConfig
 
+class BertEncoder(nn.Module):
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+        self.model = transformers.BertModel.from_pretrained('bert-base-uncased')
+
 class StudentRetriever(transformers.PreTrainedModel):
 
     config_class = RetrieverConfig
     base_model_prefix = "retriever"
 
-    def __init__(self, config):
-        super().__init__(config, teacher_model=None)
+    def __init__(self, config, teacher_model=None):
+        super().__init__(config)
+        import pdb; pdb.set_trace()
         assert config.projection or config.indexing_dimension == 768, \
             'If no projection then indexing dimension must be equal to 768'
         self.teacher = None
         self.config = config
         
-        self.question_model = transformers.BertModel.from_pretrained('bert-base-uncased')
-        self.ctx_model = transformers.BertModel.from_pretrained('bert-base-uncased') 
+        self.question_encoder = BertEncoder('question') 
+        self.ctx_encoder = BertEncoder('passage') 
        
         if teacher_model is not None: 
-            self.copy_teacher_weights()
+            self.copy_teacher_weights(teacher_model)
         
-        StudentRetriever.prune_layers(self.ctx_model) 
-
-        if self.config.projection:
-            self.proj = nn.Linear(
-                self.model.config.hidden_size,
-                self.config.indexing_dimension
-            )
-            self.norm = nn.LayerNorm(self.config.indexing_dimension)
+        StudentRetriever.prune_layers(self.ctx_encoder) 
+        
         self.loss_fct = torch.nn.KLDivLoss()
   
     def copy_teacher_weights(self, teacher_model):
         teacher_weights = teacher_model.state_dict() 
-        self.question_model.load_state_dict(teacher_weights)
-        self.ctx_model.load_state_dict(teacher_weights)
+        self.question_encoder.load_state_dict(teacher_weights)
+        self.ctx_encoder.load_state_dict(teacher_weights)
    
     @staticmethod
-    def prune_layers(model):
+    def prune_layers(encoder):
         updated_layer = nn.ModuleList()
-        for idx, module in enumerate(model.encoder.layer):
+        for idx, module in enumerate(encoder.model.encoder.layer):
             if idx == 0:
                 updated_layer.append(module)
                 break
-        model.encoder.layer = updated_layer
+        encoder.model.encoder.layer = updated_layer
     
-    def set_teacher(teacher):
+    def set_teacher(self, teacher):
         self.teacher = teacher
      
     def forward(self,
@@ -57,9 +58,9 @@ class StudentRetriever(transformers.PreTrainedModel):
                 question_mask,
                 passage_ids,
                 passage_mask,
-                teacher_score=None):
+        ):
         question_output = self.embed_text(
-            self.question_model,
+            self.question_encoder,
             text_ids=question_ids,
             text_mask=question_mask,
             apply_mask=self.config.apply_question_mask,
@@ -69,37 +70,31 @@ class StudentRetriever(transformers.PreTrainedModel):
         passage_ids = passage_ids.view(bsz * n_passages, plen)
         passage_mask = passage_mask.view(bsz * n_passages, plen)
         passage_output = self.embed_text(
-            self.ctx_model,
+            self.ctx_encoder,
             text_ids=passage_ids,
             text_mask=passage_mask,
             apply_mask=self.config.apply_passage_mask,
             extract_cls=self.config.extract_cls,
         )
 
+        #batch dot product
         score = torch.einsum(
             'bd,bid->bi',
             question_output,
             passage_output.view(bsz, n_passages, -1)
         )
-        score = score / np.sqrt(question_output.size(-1))
-        if gold_score is not None:
-            loss = self.kldivloss(score, teacher_score)
-        else:
-            loss = None
 
-        return question_output, passage_output, score, loss
+        score = score / np.sqrt(question_output.size(-1))
+        return question_output, passage_output, score
 
     def embed_text(self, encoder, text_ids, text_mask, apply_mask=False, extract_cls=False):
-        text_output = encoder(
+        text_output = encoder.model(
             input_ids=text_ids,
             attention_mask=text_mask if apply_mask else None
         )
         if type(text_output) is not tuple:
             text_output.to_tuple()
         text_output = text_output[0]
-        if self.config.projection:
-            text_output = self.proj(text_output)
-            text_output = self.norm(text_output)
 
         if extract_cls:
             text_output = text_output[:, 0]

@@ -8,8 +8,8 @@ python train_student_retriever.py \
 --optim adamw \
 --scheduler linear \
 --teacher_model_path /home/cc/code/table_discovery_project/models/tqa_retriever \
---train_data /home/cc/code/table_discovery_project/open_domain_data/TQA/train.json \
---eval_data /home/cc/code/table_discovery_project/open_domain_data/TQA/dev.json \
+--train_data ./data/trivia_qa/train.jsonl \
+--eval_data ./data/trivia_qa/dev.jsonl \
 --n_context 100 \
 --total_steps 20000 \
 --scheduler_steps 30000 \

@@ -24,7 +24,7 @@ from src.student_retriever import StudentRetriever
 from src.options import Options
 
 class Teacher:
-    def __init__(def, model):
+    def __init__(self, model):
         self.model = model
 
 
@@ -62,7 +62,6 @@ def train(model, optimizer, scheduler, global_step,
                 question_mask=question_mask.cuda(),
                 passage_ids=passage_ids.cuda(),
                 passage_mask=passage_mask.cuda(),
-                gold_score=gold_score.cuda(),
             )
 
             train_loss.backward()
@@ -199,7 +198,7 @@ if __name__ == "__main__":
         apply_question_mask=not opt.no_question_mask,
         apply_passage_mask=not opt.no_passage_mask,
         extract_cls=opt.extract_cls,
-        projection=not opt.no_projection,
+        projection=False,
     )
     model_class = StudentRetriever
     teacher = load_teacher()
