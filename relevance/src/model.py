@@ -329,13 +329,15 @@ class Retriever(transformers.PreTrainedModel):
             passage_embs,
         )
         return score
-    
+   
     def forward(self,
                 question_ids,
                 question_mask,
                 passage_ids,
                 passage_mask,
-                gold_score=None):
+                gold_score=None,
+                encode_only=False,
+        ):
         question_output = self.embed_text(
             text_ids=question_ids,
             text_mask=question_mask,
@@ -351,15 +353,20 @@ class Retriever(transformers.PreTrainedModel):
             apply_mask=self.config.apply_passage_mask,
             extract_cls=self.config.extract_cls,
         )
+        question_encoded = question_output,
+        passage_encoded = passage_output.view(bsz, n_passages, -1)
+        
+        if encode_only:
+            return question_encoded, passage_encoded
 
-        score = self.calc_score(question_output, passage_output.view(bsz, n_passages, -1))
-        score = score / np.sqrt(question_output.size(-1))
+        score = self.calc_score(question_encoded, passage_encoded)
+        score = score / np.sqrt(question_encoded.size(-1))
         if gold_score is not None:
             loss = self.kldivloss(score, gold_score)
         else:
             loss = None
 
-        return question_output, passage_output, score, loss
+        return question_encoded, passage_encoded, score, loss
 
     def embed_text(self, text_ids, text_mask, apply_mask=False, extract_cls=False):
         text_output = self.model(

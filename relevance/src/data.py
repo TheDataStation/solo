@@ -161,11 +161,12 @@ def load_data(data_path=None, global_rank=-1, world_size=-1):
 
 class RetrieverCollator(object):
     def __init__(self, tokenizer, passage_maxlength=200, question_maxlength=40,
-                 sample_pos_ctx=False, sample_neg_ctx=False, num_neg_ctxs=None):
+                 all_passages=False, sample_pos_ctx=False, sample_neg_ctx=False, num_neg_ctxs=None):
         self.tokenizer = tokenizer
         self.passage_maxlength = passage_maxlength
         self.question_maxlength = question_maxlength
-        
+
+        self.all_passages = all_passages       
         self.sample_pos_ctx = sample_pos_ctx
         self.sample_neg_ctx = sample_neg_ctx
         self.num_neg_ctxs = num_neg_ctxs
@@ -184,35 +185,38 @@ class RetrieverCollator(object):
         question_ids = question['input_ids']
         question_mask = question['attention_mask'].bool()
 
-        if batch[0]['scores'] is None or batch[0]['passages'] is None:
-            return index, question_ids, question_mask, None, None, None
-
-        scores = [ex['scores'] for ex in batch]
-        scores = torch.stack(scores, dim=0)
-
         passages = [] #[ex['passages'] for ex in batch]
-        for ex in batch:
-            item_passages = ex['passages']
-            item_pos_idxes = ex['pos_idxes']
-            item_neg_idxes = ex['neg_idxes']
-            if self.sample_pos_ctx:
-                pos_ctx_idx = random.sample(item_pos_idxes, 1)[0]
-            else:
-                pos_ctx_idx = item_pos_idxes[0]
-            
-            if self.sample_neg_ctx:
-                assert self.num_neg_ctxs is not None
-                neg_ctx_idxes = random.sample(item_neg_idxes, self.num_neg_ctxs)
-            else:
-                if self.num_neg_ctxs is not None:
-                    neg_ctx_idxes = item_neg_idxes[:self.num_neg_ctxs]
+        meta_lst = []
+        if self.all_passages:
+            passages = [ex['passages'] for ex in batch]
+        else:
+            for ex in batch:
+                item_passages = ex['passages']
+                item_pos_idxes = ex['pos_idxes']
+                item_neg_idxes = ex['neg_idxes']
+                if self.sample_pos_ctx:
+                    pos_ctx_idx = random.sample(item_pos_idxes, 1)[0]
                 else:
-                    neg_ctx_idxes = item_neg_idxes[:] 
-            
-            sample_ctx_idxes = [pos_ctx_idx] + neg_ctx_idxes
-            #The first is the postive passage and others are negative ones
-            sample_passages = [item_passages[a] for a in sample_ctx_idxes] 
-            passages.append(sample_passages) 
+                    pos_ctx_idx = item_pos_idxes[0]
+                
+                if self.sample_neg_ctx:
+                    assert self.num_neg_ctxs is not None
+                    neg_ctx_idxes = random.sample(item_neg_idxes, self.num_neg_ctxs)
+                else:
+                    if self.num_neg_ctxs is not None:
+                        neg_ctx_idxes = item_neg_idxes[:self.num_neg_ctxs]
+                    else:
+                        neg_ctx_idxes = item_neg_idxes[:] 
+                
+                sample_ctx_idxes = [pos_ctx_idx] + neg_ctx_idxes
+                #The first is the postive passage and others are negative ones
+                sample_passages = [item_passages[a] for a in sample_ctx_idxes] 
+                passages.append(sample_passages) 
+                
+                meta_info = {
+                    'passage_idxes':sample_ctx_idxes
+                }
+                meta_lst.append(meta_info)
 
         passage_ids, passage_masks = encode_passages(
             passages,
@@ -220,7 +224,7 @@ class RetrieverCollator(object):
             self.passage_maxlength
         )
 
-        return (index, question_ids, question_mask, passage_ids, passage_masks, scores)
+        return (index, question_ids, question_mask, passage_ids, passage_masks, meta_lst)
 
 class TextDataset(torch.utils.data.Dataset):
     def __init__(self,

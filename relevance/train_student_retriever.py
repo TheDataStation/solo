@@ -14,7 +14,6 @@ import torch.distributed as dist
 from torch.utils.tensorboard import SummaryWriter
 from torch.utils.data import DataLoader, RandomSampler, DistributedSampler, SequentialSampler
 
-
 import src.slurm
 import src.util
 import src.evaluation
@@ -23,16 +22,20 @@ from src.model import Retriever
 from src.student_retriever import StudentRetriever
 from src.options import Options
 
+import pickle
+import os
+from tqdm import tqdm
+
 class Teacher:
-    def __init__(self, model, cfg):
+    def __init__(self, model):
         self.model = model
-        self.model.to(cfg.device)
+        self.model.to(opt.device)
         self.model.eval()
         self.emb_precom_dict = None
 
     def calc_logits(self, batch):
         if self.emb_precom_dict is not None:
-            
+            return   
         else:
             with torch.no_grad():
                 (idx, question_ids, question_mask, passage_ids, passage_mask, gold_score) = batch 
@@ -43,46 +46,81 @@ class Teacher:
                     passage_mask=passage_mask.cuda(),
                 )
     
-    def get_precompute_embs(self, batch):
+    def precompute_teacher_embeddings(self, train_examples, tokenizer):
+        collator = src.data.RetrieverCollator(
+            tokenizer, 
+            passage_maxlength=opt.passage_maxlength, 
+            question_maxlength=opt.question_maxlength,
+            all_passages=True,
+        )
+        dataset = src.data.Dataset(train_examples, n_context=None)
+        sampler = SequentialSampler(dataset)
+        dataloader = DataLoader(
+            dataset, 
+            sampler=sampler, 
+            batch_size=1,
+            drop_last=False, 
+            collate_fn=collator
+        )
+        num_batches = len(dataloader)
+        self.emb_precom_dict = {}
+        with torch.no_grad():
+            for batch in tqdm(dataloader, desc='Teacher precomputing', total=num_batches):
+                (indexes, question_ids, question_mask, context_ids, context_mask, meta_lst) = batch
+                question_encoded, passage_encoded = self.model(
+                    question_ids=question_ids.cuda(),
+                    question_mask=question_mask.cuda(),
+                    passage_ids=context_ids.cuda(),
+                    passage_mask=context_mask.cuda(),
+                    encode_only=True,
+                ) 
+                assert 1 == len(indexes)
+                emb_info = {
+                    'q_emb':question_encoded[0].cpu(),
+                    'ctx_emb':passage_encoded[0].cpu(),
+                }
+                sample_index = int(indexes[0])
+                self.emb_precom_dict[sample_index] = emb_info
+        
+        emb_dir = os.path.dirname(opt.teacher_precompute_file)
+        if not os.path.isdir(emb_dir):
+            os.makedirs(emb_dir)
+        
+        logger.info('Writing teacher precomputed embeddings') 
+        with open(opt.teacher_precompute_file, 'wb') as f_o:
+            pickle.dump(self.emb_precom_dict, f_o)
+   
+    
+    def read_teacher_embeddings(self, train_examples, tokenizer):
+        emb_file = opt.teacher_precompute_file
+        if not os.path.isfile(emb_file):
+            self.precompute_teacher_embeddings(train_examples, tokenizer)
+        else:
+            logger.info('Reading teacher precomputed embeddings')
+            with open(emb_file, 'rb') as f:
+                self.emb_precom_dict = pickle.load(f)
+  
+        
+    def get_batch_precompute_embs(self, batch):
         emb_dict = self.emb_precom_dict
-        q_vector_lst = []
-        ctx_vector_lst = []
-        for sample_offset, sample in enumerate(samples_batch):
-            index = sample.index
-            emb_data = emb_dict[index]
-            q_vector = emb_data['q_emb'].view(1, -1)
-            q_vector_lst.append(q_vector)
+        question_vector_lst = []
+        passage_vector_lst = []
+        indexes = batch[0]
+        meta_lst = batch[-1]
+        for offset, sample_index in enumerate(indexes):
+            emb_data = emb_dict[sample_index]
+            
+            question_vector = emb_data['q_emb'].view(1, -1)
+            question_vector_lst.append(question_vector)
+            
             all_ctx_vector = emb_data['ctx_emb']
-            ctx_info = emb_data['ctx_info']
-
-            pos_offset = ctx_info['pos_offset']
-            pos_size = ctx_info['pos_size']
-            all_pos_emb = all_ctx_vector[pos_offset:(pos_offset+pos_size)]
-
-            hard_neg_offset = ctx_info['hard_neg_offset']
-            hard_neg_size = ctx_info['hard_neg_size']
-            all_hard_neg_emb = all_ctx_vector[hard_neg_offset:(hard_neg_offset+hard_neg_size)]
-
-            neg_offset = ctx_info['neg_offset']
-            neg_size = ctx_info['neg_size']
-            all_neg_emb = all_ctx_vector[neg_offset:(neg_offset+neg_size)]
-
-            sample_ctx_info = batch_sample_ctx_info[sample_offset]
-
-            teacher_pos_emb = all_pos_emb[sample_ctx_info['pos_index']].view(1, -1)
-            hard_neg_src = sample_ctx_info['hard_neg_src']
-            if hard_neg_src == 'neg':
-                teacher_hard_neg_emb = all_neg_emb[sample_ctx_info['hard_neg_indices']]
-            else:
-                teacher_hard_neg_emb = all_hard_neg_emb[sample_ctx_info['hard_neg_indices']]
-
-            teacher_neg_emb = all_neg_emb[sample_ctx_info['neg_indicies']]
-            teacher_ctx_emb = torch.cat([teacher_pos_emb, teacher_hard_neg_emb, teacher_neg_emb], dim=0)
-
-            ctx_vector_lst.append(teacher_ctx_emb)
+            passage_idxes = meta_lst[sample_index]['passage_idxes']
+            passage_emb_lst = [all_ctx_vector[a].view(1, -1) for a in passage_idxes] 
+            passage_embs = torch.cat(passage_emb_lst, dim=0)
+            passage_vector_lst.append(passage_embs.unsqueeze(0))
 
         batch_q_vector = torch.cat(q_vector_lst, dim=0)
-        batch_ctx_vector = torch.cat(ctx_vector_lst, dim=0)
+        batch_ctx_vector = torch.cat(passge_vector_lst, dim=0)
         return (batch_q_vector, batch_ctx_vector)
 
 
@@ -210,9 +248,12 @@ def evaluate(model, dataset, collator, opt):
 
     return loss, inversions, avg_topk, idx_topk
 
-def load_teacher():
+def load_teacher(train_examples, tokenizer):
+    assert opt.teacher_precompute_file is not None
+    assert opt.teacher_model_path is not None
     teacher_model = Retriever.from_pretrained(opt.teacher_model_path)
-    teacher = Teacher(teacher_model, opt) 
+    teacher = Teacher(teacher_model)
+    teacher.read_teacher_embeddings(train_examples, tokenizer)
     return teacher 
 
 if __name__ == "__main__":
@@ -266,7 +307,7 @@ if __name__ == "__main__":
         projection=False,
     )
     model_class = StudentRetriever
-    teacher = load_teacher()
+    teacher = load_teacher(train_examples, tokenizer)
     if not directory_exists and opt.model_path == "none":
         model = model_class(config, teacher_model=teacher.model)
         src.util.set_dropout(model, opt.dropout)
