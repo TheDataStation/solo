@@ -321,6 +321,15 @@ class Retriever(transformers.PreTrainedModel):
             self.norm = nn.LayerNorm(self.config.indexing_dimension)
         self.loss_fct = torch.nn.KLDivLoss()
 
+    
+    def calc_score(self, question_embs, passage_embs):
+        score = torch.einsum(
+            'bd,bid->bi',
+            question_embs,
+            passage_embs,
+        )
+        return score
+    
     def forward(self,
                 question_ids,
                 question_mask,
@@ -343,11 +352,7 @@ class Retriever(transformers.PreTrainedModel):
             extract_cls=self.config.extract_cls,
         )
 
-        score = torch.einsum(
-            'bd,bid->bi',
-            question_output,
-            passage_output.view(bsz, n_passages, -1)
-        )
+        score = self.calc_score(question_output, passage_output.view(bsz, n_passages, -1))
         score = score / np.sqrt(question_output.size(-1))
         if gold_score is not None:
             loss = self.kldivloss(score, gold_score)

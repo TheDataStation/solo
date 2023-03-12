@@ -71,7 +71,9 @@ class Dataset(torch.utils.data.Dataset):
             'target' : target,
             'passages' : passages,
             'scores' : scores,
-            'tags': tags
+            'tags': tags,
+            'pos_idxes':example.get('pos_idxes', None),
+            'neg_idxes':example.get('hard_neg_idxes', None),
         }
 
     def sort_data(self):
@@ -158,10 +160,15 @@ def load_data(data_path=None, global_rank=-1, world_size=-1):
 
 
 class RetrieverCollator(object):
-    def __init__(self, tokenizer, passage_maxlength=200, question_maxlength=40):
+    def __init__(self, tokenizer, passage_maxlength=200, question_maxlength=40,
+                 sample_pos_ctx=False, sample_neg_ctx=False, num_neg_ctxs=None):
         self.tokenizer = tokenizer
         self.passage_maxlength = passage_maxlength
         self.question_maxlength = question_maxlength
+        
+        self.sample_pos_ctx = sample_pos_ctx
+        self.sample_neg_ctx = sample_neg_ctx
+        self.num_neg_ctxs = num_neg_ctxs
 
     def __call__(self, batch):
         index = torch.tensor([ex['index'] for ex in batch])
@@ -183,7 +190,30 @@ class RetrieverCollator(object):
         scores = [ex['scores'] for ex in batch]
         scores = torch.stack(scores, dim=0)
 
-        passages = [ex['passages'] for ex in batch]
+        passages = [] #[ex['passages'] for ex in batch]
+        for ex in batch:
+            item_passages = ex['passages']
+            item_pos_idxes = ex['pos_idxes']
+            item_neg_idxes = ex['neg_idxes']
+            if self.sample_pos_ctx:
+                pos_ctx_idx = random.sample(item_pos_idxes, 1)[0]
+            else:
+                pos_ctx_idx = item_pos_idxes[0]
+            
+            if self.sample_neg_ctx:
+                assert self.num_neg_ctxs is not None
+                neg_ctx_idxes = random.sample(item_neg_idxes, self.num_neg_ctxs)
+            else:
+                if self.num_neg_ctxs is not None:
+                    neg_ctx_idxes = item_neg_idxes[:self.num_neg_ctxs]
+                else:
+                    neg_ctx_idxes = item_neg_idxes[:] 
+            
+            sample_ctx_idxes = [pos_ctx_idx] + neg_ctx_idxes
+            #The first is the postive passage and others are negative ones
+            sample_passages = [item_passages[a] for a in sample_ctx_idxes] 
+            passages.append(sample_passages) 
+
         passage_ids, passage_masks = encode_passages(
             passages,
             self.tokenizer,

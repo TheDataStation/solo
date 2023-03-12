@@ -54,12 +54,13 @@ class StudentRetriever(transformers.PreTrainedModel):
     
     def set_teacher(self, teacher):
         self.teacher = teacher
-     
+         
     def forward(self,
                 question_ids,
                 question_mask,
                 passage_ids,
                 passage_mask,
+                score_only=False,
         ):
         question_output = self.embed_text(
             self.question_encoder,
@@ -85,9 +86,22 @@ class StudentRetriever(transformers.PreTrainedModel):
             question_output,
             passage_output.view(bsz, n_passages, -1)
         )
+        
+        if score_only:
+            return score
 
-        score = score / np.sqrt(question_output.size(-1))
-        return question_output, passage_output, score
+        #score = score / np.sqrt(question_output.size(-1))
+        softmax_scores = F.log_softmax(score, dim=1)
+        pos_idxes_per_question = torch.tensor([0] * score.shape[0]).to(softmax_scores.device)
+        loss = F.nll_loss(
+            softmax_scores,
+            pos_idxes_per_question,
+            reduction="mean",
+        )
+        _, max_idxs = torch.max(softmax_scores, 1)
+        correct_predictions_count = ((max_idxs == pos_idxes_per_question).sum())
+        return score, loss, correct_predictions_count
+
 
     def embed_text(self, encoder, text_ids, text_mask, apply_mask=False, extract_cls=False):
         text_output = encoder.model(

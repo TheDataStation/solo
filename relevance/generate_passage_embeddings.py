@@ -53,6 +53,7 @@ def embed_passages(opt, passages, model, tokenizer, f_o):
                 logger.info('Encoded passages %d', total)
 
 def main(opt, is_main):
+    assert opt.is_student is not None
     src.slurm.init_distributed_mode(opt)
     args = opt
     logger = src.util.init_logger(is_main=is_main)
@@ -68,10 +69,15 @@ def main(opt, is_main):
         return
 
     tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
-    model_class = src.model.Retriever
+    if opt.is_student:
+        model_class = src.student_retriever.StudentRetriever
+    else:
+        model_class = src.model.Retriever
     #model, _, _, _, _, _ = src.util.load(model_class, opt.model_path, opt)
     model = model_class.from_pretrained(opt.model_path)
-    
+    if model.model.pooler is not None:
+        mdoel.model.pooler = None
+     
     model.eval()
     model = model.to(opt.device)
     if not opt.no_fp16:
@@ -92,6 +98,7 @@ def main(opt, is_main):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--is_student', type=int, default=None)
     parser.add_argument('--show_progress', type=int, default=True)
     parser.add_argument('--passages', type=str, default=None, help='Path to passages (.jsonl file)')
     parser.add_argument('--output_path', type=str, default='wikipedia_embeddings/passages', help='prefix path to save embeddings')

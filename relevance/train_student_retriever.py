@@ -24,8 +24,66 @@ from src.student_retriever import StudentRetriever
 from src.options import Options
 
 class Teacher:
-    def __init__(self, model):
+    def __init__(self, model, cfg):
         self.model = model
+        self.model.to(cfg.device)
+        self.model.eval()
+        self.emb_precom_dict = None
+
+    def calc_logits(self, batch):
+        if self.emb_precom_dict is not None:
+            
+        else:
+            with torch.no_grad():
+                (idx, question_ids, question_mask, passage_ids, passage_mask, gold_score) = batch 
+                score, loss, correct_count = self.model(
+                    question_ids=question_ids.cuda(),
+                    question_mask=question_mask.cuda(),
+                    passage_ids=passage_ids.cuda(),
+                    passage_mask=passage_mask.cuda(),
+                )
+    
+    def get_precompute_embs(self, batch):
+        emb_dict = self.emb_precom_dict
+        q_vector_lst = []
+        ctx_vector_lst = []
+        for sample_offset, sample in enumerate(samples_batch):
+            index = sample.index
+            emb_data = emb_dict[index]
+            q_vector = emb_data['q_emb'].view(1, -1)
+            q_vector_lst.append(q_vector)
+            all_ctx_vector = emb_data['ctx_emb']
+            ctx_info = emb_data['ctx_info']
+
+            pos_offset = ctx_info['pos_offset']
+            pos_size = ctx_info['pos_size']
+            all_pos_emb = all_ctx_vector[pos_offset:(pos_offset+pos_size)]
+
+            hard_neg_offset = ctx_info['hard_neg_offset']
+            hard_neg_size = ctx_info['hard_neg_size']
+            all_hard_neg_emb = all_ctx_vector[hard_neg_offset:(hard_neg_offset+hard_neg_size)]
+
+            neg_offset = ctx_info['neg_offset']
+            neg_size = ctx_info['neg_size']
+            all_neg_emb = all_ctx_vector[neg_offset:(neg_offset+neg_size)]
+
+            sample_ctx_info = batch_sample_ctx_info[sample_offset]
+
+            teacher_pos_emb = all_pos_emb[sample_ctx_info['pos_index']].view(1, -1)
+            hard_neg_src = sample_ctx_info['hard_neg_src']
+            if hard_neg_src == 'neg':
+                teacher_hard_neg_emb = all_neg_emb[sample_ctx_info['hard_neg_indices']]
+            else:
+                teacher_hard_neg_emb = all_hard_neg_emb[sample_ctx_info['hard_neg_indices']]
+
+            teacher_neg_emb = all_neg_emb[sample_ctx_info['neg_indicies']]
+            teacher_ctx_emb = torch.cat([teacher_pos_emb, teacher_hard_neg_emb, teacher_neg_emb], dim=0)
+
+            ctx_vector_lst.append(teacher_ctx_emb)
+
+        batch_q_vector = torch.cat(q_vector_lst, dim=0)
+        batch_ctx_vector = torch.cat(ctx_vector_lst, dim=0)
+        return (batch_q_vector, batch_ctx_vector)
 
 
 def train(model, optimizer, scheduler, global_step,
@@ -56,13 +114,17 @@ def train(model, optimizer, scheduler, global_step,
         epoch += 1
         for i, batch in enumerate(train_dataloader):
             global_step += 1
+            
+            model.teacher.calc_logits(batch)
+            
             (idx, question_ids, question_mask, passage_ids, passage_mask, gold_score) = batch
-            _, _, _, train_loss = model(
+            student_score, student_loss, correct_count = model(
                 question_ids=question_ids.cuda(),
                 question_mask=question_mask.cuda(),
                 passage_ids=passage_ids.cuda(),
                 passage_mask=passage_mask.cuda(),
             )
+            
 
             train_loss.backward()
 
@@ -149,9 +211,8 @@ def evaluate(model, dataset, collator, opt):
     return loss, inversions, avg_topk, idx_topk
 
 def load_teacher():
-    import pdb; pdb.set_trace()
     teacher_model = Retriever.from_pretrained(opt.teacher_model_path)
-    teacher = Teacher(teacher_model) 
+    teacher = Teacher(teacher_model, opt) 
     return teacher 
 
 if __name__ == "__main__":
@@ -179,7 +240,10 @@ if __name__ == "__main__":
     collator_function = src.data.RetrieverCollator(
         tokenizer, 
         passage_maxlength=opt.passage_maxlength, 
-        question_maxlength=opt.question_maxlength
+        question_maxlength=opt.question_maxlength,
+        sample_pos_ctx=True,
+        sample_neg_ctx=False,
+        num_neg_ctxs=None,
     )
     logger.info('loading %s' % opt.train_data)
     train_examples = src.data.load_data(opt.train_data)
