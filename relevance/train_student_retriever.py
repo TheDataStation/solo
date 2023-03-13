@@ -27,6 +27,7 @@ import os
 from tqdm import tqdm
 import torch.nn as nn
 import torch.nn.functional as F
+import datetime
 
 class Teacher:
     def __init__(self, model):
@@ -191,7 +192,8 @@ def train(model, optimizer, scheduler, global_step,
             train_loss = src.util.average_main(train_loss, opt)
             curr_loss += train_loss.item()
             
-            logger.info('epoch=%d step=%d/%d loss=%f' % (epoch, epoch_step, num_batch, train_loss.item()))    
+            logger.info('epoch=%d loss=%f step=%d/%d' % (epoch, train_loss.item(), 
+                        epoch_step, num_batch))    
 
         evaluate(model, dev_dataset, collator_eval, opt, epoch)
         src.util.save(model, optimizer, scheduler, global_step, best_eval_loss, 
@@ -235,8 +237,8 @@ def evaluate(model, dataset, collator, opt, epoch):
             
             correct_ratio = total_correct_count / total
             mean_loss = np.mean(eval_loss)
-            logger.info('Evaluation: epoch=%d step=%d/%d loss=%f correct ratio=%f' % (
-                epoch, step, num_batch, mean_loss, correct_ratio))
+            logger.info('Eval: epoch=%d loss=%f correct ratio=%f step=%d/%d' % (
+                epoch, mean_loss, correct_ratio, step, num_batch))
 
         correct_ratio = total_correct_count / total
         mean_loss = np.mean(eval_loss)
@@ -257,6 +259,12 @@ def load_teacher(train_examples, tokenizer):
     teacher.read_teacher_embeddings(train_examples, tokenizer)
     return teacher 
 
+def get_expr_name(tag):
+    now_time = datetime.datetime.now()
+    expr_name = '%s_%d_%d_%d_%d_%d_%d' % (tag, 
+                now_time.year, now_time.month, now_time.day, now_time.hour, now_time.minute, now_time.second)
+    return expr_name 
+
 if __name__ == "__main__":
     options = Options()
     options.add_retriever_options()
@@ -266,8 +274,11 @@ if __name__ == "__main__":
     src.slurm.init_distributed_mode(opt)
     src.slurm.init_signal_handler()
 
+    opt.name = get_expr_name('train') 
     dir_path = Path(opt.checkpoint_dir)/opt.name
     directory_exists = dir_path.exists()
+    assert (not directory_exists), '%s already exists' % str(dir_path)  
+
     if opt.is_distributed:
         torch.distributed.barrier()
     dir_path.mkdir(parents=True, exist_ok=True)
@@ -320,16 +331,11 @@ if __name__ == "__main__":
     )
     model_class = StudentRetriever
     teacher = load_teacher(train_examples, tokenizer)
-    if not directory_exists and opt.model_path == "none":
+    if opt.model_path == "none":
         model = model_class(config, teacher_model=teacher.model)
         src.util.set_dropout(model, opt.dropout)
         model = model.to(opt.device)
         optimizer, scheduler = src.util.set_optim(opt, model)
-    elif opt.model_path == "none":
-        load_path = dir_path / 'checkpoint' / 'latest'
-        model, optimizer, scheduler, opt_checkpoint, global_step, best_eval_loss = \
-            src.util.load(model_class, load_path, opt, reset_params=False)
-        logger.info(f"Model loaded from {dir_path}")
     else:
         model, optimizer, scheduler, opt_checkpoint, global_step, best_eval_loss = \
             src.util.load(model_class, opt.model_path, opt, reset_params=True)
