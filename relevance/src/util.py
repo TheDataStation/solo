@@ -26,7 +26,7 @@ def init_logger(is_main=True, is_distributed=False, filename=None):
     logging.basicConfig(
         datefmt="%m/%d/%Y %H:%M:%S",
         level=logging.INFO if is_main else logging.WARN,
-        format="[%(asctime)s] {%(filename)s:%(lineno)d} %(levelname)s - %(message)s",
+        format="[%(asctime)s] %(levelname)s - %(message)s",
         handlers=handlers,
     )
     logging.getLogger('transformers.tokenization_utils').setLevel(logging.ERROR)
