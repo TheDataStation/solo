@@ -9,4 +9,5 @@ python train_student_retriever.py \
 --model_path ${model_path} \
 --eval_data ./data/trivia_qa/dev.jsonl \
 --n_context 100 \
-
+--per_gpu_batch_size 16 \
+--num_neg_ctxs 9 \

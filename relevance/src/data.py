@@ -185,11 +185,15 @@ class RetrieverCollator(object):
         question_ids = question['input_ids']
         question_mask = question['attention_mask'].bool()
 
-        passages = [] #[ex['passages'] for ex in batch]
-        meta_lst = []
+        meta_dict = None
+        batch_passages = [] #[ex['passages'] for ex in batch]
         if self.all_passages:
-            passages = [ex['passages'] for ex in batch]
+            batch_passages = [ex['passages'] for ex in batch]
         else:
+            meta_dict = {'global_pos_idxes':[], 'sample_ctx_idxes':[]}
+            global_pos_idxes = meta_dict['global_pos_idxes'] 
+            batch_sample_ctx_idxes = meta_dict['sample_ctx_idxes'] 
+            question_global_pos_idx = 0
             for ex in batch:
                 item_passages = ex['passages']
                 item_pos_idxes = ex['pos_idxes']
@@ -201,7 +205,7 @@ class RetrieverCollator(object):
                 
                 if self.sample_neg_ctx:
                     assert self.num_neg_ctxs is not None
-                    neg_ctx_idxes = random.sample(item_neg_idxes, self.num_neg_ctxs)
+                    neg_ctx_idxes = random.sample(item_neg_idxes, min(self.num_neg_ctxs, len(item_neg_idxes)))
                 else:
                     if self.num_neg_ctxs is not None:
                         neg_ctx_idxes = item_neg_idxes[:self.num_neg_ctxs]
@@ -211,20 +215,20 @@ class RetrieverCollator(object):
                 sample_ctx_idxes = [pos_ctx_idx] + neg_ctx_idxes
                 #The first is the postive passage and others are negative ones
                 sample_passages = [item_passages[a] for a in sample_ctx_idxes] 
-                passages.append(sample_passages) 
+                question_global_pos_idx = len(batch_passages)
+                global_pos_idxes.append(question_global_pos_idx)
                 
-                meta_info = {
-                    'passage_idxes':sample_ctx_idxes
-                }
-                meta_lst.append(meta_info)
+                batch_passages.extend(sample_passages) 
+                batch_sample_ctx_idxes.append(sample_ctx_idxes)
 
         passage_ids, passage_masks = encode_passages(
-            passages,
+            [batch_passages],
             self.tokenizer,
             self.passage_maxlength
         )
-
-        return (index, question_ids, question_mask, passage_ids, passage_masks, meta_lst)
+        passage_ids = passage_ids.squeeze(0)
+        passage_masks = passage_masks.squeeze(0)
+        return (index, question_ids, question_mask, passage_ids, passage_masks, meta_dict)
 
 class TextDataset(torch.utils.data.Dataset):
     def __init__(self,

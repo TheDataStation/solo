@@ -118,16 +118,16 @@ class Teacher:
         question_vector_lst = []
         passage_vector_lst = []
         indexes = batch[0].cpu().numpy().tolist()
-        meta_lst = batch[-1]
+        meta_dict = batch[-1]
+        batch_sample_ctx_idxes = meta_dict['sample_ctx_idxes']
         for batch_idx, sample_index in enumerate(indexes):
             emb_data = emb_dict[sample_index]
             question_vector = emb_data['q_emb'].view(1, -1)
             question_vector_lst.append(question_vector)
             all_ctx_vector = emb_data['ctx_emb']
-            passage_idxes = meta_lst[batch_idx]['passage_idxes']
+            passage_idxes = batch_sample_ctx_idxes[batch_idx]
             passage_emb_lst = [all_ctx_vector[a].view(1, -1) for a in passage_idxes] 
-            passage_embs = torch.cat(passage_emb_lst, dim=0)
-            passage_vector_lst.append(passage_embs.unsqueeze(0))
+            passage_vector_lst.extend(passage_emb_lst)
 
         batch_q_vector = torch.cat(question_vector_lst, dim=0)
         batch_ctx_vector = torch.cat(passage_vector_lst, dim=0)
@@ -164,15 +164,17 @@ def train(model, optimizer, scheduler, global_step,
         for b_idx, batch in enumerate(train_dataloader):
             epoch_step = b_idx + 1
             global_step += 1
-            
+           
             teacher_logits = model.teacher.calc_logits(batch, opt.distill_temperature)
             
-            (idx, question_ids, question_mask, passage_ids, passage_mask, _) = batch
+            (idx, question_ids, question_mask, passage_ids, passage_mask, meta_dict) = batch
+            pos_idxes_per_question = torch.tensor(meta_dict['global_pos_idxes']).cuda()
             student_score, student_loss, correct_count = model(
                 question_ids=question_ids.cuda(),
                 question_mask=question_mask.cuda(),
                 passage_ids=passage_ids.cuda(),
                 passage_mask=passage_mask.cuda(),
+                pos_idxes_per_question=pos_idxes_per_question,
             )
             total_examples += 1
             total_correct_count += correct_count
@@ -217,49 +219,52 @@ def evaluate(model, dataset, collator, opt, epoch):
         model = model.module
     total = 0
     total_correct_count = 0
-    eval_loss = []
+    eval_loss = .0
     num_batch = len(dataloader)
     with torch.no_grad():
         for b_idx, batch in enumerate(dataloader):
             step = b_idx + 1
-            (idx, question_ids, question_mask, context_ids, context_mask, _) = batch
-
+            (idx, question_ids, question_mask, context_ids, context_mask, meta_dict) = batch
+            pos_idxes_per_question = torch.tensor(meta_dict['global_pos_idxes']).cuda()
             _, loss, correct_count = model(
                 question_ids=question_ids.cuda(),
                 question_mask=question_mask.cuda(),
                 passage_ids=context_ids.cuda(),
                 passage_mask=context_mask.cuda(),
+                pos_idxes_per_question=pos_idxes_per_question,
             )
             
             total += question_ids.size(0)
             total_correct_count += int(correct_count)
-           
-            eval_loss.append(loss.item() if loss is not None else None)
+          
+            if loss is not None:
+                eval_loss += loss.item() 
             
             correct_ratio = total_correct_count / total
-            if loss is not None:
-                mean_loss = np.mean(eval_loss)
-            else:
-                mean_loss = None
-            if mean_loss is not None:
-                logger.info('Eval: epoch=%d loss=%f correct ratio=%f step=%d/%d' % (
-                    epoch, mean_loss, correct_ratio, step, num_batch))
-            else:
-                logger.info('Eval: epoch=%d loss=%s correct ratio=%f step=%d/%d' % (
-                    epoch, str(mean_loss), correct_ratio, step, num_batch))
-            
-        correct_ratio = total_correct_count / total
-        mean_loss = np.mean(eval_loss)
+            show_eval_metric(epoch, num_batch, step, eval_loss, correct_ratio)
+                
         global best_eval_loss
         global best_eval_epoch
-        if best_eval_loss is None:
-            best_eval_loss = mean_loss
-            best_eval_epoch = epoch
-        else:
-            if mean_loss < best_eval_loss:
+        mean_loss = eval_loss / num_batch if eval_loss is not None else None 
+        if mean_loss is not None:
+            if best_eval_loss is None:
                 best_eval_loss = mean_loss
                 best_eval_epoch = epoch
-                 
+            else:
+                if mean_loss < best_eval_loss:
+                    best_eval_loss = mean_loss
+                    best_eval_epoch = epoch
+    
+
+def show_eval_metric(epoch, num_batch, step, eval_loss, correct_ratio):
+    if eval_loss is not None:
+        mean_loss = eval_loss / step 
+        logger.info('Eval: epoch=%d loss=%f correct ratio=%f step=%d/%d' % (
+            epoch, mean_loss, correct_ratio, step, num_batch))
+    else:
+        logger.info('Eval: epoch=%d loss=%s correct ratio=%f step=%d/%d' % (
+            epoch, 'None', correct_ratio, step, num_batch))
+
 
 def load_teacher(train_examples, tokenizer):
     assert opt.teacher_precompute_file is not None
@@ -307,8 +312,8 @@ if __name__ == "__main__":
             passage_maxlength=opt.passage_maxlength, 
             question_maxlength=opt.question_maxlength,
             sample_pos_ctx=True,
-            sample_neg_ctx=False,
-            num_neg_ctxs=None,
+            sample_neg_ctx=True,
+            num_neg_ctxs=opt.num_neg_ctxs,
         )
         logger.info('loading %s' % opt.train_data)
         train_examples = src.data.load_data(opt.train_data)
@@ -320,7 +325,7 @@ if __name__ == "__main__":
         question_maxlength=opt.question_maxlength,
         sample_pos_ctx=False,
         sample_neg_ctx=False,
-        num_neg_ctxs=None,
+        num_neg_ctxs=opt.num_neg_ctxs,
     )
     logger.info('loading %s' % opt.eval_data)
     eval_examples = src.data.load_data(

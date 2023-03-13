@@ -55,6 +55,7 @@ class StudentRetriever(transformers.PreTrainedModel):
                 passage_ids,
                 passage_mask,
                 score_only=False,
+                pos_idxes_per_question=None
         ):
         question_output = self.embed_text(
             self.question_encoder,
@@ -63,9 +64,6 @@ class StudentRetriever(transformers.PreTrainedModel):
             apply_mask=self.config.apply_question_mask,
             extract_cls=self.config.extract_cls,
         )
-        bsz, n_passages, plen = passage_ids.size()
-        passage_ids = passage_ids.view(bsz * n_passages, plen)
-        passage_mask = passage_mask.view(bsz * n_passages, plen)
         passage_output = self.embed_text(
             self.ctx_encoder,
             text_ids=passage_ids,
@@ -73,20 +71,12 @@ class StudentRetriever(transformers.PreTrainedModel):
             apply_mask=self.config.apply_passage_mask,
             extract_cls=self.config.extract_cls,
         )
-
-        #batch dot product
-        score = torch.einsum(
-            'bd,bid->bi',
-            question_output,
-            passage_output.view(bsz, n_passages, -1)
-        )
-        
+        score = torch.matmul(question_output, passage_output.t())
         if score_only:
             return score
 
         #score = score / np.sqrt(question_output.size(-1))
         softmax_scores = F.log_softmax(score, dim=1)
-        pos_idxes_per_question = torch.tensor([0] * score.shape[0]).to(softmax_scores.device)
         loss = F.nll_loss(
             softmax_scores,
             pos_idxes_per_question,

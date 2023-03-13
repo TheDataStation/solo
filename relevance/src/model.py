@@ -322,12 +322,8 @@ class Retriever(transformers.PreTrainedModel):
         self.loss_fct = torch.nn.KLDivLoss()
 
     
-    def calc_score(self, question_embs, passage_embs):
-        score = torch.einsum(
-            'bd,bid->bi',
-            question_embs,
-            passage_embs,
-        )
+    def calc_score(self, question_output, passage_output):
+        score = torch.matmul(question_output, passage_output.t())
         return score
    
     def forward(self,
@@ -337,30 +333,25 @@ class Retriever(transformers.PreTrainedModel):
                 passage_mask,
                 gold_score=None,
                 encode_only=False,
+                pos_idxes_per_question=None
         ):
-        question_output = self.embed_text(
+        question_encoded = self.embed_text(
             text_ids=question_ids,
             text_mask=question_mask,
             apply_mask=self.config.apply_question_mask,
             extract_cls=self.config.extract_cls,
         )
-        bsz, n_passages, plen = passage_ids.size()
-        passage_ids = passage_ids.view(bsz * n_passages, plen)
-        passage_mask = passage_mask.view(bsz * n_passages, plen)
-        passage_output = self.embed_text(
+        passage_encoded = self.embed_text(
             text_ids=passage_ids,
             text_mask=passage_mask,
             apply_mask=self.config.apply_passage_mask,
             extract_cls=self.config.extract_cls,
         )
-        question_encoded = question_output
-        passage_encoded = passage_output.view(bsz, n_passages, -1)
         
         if encode_only:
             return question_encoded, passage_encoded
 
         score = self.calc_score(question_encoded, passage_encoded)
-        pos_idxes_per_question = torch.tensor([0] * score.shape[0]).to(score.device)
         _, max_idxs = torch.max(score, 1)
         correct_predictions_count = ((max_idxs == pos_idxes_per_question).sum())
         score = score / np.sqrt(question_encoded.size(-1))
