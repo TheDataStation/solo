@@ -241,11 +241,17 @@ def evaluate(model, dataset, collator, opt, epoch):
                 mean_loss = np.mean(eval_loss)
             else:
                 mean_loss = None
-            logger.info('Eval: epoch=%d loss=%s correct ratio=%f step=%d/%d' % (
-                epoch, str(mean_loss), correct_ratio, step, num_batch))
-
+            if mean_loss is not None:
+                logger.info('Eval: epoch=%d loss=%f correct ratio=%f step=%d/%d' % (
+                    epoch, mean_loss, correct_ratio, step, num_batch))
+            else:
+                logger.info('Eval: epoch=%d loss=%s correct ratio=%f step=%d/%d' % (
+                    epoch, str(mean_loss), correct_ratio, step, num_batch))
+            
         correct_ratio = total_correct_count / total
         mean_loss = np.mean(eval_loss)
+        global best_eval_loss
+        global best_eval_epoch
         if best_eval_loss is None:
             best_eval_loss = mean_loss
             best_eval_epoch = epoch
