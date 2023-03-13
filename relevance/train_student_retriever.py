@@ -222,7 +222,7 @@ def evaluate(model, dataset, collator, opt, epoch):
     with torch.no_grad():
         for b_idx, batch in enumerate(dataloader):
             step = b_idx + 1
-            (idx, question_ids, question_mask, context_ids, context_mask, gold_score) = batch
+            (idx, question_ids, question_mask, context_ids, context_mask, _) = batch
 
             _, loss, correct_count = model(
                 question_ids=question_ids.cuda(),
@@ -233,12 +233,16 @@ def evaluate(model, dataset, collator, opt, epoch):
             
             total += question_ids.size(0)
             total_correct_count += int(correct_count)
-            eval_loss.append(loss.item())
+           
+            eval_loss.append(loss.item() if loss is not None else None)
             
             correct_ratio = total_correct_count / total
-            mean_loss = np.mean(eval_loss)
-            logger.info('Eval: epoch=%d loss=%f correct ratio=%f step=%d/%d' % (
-                epoch, mean_loss, correct_ratio, step, num_batch))
+            if loss is not None:
+                mean_loss = np.mean(eval_loss)
+            else:
+                mean_loss = None
+            logger.info('Eval: epoch=%d loss=%s correct ratio=%f step=%d/%d' % (
+                epoch, str(mean_loss), correct_ratio, step, num_batch))
 
         correct_ratio = total_correct_count / total
         mean_loss = np.mean(eval_loss)
@@ -274,13 +278,11 @@ if __name__ == "__main__":
     src.slurm.init_distributed_mode(opt)
     src.slurm.init_signal_handler()
 
-    opt.name = get_expr_name('train') 
+    opt.name = get_expr_name('train' if opt.do_train else 'eval') 
     dir_path = Path(opt.checkpoint_dir)/opt.name
     directory_exists = dir_path.exists()
     assert (not directory_exists), '%s already exists' % str(dir_path)  
 
-    if opt.is_distributed:
-        torch.distributed.barrier()
     dir_path.mkdir(parents=True, exist_ok=True)
     if not directory_exists and opt.is_main:
         options.print_options(opt)
@@ -290,14 +292,19 @@ if __name__ == "__main__":
 
     #Load data
     tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
-    collator_train = src.data.RetrieverCollator(
-        tokenizer, 
-        passage_maxlength=opt.passage_maxlength, 
-        question_maxlength=opt.question_maxlength,
-        sample_pos_ctx=True,
-        sample_neg_ctx=False,
-        num_neg_ctxs=None,
-    )
+     
+    if opt.do_train:
+        collator_train = src.data.RetrieverCollator(
+            tokenizer, 
+            passage_maxlength=opt.passage_maxlength, 
+            question_maxlength=opt.question_maxlength,
+            sample_pos_ctx=True,
+            sample_neg_ctx=False,
+            num_neg_ctxs=None,
+        )
+        logger.info('loading %s' % opt.train_data)
+        train_examples = src.data.load_data(opt.train_data)
+        train_dataset = src.data.Dataset(train_examples, opt.n_context)
 
     collator_eval = src.data.RetrieverCollator(
         tokenizer, 
@@ -307,10 +314,6 @@ if __name__ == "__main__":
         sample_neg_ctx=False,
         num_neg_ctxs=None,
     )
-
-    logger.info('loading %s' % opt.train_data)
-    train_examples = src.data.load_data(opt.train_data)
-    train_dataset = src.data.Dataset(train_examples, opt.n_context)
     logger.info('loading %s' % opt.eval_data)
     eval_examples = src.data.load_data(
         opt.eval_data, 
@@ -329,34 +332,35 @@ if __name__ == "__main__":
         extract_cls=opt.extract_cls,
         projection=False,
     )
-    model_class = StudentRetriever
-    teacher = load_teacher(train_examples, tokenizer)
-    if opt.model_path == "none":
-        model = model_class(config, teacher_model=teacher.model)
-        src.util.set_dropout(model, opt.dropout)
-        model = model.to(opt.device)
-        optimizer, scheduler = src.util.set_optim(opt, model)
+    
+    if opt.do_train:
+        model_class = StudentRetriever
+        teacher = load_teacher(train_examples, tokenizer)
+        if opt.model_path == "none":
+            model = model_class(config, teacher_model=teacher.model)
+            src.util.set_dropout(model, opt.dropout)
+            model = model.to(opt.device)
+            optimizer, scheduler = src.util.set_optim(opt, model)
+        else:
+            model, optimizer, scheduler, opt_checkpoint, global_step, best_eval_loss = \
+                src.util.load(model_class, opt.model_path, opt, reset_params=True)
+            logger.info(f"Model loaded from {opt.model_path}")
+        model.set_teacher(teacher)
     else:
-        model, optimizer, scheduler, opt_checkpoint, global_step, best_eval_loss = \
-            src.util.load(model_class, opt.model_path, opt, reset_params=True)
+        assert (opt.model_path != 'none') and (opt.model_path is not None)
+        if opt.is_student:
+            model_class = StudentRetriever
+        else:
+            model_class = Retriever
+        model = model_class.from_pretrained(opt.model_path)
         logger.info(f"Model loaded from {opt.model_path}")
-    
-    model.set_teacher(teacher)
-    #model.proj = torch.nn.Linear(768, 256)
-    #model.norm = torch.nn.LayerNorm(256)
-    #model.config.indexing_dimension = 256
+         
     model = model.to(opt.device)
-    optimizer, scheduler = src.util.set_optim(opt, model)
-
-    if opt.is_distributed:
-        model = torch.nn.parallel.DistributedDataParallel(
-            model, 
-            device_ids=[opt.local_rank], 
-            output_device=opt.local_rank, 
-            find_unused_parameters=True,
-        )
-    
-    train(model, optimizer, scheduler, global_step, train_dataset, eval_dataset, opt,
-          collator_train, best_eval_loss, collator_eval)
+    if opt.do_train: 
+        optimizer, scheduler = src.util.set_optim(opt, model)
+        train(model, optimizer, scheduler, global_step, train_dataset, eval_dataset, opt,
+              collator_train, best_eval_loss, collator_eval)
+    else:
+        evaluate(model, eval_dataset, collator_eval, opt, 0) 
     
      

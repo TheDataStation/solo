@@ -353,20 +353,23 @@ class Retriever(transformers.PreTrainedModel):
             apply_mask=self.config.apply_passage_mask,
             extract_cls=self.config.extract_cls,
         )
-        question_encoded = question_output,
+        question_encoded = question_output
         passage_encoded = passage_output.view(bsz, n_passages, -1)
         
         if encode_only:
             return question_encoded, passage_encoded
 
         score = self.calc_score(question_encoded, passage_encoded)
+        pos_idxes_per_question = torch.tensor([0] * score.shape[0]).to(score.device)
+        _, max_idxs = torch.max(score, 1)
+        correct_predictions_count = ((max_idxs == pos_idxes_per_question).sum())
         score = score / np.sqrt(question_encoded.size(-1))
         if gold_score is not None:
             loss = self.kldivloss(score, gold_score)
         else:
             loss = None
-
-        return question_encoded, passage_encoded, score, loss
+        
+        return score, loss, correct_predictions_count 
 
     def embed_text(self, text_ids, text_mask, apply_mask=False, extract_cls=False):
         text_output = self.model(

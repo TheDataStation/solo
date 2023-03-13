@@ -1,9 +1,5 @@
-if [ "$#" -ne 1 ]; then
-    echo "Usage: ./train_student.sh <out_dir>"
-    exit
-fi
-
 python train_student_retriever.py \
+--do_train \
 --lr 1e-4 \
 --optim adamw \
 --scheduler linear \

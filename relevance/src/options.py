@@ -75,7 +75,7 @@ class Options():
         self.parser.add_argument('--teacher_precompute_file', type=str)
         self.parser.add_argument('--distill_temperature', type=float, default=1)
         self.parser.add_argument('--distill_weight', type=float, default=0.65)
-        
+        self.parser.add_argument('--is_student', type=int, default=True)
 
     def initialize_parser(self):
         # basic parameters
