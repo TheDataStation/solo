@@ -25,6 +25,8 @@ from src.options import Options
 import pickle
 import os
 from tqdm import tqdm
+import torch.nn as nn
+import torch.nn.functional as F
 
 class Teacher:
     def __init__(self, model):
@@ -33,19 +35,28 @@ class Teacher:
         self.model.eval()
         self.emb_precom_dict = None
 
-    def calc_logits(self, batch):
+    def calc_logits(self, batch, temperature):
         if self.emb_precom_dict is not None:
-            return   
+            question_encoded, passage_encoded = self.get_batch_embs(batch)  
+            question_encoded = question_encoded.to(opt.device)
+            passage_encoded = passage_encoded.to(opt.device)
         else:
+            assert False, 'No embs'
             with torch.no_grad():
-                (idx, question_ids, question_mask, passage_ids, passage_mask, gold_score) = batch 
-                score, loss, correct_count = self.model(
+                (indexes, question_ids, question_mask, passage_ids, passage_mask, gold_score) = batch 
+                question_encoded, passage_encoded = self.model(
                     question_ids=question_ids.cuda(),
                     question_mask=question_mask.cuda(),
                     passage_ids=passage_ids.cuda(),
                     passage_mask=passage_mask.cuda(),
+                    encode_only=True,
                 )
-    
+        
+        score = self.model.calc_score(question_encoded, passage_encoded)
+        soft_score = score / temperature
+        logits = F.log_softmax(soft_score, dim=1)  
+        return logits
+         
     def precompute_teacher_embeddings(self, train_examples, tokenizer):
         collator = src.data.RetrieverCollator(
             tokenizer, 
@@ -101,31 +112,29 @@ class Teacher:
                 self.emb_precom_dict = pickle.load(f)
   
         
-    def get_batch_precompute_embs(self, batch):
+    def get_batch_embs(self, batch):
         emb_dict = self.emb_precom_dict
         question_vector_lst = []
         passage_vector_lst = []
-        indexes = batch[0]
+        indexes = batch[0].cpu().numpy().tolist()
         meta_lst = batch[-1]
-        for offset, sample_index in enumerate(indexes):
+        for batch_idx, sample_index in enumerate(indexes):
             emb_data = emb_dict[sample_index]
-            
             question_vector = emb_data['q_emb'].view(1, -1)
             question_vector_lst.append(question_vector)
-            
             all_ctx_vector = emb_data['ctx_emb']
-            passage_idxes = meta_lst[sample_index]['passage_idxes']
+            passage_idxes = meta_lst[batch_idx]['passage_idxes']
             passage_emb_lst = [all_ctx_vector[a].view(1, -1) for a in passage_idxes] 
             passage_embs = torch.cat(passage_emb_lst, dim=0)
             passage_vector_lst.append(passage_embs.unsqueeze(0))
 
-        batch_q_vector = torch.cat(q_vector_lst, dim=0)
-        batch_ctx_vector = torch.cat(passge_vector_lst, dim=0)
+        batch_q_vector = torch.cat(question_vector_lst, dim=0)
+        batch_ctx_vector = torch.cat(passage_vector_lst, dim=0)
         return (batch_q_vector, batch_ctx_vector)
 
 
 def train(model, optimizer, scheduler, global_step,
-                    train_dataset, dev_dataset, opt, collator, best_eval_loss):
+          train_dataset, dev_dataset, opt, collator_train, best_eval_loss, collator_eval):
 
     if opt.is_main:
         try:
@@ -139,33 +148,40 @@ def train(model, optimizer, scheduler, global_step,
         sampler=train_sampler, 
         batch_size=opt.per_gpu_batch_size, 
         drop_last=True, 
-        num_workers=10, 
-        collate_fn=collator
+        #num_workers=10, 
+        collate_fn=collator_train,
     )
-
+    distill_loss_fn = nn.MSELoss()
     loss, curr_loss = 0.0, 0.0
-    epoch = 1
-    model.train()
-    while global_step < opt.total_steps:
-        if opt.is_distributed > 1:
-            train_sampler.set_epoch(epoch)
+    epoch = 0
+    num_batch = len(train_dataloader)
+    while epoch <= opt.max_epoch:
+        model.train()
         epoch += 1
-        for i, batch in enumerate(train_dataloader):
+        total_examples = 0
+        total_correct_count = 0
+        for b_idx, batch in enumerate(train_dataloader):
+            epoch_step = b_idx + 1
             global_step += 1
             
-            model.teacher.calc_logits(batch)
+            teacher_logits = model.teacher.calc_logits(batch, opt.distill_temperature)
             
-            (idx, question_ids, question_mask, passage_ids, passage_mask, gold_score) = batch
+            (idx, question_ids, question_mask, passage_ids, passage_mask, _) = batch
             student_score, student_loss, correct_count = model(
                 question_ids=question_ids.cuda(),
                 question_mask=question_mask.cuda(),
                 passage_ids=passage_ids.cuda(),
                 passage_mask=passage_mask.cuda(),
             )
+            total_examples += 1
+            total_correct_count += correct_count
             
-
+            student_logits = model.calc_logits(student_score, opt.distill_temperature)
+            distill_loss = distill_loss_fn(student_logits, teacher_logits) 
+            train_loss = distill_loss * opt.distill_weight + student_loss * (1 - opt.distill_weight)
+            
             train_loss.backward()
-
+            
             if global_step % opt.accumulation_steps == 0:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), opt.clip)
                 optimizer.step()
@@ -175,78 +191,63 @@ def train(model, optimizer, scheduler, global_step,
             train_loss = src.util.average_main(train_loss, opt)
             curr_loss += train_loss.item()
             
-            logger.info('loss = %f' % train_loss.item())    
+            logger.info('epoch=%d step=%d/%d loss=%f' % (epoch, epoch_step, num_batch, train_loss.item()))    
 
-            if global_step % opt.eval_freq == 0:
-                eval_loss, inversions, avg_topk, idx_topk = evaluate(model, dev_dataset, collator, opt)
-                if eval_loss < best_eval_loss:
-                    best_eval_loss = eval_loss
-                    if opt.is_main:
-                        src.util.save(model, optimizer, scheduler, global_step, best_eval_loss, opt, dir_path, 'best_dev')
-                model.train()
-                if opt.is_main:
-                    log = f"{global_step} / {opt.total_steps}"
-                    log += f" -- train: {curr_loss/opt.eval_freq:.6f}"
-                    log += f", eval: {eval_loss:.6f}"
-                    log += f", inv: {inversions:.1f}"
-                    log += f", lr: {scheduler.get_last_lr()[0]:.6f}"
-                    for k in avg_topk:
-                        log += f" | avg top{k}: {100*avg_topk[k]:.1f}"
-                    for k in idx_topk:    
-                        log += f" | idx top{k}: {idx_topk[k]:.1f}"
-                    logger.info(log)
+        evaluate(model, dev_dataset, collator_eval, opt, epoch)
+        src.util.save(model, optimizer, scheduler, global_step, best_eval_loss, 
+                      opt, dir_path, f"epoch-{epoch}")
+    
+    logger.info('best_eval_loss= best_eval_epoch=' % (best_eval_loss, best_eval_epoch))
+        
 
-                    if tb_logger is not None:
-                        tb_logger.add_scalar("Evaluation", eval_loss, global_step)
-                        tb_logger.add_scalar("Training", curr_loss / (opt.eval_freq), global_step)
-                    curr_loss = 0
-
-            if opt.is_main and global_step % opt.save_freq == 0:
-                src.util.save(model, optimizer, scheduler, global_step, best_eval_loss, opt, dir_path, f"step-{global_step}")
-            if global_step > opt.total_steps:
-                break
-
-
-def evaluate(model, dataset, collator, opt):
+def evaluate(model, dataset, collator, opt, epoch):
     sampler = SequentialSampler(dataset)
     dataloader = DataLoader(
         dataset, 
         sampler=sampler, 
         batch_size=opt.per_gpu_batch_size,
         drop_last=False, 
-        num_workers=10, 
+        #num_workers=10, 
         collate_fn=collator
     )
     model.eval()
     if hasattr(model, "module"):
         model = model.module
     total = 0
+    total_correct_count = 0
     eval_loss = []
-
-    avg_topk = {k:[] for k in [1, 2, 5] if k <= opt.n_context}
-    idx_topk = {k:[] for k in [1, 2, 5] if k <= opt.n_context}
-    inversions = []
+    num_batch = len(dataloader)
     with torch.no_grad():
-        for i, batch in enumerate(dataloader):
+        for b_idx, batch in enumerate(dataloader):
+            step = b_idx + 1
             (idx, question_ids, question_mask, context_ids, context_mask, gold_score) = batch
 
-            _, _, scores, loss = model(
+            _, loss, correct_count = model(
                 question_ids=question_ids.cuda(),
                 question_mask=question_mask.cuda(),
                 passage_ids=context_ids.cuda(),
                 passage_mask=context_mask.cuda(),
-                gold_score=gold_score.cuda(),
             )
-
-            src.evaluation.eval_batch(scores, inversions, avg_topk, idx_topk)
+            
             total += question_ids.size(0)
+            total_correct_count += int(correct_count)
+            eval_loss.append(loss.item())
+            
+            correct_ratio = total_correct_count / total
+            mean_loss = np.mean(eval_loss)
+            logger.info('Evaluation: epoch=%d step=%d/%d loss=%f correct ratio=%f' % (
+                epoch, step, num_batch, mean_loss, correct_ratio))
 
-    inversions = src.util.weighted_average(np.mean(inversions), total, opt)[0]
-    for k in avg_topk:
-        avg_topk[k] = src.util.weighted_average(np.mean(avg_topk[k]), total, opt)[0]
-        idx_topk[k] = src.util.weighted_average(np.mean(idx_topk[k]), total, opt)[0]
-
-    return loss, inversions, avg_topk, idx_topk
+        correct_ratio = total_correct_count / total
+        mean_loss = np.mean(eval_loss)
+        if best_eval_loss is None:
+            best_eval_loss = mean_loss
+            best_eval_epoch = epoch
+        else:
+            if mean_loss < best_eval_loss:
+                best_eval_loss = mean_loss
+                best_eval_epoch = epoch
+                 
 
 def load_teacher(train_examples, tokenizer):
     assert opt.teacher_precompute_file is not None
@@ -278,7 +279,7 @@ if __name__ == "__main__":
 
     #Load data
     tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
-    collator_function = src.data.RetrieverCollator(
+    collator_train = src.data.RetrieverCollator(
         tokenizer, 
         passage_maxlength=opt.passage_maxlength, 
         question_maxlength=opt.question_maxlength,
@@ -286,6 +287,16 @@ if __name__ == "__main__":
         sample_neg_ctx=False,
         num_neg_ctxs=None,
     )
+
+    collator_eval = src.data.RetrieverCollator(
+        tokenizer, 
+        passage_maxlength=opt.passage_maxlength, 
+        question_maxlength=opt.question_maxlength,
+        sample_pos_ctx=False,
+        sample_neg_ctx=False,
+        num_neg_ctxs=None,
+    )
+
     logger.info('loading %s' % opt.train_data)
     train_examples = src.data.load_data(opt.train_data)
     train_dataset = src.data.Dataset(train_examples, opt.n_context)
@@ -298,7 +309,8 @@ if __name__ == "__main__":
     eval_dataset = src.data.Dataset(eval_examples, opt.n_context)
 
     global_step = 0
-    best_eval_loss = np.inf
+    best_eval_loss = None
+    best_eval_epoch = -1
     config = src.model.RetrieverConfig(
         indexing_dimension=opt.indexing_dimension,
         apply_question_mask=not opt.no_question_mask,
@@ -324,7 +336,6 @@ if __name__ == "__main__":
         logger.info(f"Model loaded from {opt.model_path}")
     
     model.set_teacher(teacher)
-
     #model.proj = torch.nn.Linear(768, 256)
     #model.norm = torch.nn.LayerNorm(256)
     #model.config.indexing_dimension = 256
@@ -339,14 +350,7 @@ if __name__ == "__main__":
             find_unused_parameters=True,
         )
     
-    train(
-        model, 
-        optimizer,
-        scheduler,
-        global_step,
-        train_dataset,
-        eval_dataset,
-        opt,
-        collator_function,
-        best_eval_loss
-    )
+    train(model, optimizer, scheduler, global_step, train_dataset, eval_dataset, opt,
+          collator_train, best_eval_loss, collator_eval)
+    
+     

@@ -14,3 +14,6 @@ python train_student_retriever.py \
 --total_steps 20000 \
 --scheduler_steps 30000 \
 --teacher_precompute_file ./data/teacher_precompute_triviaqa.pl \
+--distill_temperature 6 \
+--distill_weight 0.65 \
+

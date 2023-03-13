@@ -103,6 +103,11 @@ class StudentRetriever(transformers.PreTrainedModel):
         return score, loss, correct_predictions_count
 
 
+    def calc_logits(self, score, temperature):
+        soft_score = score / temperature
+        logits = F.log_softmax(soft_score, dim=1)
+        return logits            
+
     def embed_text(self, encoder, text_ids, text_mask, apply_mask=False, extract_cls=False):
         text_output = encoder.model(
             input_ids=text_ids,
