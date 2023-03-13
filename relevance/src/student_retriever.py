@@ -18,7 +18,7 @@ class StudentRetriever(transformers.PreTrainedModel):
     config_class = RetrieverConfig
     base_model_prefix = "retriever"
 
-    def __init__(self, config, teacher_model=None):
+    def __init__(self, config, teacher_state_dict=None):
         super().__init__(config)
         assert config.projection or config.indexing_dimension == 768, \
             'If no projection then indexing dimension must be equal to 768'
@@ -28,18 +28,12 @@ class StudentRetriever(transformers.PreTrainedModel):
         self.question_encoder = BertEncoder(config, 'question') 
         self.ctx_encoder = BertEncoder(config, 'passage') 
        
-        if teacher_model is not None: 
-            self.copy_teacher_weights(teacher_model)
+        if teacher_state_dict is not None: 
+            self.copy_teacher_weights(teacher_state_dict)
         
-        teacher_model.model.pooler = None
         StudentRetriever.prune_layers(self.ctx_encoder) 
         
-  
-    def copy_teacher_weights(self, teacher_model):
-        teacher_weights = teacher_model.state_dict() 
-        for key in ['model.pooler.dense.weight', 'model.pooler.dense.bias']:
-            del teacher_weights[key]
-             
+    def copy_teacher_weights(self, teacher_weights):
         self.question_encoder.load_state_dict(teacher_weights)
         self.ctx_encoder.load_state_dict(teacher_weights)
    

@@ -76,7 +76,7 @@ def main(opt, is_main):
     #model, _, _, _, _, _ = src.util.load(model_class, opt.model_path, opt)
     model = model_class.from_pretrained(opt.model_path)
     if model.model.pooler is not None:
-        mdoel.model.pooler = None
+        model.model.pooler = None
      
     model.eval()
     model = model.to(opt.device)

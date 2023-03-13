@@ -265,9 +265,11 @@ def load_teacher(train_examples, tokenizer):
     assert opt.teacher_precompute_file is not None
     assert opt.teacher_model_path is not None
     teacher_model = Retriever.from_pretrained(opt.teacher_model_path)
+    teacher_model.model.pooler = None
+    teacher_state_dict = teacher_model.state_dict()
     teacher = Teacher(teacher_model)
     teacher.read_teacher_embeddings(train_examples, tokenizer)
-    return teacher 
+    return teacher, teacher_state_dict
 
 def get_expr_name(tag):
     now_time = datetime.datetime.now()
@@ -341,9 +343,9 @@ if __name__ == "__main__":
     
     if opt.do_train:
         model_class = StudentRetriever
-        teacher = load_teacher(train_examples, tokenizer)
+        teacher, teacher_state_dict = load_teacher(train_examples, tokenizer)
         if opt.model_path == "none":
-            model = model_class(config, teacher_model=teacher.model)
+            model = model_class(config, teacher_state_dict=teacher_state_dict)
             src.util.set_dropout(model, opt.dropout)
             model = model.to(opt.device)
             optimizer, scheduler = src.util.set_optim(opt, model)
