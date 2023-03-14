@@ -313,7 +313,7 @@ if __name__ == "__main__":
             question_maxlength=opt.question_maxlength,
             sample_pos_ctx=True,
             sample_neg_ctx=True,
-            num_neg_ctxs=opt.num_neg_ctxs,
+            num_neg_ctxs=opt.num_train_neg_ctxs,
         )
         logger.info('loading %s' % opt.train_data)
         train_examples = src.data.load_data(opt.train_data)
@@ -325,7 +325,7 @@ if __name__ == "__main__":
         question_maxlength=opt.question_maxlength,
         sample_pos_ctx=False,
         sample_neg_ctx=False,
-        num_neg_ctxs=opt.num_neg_ctxs,
+        num_neg_ctxs=opt.num_eval_neg_ctxs,
     )
     logger.info('loading %s' % opt.eval_data)
     eval_examples = src.data.load_data(

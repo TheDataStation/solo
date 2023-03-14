@@ -13,4 +13,5 @@ python train_student_retriever.py \
 --teacher_precompute_file ./data/teacher_precompute_triviaqa.pl \
 --distill_temperature 6 \
 --distill_weight 0.65 \
---num_neg_ctxs 15 \
+--num_train_neg_ctxs 30 \
+--num_train_neg_ctxs 15 \
