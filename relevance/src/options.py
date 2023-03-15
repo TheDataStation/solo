@@ -69,14 +69,14 @@ class Options():
         self.parser.add_argument('--extract_cls', action='store_true')
         self.parser.add_argument('--no_title', action='store_true', 
                         help='article titles not included in passages')
-        self.parser.add_argument('--n_context', type=int, default=1)
-        
+        self.parser.add_argument('--n_context', type=int)
         self.parser.add_argument('--teacher_model_path', type=str, default='none', help='path for teacher model')
         self.parser.add_argument('--teacher_precompute_file', type=str)
         self.parser.add_argument('--distill_temperature', type=float, default=1)
         self.parser.add_argument('--distill_weight', type=float, default=0.65)
         self.parser.add_argument('--is_student', type=int, default=True)
-        self.parser.add_argument('--num_neg_ctxs', type=int)
+        self.parser.add_argument('--num_train_neg_ctxs', type=int)
+        self.parser.add_argument('--num_eval_neg_ctxs', type=int)
 
     def initialize_parser(self):
         # basic parameters

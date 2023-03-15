@@ -10,4 +10,4 @@ python train_student_retriever.py \
 --eval_data ./data/trivia_qa/dev.jsonl \
 --n_context 100 \
 --per_gpu_batch_size 32 \
---num_neg_ctxs 15 \
+--num_eval_neg_ctxs 15 \
