@@ -41,7 +41,7 @@ def embed_questions(opt, data, model, tokenizer):
     embedding = []
     with torch.no_grad():
         for k, batch in enumerate(dataloader):
-            (idx, _, _, question_ids, question_mask) = batch
+            (idx, _, _, question_ids, question_mask, _) = batch
             output = model.embed_text(
                 text_ids=question_ids.to(opt.device).view(-1, question_ids.size(-1)), 
                 text_mask=question_mask.to(opt.device).view(-1, question_ids.size(-1)), 
@@ -56,13 +56,31 @@ def embed_questions(opt, data, model, tokenizer):
     return embedding.cpu().numpy()
 
 
+def load_passage_emb(emb_file):
+    p_id_lst = []
+    p_emb_lst = []
+    count = 0
+    with open(emb_file, 'rb') as f:
+        while True:
+            try:
+                batch_p_id, batch_p_emb = pickle.load(f)
+                p_id_lst.append(batch_p_id)
+                p_emb_lst.append(batch_p_emb)
+                count += len(batch_p_id)
+                logger.info('%d loaded' % count)
+            except EOFError:
+                break
+    all_p_id = [p_id for batch in p_id_lst for p_id in batch]
+    all_p_emb = np.concatenate(p_emb_lst, axis=0)
+    return all_p_id, all_p_emb
+
+
 def index_encoded_data(index, embedding_files, indexing_batch_size):
     allids = []
     allembeddings = np.array([])
     for i, file_path in enumerate(embedding_files):
         logger.info(f'Loading file {file_path}')
-        with open(file_path, 'rb') as fin:
-            ids, embeddings = pickle.load(fin)
+        ids, embeddings = load_passage_emb(file_path)
 
         allembeddings = np.vstack((allembeddings, embeddings)) if allembeddings.size else embeddings
         allids.extend(ids)
@@ -96,11 +114,12 @@ def validate(data, workers_num):
 
 def add_passages(data, passages, top_passages_and_scores):
     # add passages to original data
+    import pdb; pdb.set_trace()
     merged_data = []
     assert len(data) == len(top_passages_and_scores)
     for i, d in enumerate(data):
         results_and_scores = top_passages_and_scores[i]
-        docs = [passages[doc_id] for doc_id in results_and_scores[0]]
+        docs = [passages[int(doc_id)] for doc_id in results_and_scores[0]]
         scores = [str(score) for score in results_and_scores[1]]
         ctxs_num = len(docs)
         d['ctxs'] =[

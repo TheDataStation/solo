@@ -146,16 +146,26 @@ class Collator(object):
 def load_data(data_path=None, global_rank=-1, world_size=-1):
     assert data_path
     examples = []
-    with open(data_path, 'r') as f:
-        for k, line in tqdm(enumerate(f)):
-            example = json.loads(line)
-            if not 'id' in example:
-                example['id'] = k
-            for c in example['ctxs']:
-                if not 'score' in c:
-                    c['score'] = 1.0 / (k + 1)
-            examples.append(example)
-
+    if data_path.endswith('.jsonl'):
+        with open(data_path, 'r') as f:
+            for k, line in tqdm(enumerate(f)):
+                example = json.loads(line)
+                if not 'id' in example:
+                    example['id'] = k
+                for c in example['ctxs']:
+                    if not 'score' in c:
+                        c['score'] = 1.0 / (k + 1)
+                examples.append(example)
+    else:
+        with open(data_path, 'r') as f:
+            examples = json.load(f)
+            for k, exa in tqdm(enumerate(examples)):
+                if not 'id' in exa:
+                    exa['id'] = k
+                for c in exa['ctxs']:
+                    if not 'score' in c:
+                        c['score'] = 1.0 / (k + 1)
+            
     return examples
 
 
