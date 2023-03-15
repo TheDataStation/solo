@@ -57,35 +57,24 @@ def embed_questions(opt, data, model, tokenizer):
 
 
 def load_passage_emb(emb_file):
-    p_id_lst = []
-    p_emb_lst = []
-    count = 0
     with open(emb_file, 'rb') as f:
         while True:
             try:
                 batch_p_id, batch_p_emb = pickle.load(f)
-                p_id_lst.append(batch_p_id)
-                p_emb_lst.append(batch_p_emb)
-                count += len(batch_p_id)
-                logger.info('%d loaded' % count)
+                yield (batch_p_id, batch_p_emb)
             except EOFError:
                 break
-    all_p_id = [p_id for batch in p_id_lst for p_id in batch]
-    all_p_emb = np.concatenate(p_emb_lst, axis=0)
-    return all_p_id, all_p_emb
-
 
 def index_encoded_data(index, embedding_files, indexing_batch_size):
     allids = []
     allembeddings = np.array([])
     for i, file_path in enumerate(embedding_files):
         logger.info(f'Loading file {file_path}')
-        ids, embeddings = load_passage_emb(file_path)
-
-        allembeddings = np.vstack((allembeddings, embeddings)) if allembeddings.size else embeddings
-        allids.extend(ids)
-        while allembeddings.shape[0] > indexing_batch_size:
-            allembeddings, allids = add_embeddings(index, allembeddings, allids, indexing_batch_size)
+        for ids, embeddings in load_passage_emb(file_path):
+            allembeddings = np.vstack((allembeddings, embeddings)) if allembeddings.size else embeddings
+            allids.extend(ids)
+            while allembeddings.shape[0] > indexing_batch_size:
+                allembeddings, allids = add_embeddings(index, allembeddings, allids, indexing_batch_size)
 
     while allembeddings.shape[0] > 0:
         allembeddings, allids = add_embeddings(index, allembeddings, allids, indexing_batch_size)
