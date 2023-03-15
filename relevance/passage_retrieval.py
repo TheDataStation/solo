@@ -57,35 +57,24 @@ def embed_questions(opt, data, model, tokenizer):
 
 
 def load_passage_emb(emb_file):
-    p_id_lst = []
-    p_emb_lst = []
-    count = 0
     with open(emb_file, 'rb') as f:
         while True:
             try:
                 batch_p_id, batch_p_emb = pickle.load(f)
-                p_id_lst.append(batch_p_id)
-                p_emb_lst.append(batch_p_emb)
-                count += len(batch_p_id)
-                logger.info('%d loaded' % count)
+                yield (batch_p_id, batch_p_emb)
             except EOFError:
                 break
-    all_p_id = [p_id for batch in p_id_lst for p_id in batch]
-    all_p_emb = np.concatenate(p_emb_lst, axis=0)
-    return all_p_id, all_p_emb
-
 
 def index_encoded_data(index, embedding_files, indexing_batch_size):
     allids = []
     allembeddings = np.array([])
     for i, file_path in enumerate(embedding_files):
         logger.info(f'Loading file {file_path}')
-        ids, embeddings = load_passage_emb(file_path)
-
-        allembeddings = np.vstack((allembeddings, embeddings)) if allembeddings.size else embeddings
-        allids.extend(ids)
-        while allembeddings.shape[0] > indexing_batch_size:
-            allembeddings, allids = add_embeddings(index, allembeddings, allids, indexing_batch_size)
+        for ids, embeddings in load_passage_emb(file_path):
+            allembeddings = np.vstack((allembeddings, embeddings)) if allembeddings.size else embeddings
+            allids.extend(ids)
+            while allembeddings.shape[0] > indexing_batch_size:
+                allembeddings, allids = add_embeddings(index, allembeddings, allids, indexing_batch_size)
 
     while allembeddings.shape[0] > 0:
         allembeddings, allids = add_embeddings(index, allembeddings, allids, indexing_batch_size)
@@ -114,7 +103,6 @@ def validate(data, workers_num):
 
 def add_passages(data, passages, top_passages_and_scores):
     # add passages to original data
-    import pdb; pdb.set_trace()
     merged_data = []
     assert len(data) == len(top_passages_and_scores)
     for i, d in enumerate(data):
@@ -204,7 +192,7 @@ if __name__ == '__main__':
     parser.add_argument('--passages_embeddings', type=str, default=None, help='Glob path to encoded passages')
     parser.add_argument('--output_path', type=str, default=None, help='Results are written to output_path')
     parser.add_argument('--n-docs', type=int, default=100, help="Number of documents to retrieve per questions")
-    parser.add_argument('--validation_workers', type=int, default=32,
+    parser.add_argument('--validation_workers', type=int, default=1,
                         help="Number of parallel processes to validate results")
     parser.add_argument('--per_gpu_batch_size', type=int, default=64, help="Batch size for question encoding")
     parser.add_argument("--save_or_load_index", action='store_true', 
