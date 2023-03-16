@@ -204,7 +204,7 @@ def main(args, is_main):
         model = model.half()
     
     global g_passage_count
-    g_passage_count = 123456 #src.util.count_passages(args.passages)
+    g_passage_count = src.util.count_passages(args.passages)
 
 
     num_output_parts = embed_passages(model, retriever)
