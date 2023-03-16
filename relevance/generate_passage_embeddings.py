@@ -83,12 +83,15 @@ def start_tok_threading():
 
 def output_worker(part_idx):
     data = queue_output.get()
+    id_lst = data[0]
     emb_lst = data[1]
-    data[1] = np.concatenate(emb_lst, axis=0)
     out_file = opt.output_path + "_part_" + str(part_idx)
     with open(out_file, mode="wb") as f_o:
-        pickle.dump(data, f_o)
-    queue_output_stat.put([part_idx, len(data[0]), out_file])
+        for offset, emb in enumerate(emb_lst):
+            out_data = [id_lst[offset], emb]
+            pickle.dump(out_data, f_o)
+
+    queue_output_stat.put([part_idx, data[2], out_file])
 
 
 def start_output_threading(results, part_idx):
@@ -101,7 +104,7 @@ def embed_passages(model, retriever):
     num_passages = g_passage_count
     total = 0
     output_part_idx = 0
-    output_data = [[], []]
+    output_data = [[], [], 0]
     
     while True:
         batch_data = queue_token_tensor.get() 
@@ -117,26 +120,27 @@ def embed_passages(model, retriever):
         embeddings = embeddings.cpu().numpy()
         #t3 = time.time()
         #print('embed t3-t2 = ', t3-t2)
-        output_data[0].extend(ids)
+        output_data[0].append(ids)
         output_data[1].append(embeddings)
+        output_data[2] += len(ids)
          
         total += len(ids)
         
         if total % 10000 == 0:
             logger.info('Encoded passages %d', total)
         
-        if len(output_data[0]) >= opt.output_batch_size:
+        if output_data[2] >= opt.output_batch_size:
             start_output_threading(output_data, output_part_idx)
             output_part_idx += 1
-            output_data = [[], []]
+            output_data = [[], [], 0]
         
         if total == num_passages:
             break
     
-    if len(output_data[0]) > 0:
+    if output_data[2] > 0:
         start_output_threading(output_data, output_part_idx)
         output_part_idx += 1
-        output_data = [[], []]
+        output_data = [[], [], 0]
     
     return output_part_idx 
 
