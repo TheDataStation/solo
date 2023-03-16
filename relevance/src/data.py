@@ -255,9 +255,14 @@ class TextDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         example = self.data[index]
-        text = self.title_prefix + " " + example[2] + " " + \
-            self.passage_prefix + " " + example[1]
+        return TextDataset.annoate_passage(example, self.title_prefix, self.passage_prefix)
+    
+    @staticmethod
+    def annoate_passage(example, title_prefix, passage_prefix):
+        text = title_prefix + " " + example[2] + " " + \
+               passage_prefix + " " + example[1]
         return example[0], text
+
 
 class TextCollator(object):
     def __init__(self, tokenizer, maxlength=200):
@@ -278,8 +283,8 @@ class TextCollator(object):
         text_ids = encoded_batch['input_ids']
         text_mask = encoded_batch['attention_mask'].bool()
         return index, text_ids, text_mask
-        
-        '''
+       
+        ''' 
         #Encode passages one by one
         #t1 = time.time()
         batch_token_tensors = torch.tensor([self.text_to_tensor(item[1]) for item in batch])
@@ -287,7 +292,7 @@ class TextCollator(object):
         #print('tok time=', t2- t1)
         batch_token_masks = (batch_token_tensors != self.tokenizer.pad_token_id) 
         return index, batch_token_tensors, batch_token_masks
-        '''        
+        '''     
 
     def text_to_tensor(self, text):
         token_ids = self.tokenizer.encode(

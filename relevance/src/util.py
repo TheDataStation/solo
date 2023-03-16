@@ -237,3 +237,26 @@ def load_passages(path):
             passage_info = (item['p_id'], item['passage'], '')
             passages.append(passage_info)
     return passages
+
+def get_passage_info(text):
+    item = json.loads(text)
+    passage_info = (item['p_id'], item['passage'], '')
+    return passage_info
+
+def read_passage(path):
+    if not os.path.exists(path):
+        logger.info(f'{path} does not exist')
+        return
+    logger.info(f'Loading passages from: {path}')
+    with open(path) as fin:
+        for text in fin:
+            yield text
+
+def count_passages(path):
+    if not os.path.exists(path):
+        return 0
+    count = 0
+    with open(path) as fin:
+        for _ in tqdm(fin):
+            count+=1
+    return count

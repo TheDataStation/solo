@@ -27,41 +27,47 @@ import threading
 import glob
 
 csv.field_size_limit(sys.maxsize)
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
+import time
+import json
+
+logger = None
 
 queue_token_tensor = queue.Queue()
 queue_output = queue.Queue()
 queue_output_stat = queue.Queue()
-g_all_passages = None
 opt = None
-import time
+g_title_prefix='title:'
+g_passage_prefix='context:'
 
 def tok_worker(start_idx, end_idx):
     tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
     collator = src.data.TextCollator(tokenizer, opt.passage_maxlength)
-    part_passages = g_all_passages[start_idx:end_idx]
-    dataset = src.data.TextDataset(part_passages, title_prefix='title:', passage_prefix='context:')
-    bsz = opt.per_gpu_batch_size
-    dataloader = DataLoader(dataset, batch_size=bsz, 
-                            drop_last=False, num_workers=0, collate_fn=collator)
-    for batch_data in dataloader:
-        #yield batch_data
-        queue_token_tensor.put(batch_data) 
-         
-    '''
-    N = len(dataset)
-    bsz = opt.per_gpu_batch_size
-    for batch_start in range(0, N, bsz):
-        batch_end = min(batch_start + bsz, N)
-        batch_idxes = np.arange(batch_start, batch_end) 
-        batch_text_input = [dataset[a] for a in batch_idxes] 
-        batch_data = collator(batch_text_input)   
-        queue_token_tensor.put(batch_data)
-        #yield batch_data
-    ''' 
+    batch_passages = []
+    for idx, line in enumerate(src.util.read_passage(opt.passages)):
+        if idx < start_idx:
+            continue
+        elif idx >= end_idx:
+            break
+        if len(batch_passages) == opt.per_gpu_batch_size:
+            batch_data = collator(batch_passages)
+            updated_data = [batch_data[0], batch_data[1].to(opt.device), batch_data[2].to(opt.device)]
+            queue_token_tensor.put(updated_data)
+            batch_passages = [] 
+            
+        passage_info = src.util.get_passage_info(line)
+        annoated_passage_info = src.data.TextDataset.annoate_passage(passage_info, g_title_prefix, g_passage_prefix)
+        batch_passages.append(annoated_passage_info)    
+     
+    if len(batch_passages) > 0:
+        batch_data = collator(batch_passages)
+        updated_data = [batch_data[0], batch_data[1].to(opt.device), batch_data[2].to(opt.device)]
+        queue_token_tensor.put(updated_data)
+        batch_passages = [] 
+
 
 def start_tok_threading():
-    num_rows = len(g_all_passages)
+    num_rows = g_passage_count
     num_workers = 1
     part_size = num_rows // num_workers
 
@@ -73,6 +79,7 @@ def start_tok_threading():
             end_idx = num_rows
         threading.Thread(target=tok_worker, args=(start_idx, end_idx, )).start()
         start_idx = end_idx
+
 
 def output_worker(part_idx):
     data = queue_output.get()
@@ -91,30 +98,31 @@ def start_output_threading(results, part_idx):
 def embed_passages(model, retriever):
     start_tok_threading()
 
-    num_passages = len(g_all_passages)
+    num_passages = g_passage_count
     total = 0
     output_part_idx = 0
     output_data = [[], []]
-
+    
     while True:
-    #for batch_data in tok_worker(0, num_passages):
         batch_data = queue_token_tensor.get() 
+        #t2 = time.time()
         ids, text_ids, text_mask = batch_data
         with torch.no_grad():
             embeddings = model.embed_text(
-                text_ids=text_ids.cuda(), 
-                text_mask=text_mask.cuda(), 
+                text_ids=text_ids, 
+                text_mask=text_mask, 
                 apply_mask=retriever.config.apply_passage_mask,
                 extract_cls=retriever.config.extract_cls,
             )
         embeddings = embeddings.cpu().numpy()
-        
+        #t3 = time.time()
+        #print('embed t3-t2 = ', t3-t2)
         output_data[0].extend(ids)
         output_data[1].append(embeddings)
          
         total += len(ids)
-            
-        if total % 1000 == 0:
+        
+        if total % 10000 == 0:
             logger.info('Encoded passages %d', total)
         
         if len(output_data[0]) >= opt.output_batch_size:
@@ -125,11 +133,11 @@ def embed_passages(model, retriever):
         if total == num_passages:
             break
     
-    if len(output_data) > 0:
+    if len(output_data[0]) > 0:
         start_output_threading(output_data, output_part_idx)
         output_part_idx += 1
         output_data = [[], []]
-
+    
     return output_part_idx 
 
 
@@ -156,8 +164,11 @@ def main(args, is_main):
     assert opt.output_path is not None
     src.slurm.init_distributed_mode(opt)
     assert opt.world_size == 1
-    
-    logger = src.util.init_logger(is_main=is_main)
+
+    global logger
+    output_dir = os.path.dirname(opt.output_path)
+    log_file = os.path.join(output_dir, 'log.txt')
+    logger = src.util.init_logger(is_main, opt.is_distributed, log_file)
    
     out_files = glob.glob(opt.output_path + '*') 
     if len(out_files) > 0:
@@ -191,9 +202,10 @@ def main(args, is_main):
     model = model.to(opt.device)
     if not opt.no_fp16:
         model = model.half()
+    
+    global g_passage_count
+    g_passage_count = 123456 #src.util.count_passages(args.passages)
 
-    global g_all_passages
-    g_all_passages = src.util.load_passages(args.passages)
 
     num_output_parts = embed_passages(model, retriever)
     show_output_stat(num_output_parts)
