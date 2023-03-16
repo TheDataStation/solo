@@ -10,6 +10,7 @@ import json
 import numpy as np
 
 from tqdm import tqdm
+import time
 
 Question_Prefix = 'question:'
 
@@ -264,6 +265,8 @@ class TextCollator(object):
         self.maxlength = maxlength
 
     def __call__(self, batch):
+        #Each batch item is a tuple (id, text)
+        #import pdb; pdb.set_trace()
         index = [x[0] for x in batch]
         encoded_batch = self.tokenizer.batch_encode_plus(
             [x[1] for x in batch],
@@ -274,5 +277,25 @@ class TextCollator(object):
         )
         text_ids = encoded_batch['input_ids']
         text_mask = encoded_batch['attention_mask'].bool()
-
         return index, text_ids, text_mask
+        
+        '''
+        #Encode passages one by one
+        #t1 = time.time()
+        batch_token_tensors = torch.tensor([self.text_to_tensor(item[1]) for item in batch])
+        #t2 = time.time()
+        #print('tok time=', t2- t1)
+        batch_token_masks = (batch_token_tensors != self.tokenizer.pad_token_id) 
+        return index, batch_token_tensors, batch_token_masks
+        '''        
+
+    def text_to_tensor(self, text):
+        token_ids = self.tokenizer.encode(
+            text,
+            add_special_tokens=True,
+            pad_to_max_length=True,
+            max_length=self.maxlength,
+            truncation=True,
+        )
+        return token_ids 
+

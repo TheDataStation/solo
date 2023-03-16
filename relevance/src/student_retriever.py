@@ -13,6 +13,26 @@ class BertEncoder(nn.Module):
         self.name = name
         self.model = transformers.BertModel(config, add_pooling_layer=False) 
 
+    def embed_text(self, text_ids, text_mask, apply_mask=False, extract_cls=False):
+        text_output = self.model(
+            input_ids=text_ids,
+            attention_mask=text_mask if apply_mask else None
+        )
+        if type(text_output) is not tuple:
+            text_output.to_tuple()
+        text_output = text_output[0]
+
+        if extract_cls:
+            text_output = text_output[:, 0]
+        else:
+            if apply_mask:
+                text_output = text_output.masked_fill(~text_mask[:, :, None], 0.)
+                text_output = torch.sum(text_output, dim=1) / torch.sum(text_mask, dim=1)[:, None]
+            else:
+                text_output = torch.mean(text_output, dim=1)
+        return text_output
+
+
 class StudentRetriever(transformers.PreTrainedModel):
 
     config_class = RetrieverConfig
@@ -57,15 +77,13 @@ class StudentRetriever(transformers.PreTrainedModel):
                 score_only=False,
                 pos_idxes_per_question=None
         ):
-        question_output = self.embed_text(
-            self.question_encoder,
+        question_output = self.question_encoder.embed_text(
             text_ids=question_ids,
             text_mask=question_mask,
             apply_mask=self.config.apply_question_mask,
             extract_cls=self.config.extract_cls,
         )
-        passage_output = self.embed_text(
-            self.ctx_encoder,
+        passage_output = self.ctx_encoder.embed_text(
             text_ids=passage_ids,
             text_mask=passage_mask,
             apply_mask=self.config.apply_passage_mask,
@@ -92,26 +110,3 @@ class StudentRetriever(transformers.PreTrainedModel):
         logits = F.log_softmax(soft_score, dim=1)
         return logits            
 
-    def embed_text(self, encoder, text_ids, text_mask, apply_mask=False, extract_cls=False):
-        text_output = encoder.model(
-            input_ids=text_ids,
-            attention_mask=text_mask if apply_mask else None
-        )
-        if type(text_output) is not tuple:
-            text_output.to_tuple()
-        text_output = text_output[0]
-
-        if extract_cls:
-            text_output = text_output[:, 0]
-        else:
-            if apply_mask:
-                text_output = text_output.masked_fill(~text_mask[:, :, None], 0.)
-                text_output = torch.sum(text_output, dim=1) / torch.sum(text_mask, dim=1)[:, None]
-            else:
-                text_output = torch.mean(text_output, dim=1)
-        return text_output
-
-    def kldivloss(self, score, gold_score):
-        gold_score = torch.softmax(gold_score, dim=-1)
-        score = torch.nn.functional.log_softmax(score, dim=-1)
-        return self.loss_fct(score, gold_score)

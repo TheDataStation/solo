@@ -14,6 +14,8 @@ from pathlib import Path
 import torch.distributed as dist
 import csv
 from tqdm import tqdm
+from .model import RetrieverConfig, Retriever
+from .student_retriever import StudentRetriever 
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +73,7 @@ def save(model, optimizer, scheduler, step, best_eval_metric, opt, dir_path, nam
 
 
 def load(model_class, dir_path, opt, reset_params=False):
+    assert False, 'not supported.'
     epoch_path = os.path.realpath(dir_path)
     optimizer_path = os.path.join(epoch_path, "optimizer.pth.tar")
     logger.info("Loading %s" % epoch_path)
@@ -92,6 +95,19 @@ def load(model_class, dir_path, opt, reset_params=False):
         optimizer, scheduler = set_optim(opt, model)
 
     return model, optimizer, scheduler, opt_checkpoint, step, best_eval_metric
+
+def load_pretrained_retriever(is_student, model_path):
+    cfg_file = os.path.join(model_path, 'config.json')
+    model_file = os.path.join(model_path, 'pytorch_model.bin')
+    cfg = RetrieverConfig.from_pretrained(cfg_file)
+    if is_student:
+        model = StudentRetriever(cfg)
+    else:
+        model = Retriever(cfg) 
+    
+    state_dict = torch.load(model_file, map_location='cpu') 
+    model.load_state_dict(state_dict, strict=False)
+    return model
 
 class WarmupLinearScheduler(torch.optim.lr_scheduler.LambdaLR):
     def __init__(self, optimizer, warmup_steps, scheduler_steps, min_ratio, fixed_lr, last_epoch=-1):

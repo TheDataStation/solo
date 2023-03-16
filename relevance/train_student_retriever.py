@@ -355,17 +355,11 @@ if __name__ == "__main__":
             model = model.to(opt.device)
             optimizer, scheduler = src.util.set_optim(opt, model)
         else:
-            model, optimizer, scheduler, opt_checkpoint, global_step, best_eval_loss = \
-                src.util.load(model_class, opt.model_path, opt, reset_params=True)
-            logger.info(f"Model loaded from {opt.model_path}")
+            assert False, 'Not supported.'
         model.set_teacher(teacher)
     else:
         assert (opt.model_path != 'none') and (opt.model_path is not None)
-        if opt.is_student:
-            model_class = StudentRetriever
-        else:
-            model_class = Retriever
-        model = model_class.from_pretrained(opt.model_path)
+        model = src.util.load_pretrained_retriever(opt.is_student, opt.model_path, opt.device)
         logger.info(f"Model loaded from {opt.model_path}")
          
     model = model.to(opt.device)

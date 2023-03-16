@@ -1,3 +1,4 @@
+
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
 # 
@@ -33,16 +34,31 @@ queue_output = queue.Queue()
 queue_output_stat = queue.Queue()
 g_all_passages = None
 opt = None
+import time
 
 def tok_worker(start_idx, end_idx):
     tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
     collator = src.data.TextCollator(tokenizer, opt.passage_maxlength)
     part_passages = g_all_passages[start_idx:end_idx]
     dataset = src.data.TextDataset(part_passages, title_prefix='title:', passage_prefix='context:')
-    dataloader = DataLoader(dataset, batch_size=opt.per_gpu_batch_size, 
+    bsz = opt.per_gpu_batch_size
+    dataloader = DataLoader(dataset, batch_size=bsz, 
                             drop_last=False, num_workers=0, collate_fn=collator)
     for batch_data in dataloader:
-        queue_token_tensor.put(batch_data)    
+        #yield batch_data
+        queue_token_tensor.put(batch_data) 
+         
+    '''
+    N = len(dataset)
+    bsz = opt.per_gpu_batch_size
+    for batch_start in range(0, N, bsz):
+        batch_end = min(batch_start + bsz, N)
+        batch_idxes = np.arange(batch_start, batch_end) 
+        batch_text_input = [dataset[a] for a in batch_idxes] 
+        batch_data = collator(batch_text_input)   
+        queue_token_tensor.put(batch_data)
+        #yield batch_data
+    ''' 
 
 def start_tok_threading():
     num_rows = len(g_all_passages)
@@ -55,7 +71,6 @@ def start_tok_threading():
             end_idx = start_idx + part_size
         else:
             end_idx = num_rows
-
         threading.Thread(target=tok_worker, args=(start_idx, end_idx, )).start()
         start_idx = end_idx
 
@@ -73,48 +88,42 @@ def start_output_threading(results, part_idx):
     queue_output.put(results)
     threading.Thread(target=output_worker, args=(part_idx, )).start()
 
-def embed_passages(model):
+def embed_passages(model, retriever):
     start_tok_threading()
 
     num_passages = len(g_all_passages)
     total = 0
     output_part_idx = 0
     output_data = [[], []]
+
     while True:
-        batch_data = queue_token_tensor.get()
+    #for batch_data in tok_worker(0, num_passages):
+        batch_data = queue_token_tensor.get() 
         ids, text_ids, text_mask = batch_data
         with torch.no_grad():
-            if opt.is_student:
-                embeddings = model.embed_text(
-                    model.ctx_encoder,
-                    text_ids=text_ids.cuda(), 
-                    text_mask=text_mask.cuda(), 
-                    apply_mask=model.config.apply_passage_mask,
-                    extract_cls=model.config.extract_cls,
-                )
-            else:
-                embeddings = model.embed_text(
-                    text_ids=text_ids.cuda(), 
-                    text_mask=text_mask.cuda(), 
-                    apply_mask=model.config.apply_passage_mask,
-                    extract_cls=model.config.extract_cls,
-                )
-            embeddings = embeddings.cpu().numpy()
-            output_data[0].extend(ids)
-            output_data[1].append(embeddings)
-             
-            total += len(ids)
+            embeddings = model.embed_text(
+                text_ids=text_ids.cuda(), 
+                text_mask=text_mask.cuda(), 
+                apply_mask=retriever.config.apply_passage_mask,
+                extract_cls=retriever.config.extract_cls,
+            )
+        embeddings = embeddings.cpu().numpy()
+        
+        output_data[0].extend(ids)
+        output_data[1].append(embeddings)
+         
+        total += len(ids)
             
-            if total % 1000 == 0:
-                logger.info('Encoded passages %d', total)
-            
-            if len(output_data[0]) >= opt.output_batch_size:
-                start_output_threading(output_data, output_part_idx)
-                output_part_idx += 1
-                output_data = [[], []]
-            
-            if total == num_passages:
-                break
+        if total % 1000 == 0:
+            logger.info('Encoded passages %d', total)
+        
+        if len(output_data[0]) >= opt.output_batch_size:
+            start_output_threading(output_data, output_part_idx)
+            output_part_idx += 1
+            output_data = [[], []]
+        
+        if total == num_passages:
+            break
     
     if len(output_data) > 0:
         start_output_threading(output_data, output_part_idx)
@@ -168,12 +177,15 @@ def main(args, is_main):
     else:
         model_class = src.model.Retriever
     #model, _, _, _, _, _ = src.util.load(model_class, opt.model_path, opt)
-    model = model_class.from_pretrained(opt.model_path)
+    retriever = src.util.load_pretrained_retriever(opt.is_student, opt.model_path)
+    opt.passage_maxlength = retriever.config.passage_maxlength
     if not opt.is_student:
-        if model.model.pooler is not None:
-            model.model.pooler = None
-    
-    opt.passage_maxlength = model.config.passage_maxlength
+        if retriever.model.pooler is not None:
+            retriever.model.pooler = None
+        model = retriever
+    else:
+        model = retriever.ctx_encoder
+     
      
     model.eval()
     model = model.to(opt.device)
@@ -183,7 +195,7 @@ def main(args, is_main):
     global g_all_passages
     g_all_passages = src.util.load_passages(args.passages)
 
-    num_output_parts = embed_passages(model)
+    num_output_parts = embed_passages(model, retriever)
     show_output_stat(num_output_parts)
 
     msg_info = {
