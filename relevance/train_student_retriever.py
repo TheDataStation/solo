@@ -359,7 +359,7 @@ if __name__ == "__main__":
         model.set_teacher(teacher)
     else:
         assert (opt.model_path != 'none') and (opt.model_path is not None)
-        model = src.util.load_pretrained_retriever(opt.is_student, opt.model_path, opt.device)
+        model = src.util.load_pretrained_retriever(opt.is_student, opt.model_path)
         logger.info(f"Model loaded from {opt.model_path}")
          
     model = model.to(opt.device)
