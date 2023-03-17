@@ -23,7 +23,7 @@ import src.model
 import src.student_retriever
 import src.data
 import src.index
-
+from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 from src.evaluation import calculate_matches
@@ -39,9 +39,8 @@ def embed_questions(opt, data, model, tokenizer):
     collator = src.data.Collator(opt.question_maxlength, tokenizer)
     dataloader = DataLoader(dataset, batch_size=batch_size, drop_last=False, num_workers=10, collate_fn=collator)
     model.eval()
-    embedding = []
     with torch.no_grad():
-        for k, batch in enumerate(dataloader):
+        for k, batch in tqdm(enumerate(dataloader), total=len(dataloader)):
             (idx, _, _, question_ids, question_mask, _) = batch
             output = model.question_encoder.embed_text(
                 text_ids=question_ids.to(opt.device).view(-1, question_ids.size(-1)), 
@@ -49,12 +48,8 @@ def embed_questions(opt, data, model, tokenizer):
                 apply_mask=model.config.apply_question_mask,
                 extract_cls=model.config.extract_cls,
             )
-            embedding.append(output)
-
-    embedding = torch.cat(embedding, dim=0)
-    logger.info(f'Questions embeddings shape: {embedding.size()}')
-
-    return embedding.cpu().numpy()
+            out_emb = output.cpu().numpy()
+            yield out_emb
 
 
 def load_passage_emb(emb_file):
@@ -130,6 +125,7 @@ def add_hasanswer(data, hasanswer):
 def main(opt):
     src.util.init_logger(is_main=True)
     tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
+    logger.info('Loading %s' % opt.data)
     data = src.data.load_data(opt.data)
     
     model = src.util.load_pretrained_retriever(opt.is_student, opt.model_path)
@@ -155,12 +151,14 @@ def main(opt):
         if args.save_or_load_index:
             src.index.serialize(embeddings_dir)
 
-    questions_embedding = embed_questions(opt, data, model, tokenizer)
-
-    # get top k results
+    top_ids_and_scores = []
     start_time_retrieval = time.time()
-    top_ids_and_scores = index.search_knn(questions_embedding, args.n_docs) 
-    logger.info(f'Search time: {time.time()-start_time_retrieval:.1f} s.')
+    for questions_embedding in embed_questions(opt, data, model, tokenizer):
+        # get top k results
+        batch_ids_and_scores = index.search_knn(questions_embedding, args.n_docs) 
+        top_ids_and_scores.extend(batch_ids_and_scores)
+         
+    logger.info(f'Encode and Search time: {time.time()-start_time_retrieval:.1f} s.')
 
     #passages = src.util.load_passages(args.passages)
     passages = read_passages(args.passages)
