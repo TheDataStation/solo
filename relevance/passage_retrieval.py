@@ -20,6 +20,7 @@ import transformers
 import src.slurm
 import src.util
 import src.model
+import src.student_retriever
 import src.data
 import src.index
 
@@ -42,7 +43,7 @@ def embed_questions(opt, data, model, tokenizer):
     with torch.no_grad():
         for k, batch in enumerate(dataloader):
             (idx, _, _, question_ids, question_mask, _) = batch
-            output = model.embed_text(
+            output = model.question_encoder.embed_text(
                 text_ids=question_ids.to(opt.device).view(-1, question_ids.size(-1)), 
                 text_mask=question_mask.to(opt.device).view(-1, question_ids.size(-1)), 
                 apply_mask=model.config.apply_question_mask,
@@ -130,9 +131,8 @@ def main(opt):
     src.util.init_logger(is_main=True)
     tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
     data = src.data.load_data(opt.data)
-    model_class = src.model.Retriever
-    model = model_class.from_pretrained(opt.model_path)
-
+    
+    model = src.util.load_pretrained_retriever(opt.is_student, opt.model_path)
     model.cuda()
     model.eval()
     if not opt.no_fp16:
@@ -186,6 +186,7 @@ def read_passages(data_file):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--is_student', required=True, type=int)
     parser.add_argument('--data', required=True, type=str, default=None, 
                         help=".json file containing question and answers, similar format to reader data")
     parser.add_argument('--passages', type=str, default=None, help='Path to passages (.tsv file)')
