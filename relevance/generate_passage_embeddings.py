@@ -171,6 +171,9 @@ def main(args, is_main):
 
     global logger
     output_dir = os.path.dirname(opt.output_path)
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+
     log_file = os.path.join(output_dir, 'log.txt')
     logger = src.util.init_logger(is_main, opt.is_distributed, log_file)
    
