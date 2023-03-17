@@ -63,16 +63,20 @@ def calculate_matches(data: List, workers_num: int):
     logger.info('Matching answers in top docs...')
 
     tokenizer = SimpleTokenizer()
-    get_score_partial = partial(check_answer, tokenizer=tokenizer)
+    #get_score_partial = partial(check_answer, tokenizer=tokenizer)
 
-    processes = ProcessPool(processes=workers_num)
-    scores = processes.map(get_score_partial, data)
+    #processes = ProcessPool(processes=workers_num)
+    #scores = processes.map(get_score_partial, data)
 
-    logger.info('Per question validation results len=%d', len(scores))
+    #logger.info('Per question validation results len=%d', len(scores))
 
     n_docs = len(data[0]['ctxs'])
     top_k_hits = [0] * n_docs
-    for question_hits in scores:
+    scores = []
+    for example in data:
+        question_hits = check_answer(example, tokenizer)
+        scores.append(question_hits)
+    #for question_hits in scores:
         best_hit = next((i for i, x in enumerate(question_hits) if x), None)
         if best_hit is not None:
             top_k_hits[best_hit:] = [v + 1 for v in top_k_hits[best_hit:]]
