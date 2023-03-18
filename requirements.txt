@@ -2,8 +2,6 @@ pandas
 numpy
 scipy
 ipykernel
-torch==1.6.0+cu101
-faiss-cpu
 tensorboard
 gnureadline
 flask
