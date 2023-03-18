@@ -75,7 +75,9 @@ def update_data(is_train, input_file, retr_file, output_file):
             if num_pos + num_neg != MAX_CTX_NUM:
                 raise ValueError('err')
             
-            updated_example = {}
+            updated_example = {
+            'qid':'q_' + str(offset),
+            }
             updated_example['question'] = example['question']
             updated_example['answers'] = example['answers']
             updated_example['target'] = ''
