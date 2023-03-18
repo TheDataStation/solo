@@ -199,7 +199,8 @@ class RetrieverCollator(object):
         meta_dict = None
         batch_passages = [] #[ex['passages'] for ex in batch]
         if self.all_passages:
-            batch_passages = [ex['passages'] for ex in batch]
+            for ex in batch:
+                batch_passages.extend(ex['passages'])
         else:
             meta_dict = {'global_pos_idxes':[], 'sample_ctx_idxes':[]}
             global_pos_idxes = meta_dict['global_pos_idxes'] 
@@ -231,7 +232,7 @@ class RetrieverCollator(object):
                 
                 batch_passages.extend(sample_passages) 
                 batch_sample_ctx_idxes.append(sample_ctx_idxes)
-
+        
         passage_ids, passage_masks = encode_passages(
             [batch_passages],
             self.tokenizer,
