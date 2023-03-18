@@ -2,9 +2,6 @@ import json
 from tqdm import tqdm
 import os
 
-
-import copy
-
 def get_retr_ctxs(retr_item):
     ctx_lst = retr_item['ctxs']
     pos_ctxs = []
@@ -31,7 +28,6 @@ def update_data(is_train, input_file, retr_file, output_file):
     with open(input_file) as f:
         data = json.load(f)
     retr_data = None
-    #retr_file = None
     if retr_file is not None:
         print('loading %s' % retr_file)
         with open(retr_file) as f_r:
@@ -41,9 +37,6 @@ def update_data(is_train, input_file, retr_file, output_file):
     with open(output_file, 'w') as f_o:
         del_key_lst = ['score', 'title_score', 'psg_id']
         for offset, example in tqdm(enumerate(data), total=len(data)):
-            
-            #example_copy = copy.deepcopy(example)
-            
             retr_item = None
             retr_pos_ctxs = None
             retr_neg_ctxs = None
@@ -62,18 +55,27 @@ def update_data(is_train, input_file, retr_file, output_file):
             num_2 = len(example['hard_negative_ctxs'])
             if num_1 == 0 or num_2 == 0:
                 continue
-
+            
             if (num_1 + num_2) > MAX_CTX_NUM:
-                updated_num_1 = int(MAX_CTX_NUM * (num_1 / (num_1 + num_2)))
-                example['positive_ctxs'] = example['positive_ctxs'][:updated_num_1]
-                updated_num_2 = MAX_CTX_NUM - len(example['positive_ctxs']) 
-                example['hard_negative_ctxs'] = example['hard_negative_ctxs'][:updated_num_2]
+                PART_NUM = MAX_CTX_NUM // 2
+                part_pos_ctxs = example['positive_ctxs'][:PART_NUM]
+                part_neg_ctxs = example['hard_negative_ctxs'][:PART_NUM]
+                if (len(part_pos_ctxs) + len(part_neg_ctxs)) < MAX_CTX_NUM:
+                    if len(example['positive_ctxs']) > PART_NUM:
+                        part_pos_ctxs = example['positive_ctxs'][:(MAX_CTX_NUM - len(part_neg_ctxs))]
+                    elif len(example['hard_negative_ctxs']) > PART_NUM:
+                        part_neg_ctxs = example['hard_negative_ctxs'][:(MAX_CTX_NUM-len(part_pos_ctxs))]
+                    else:
+                        assert False, 'error' 
+
+                example['positive_ctxs'] = part_pos_ctxs
+                example['hard_negative_ctxs'] = part_neg_ctxs
 
             num_pos = len(example['positive_ctxs'])
             num_neg = len(example['hard_negative_ctxs'])
-          
-            if num_pos + num_neg != MAX_CTX_NUM:
-                raise ValueError('err')
+         
+            if (num_pos + num_neg) != MAX_CTX_NUM:
+                assert False, 'error'
             
             updated_example = {
             'qid':'q_' + str(offset),
