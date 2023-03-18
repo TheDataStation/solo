@@ -68,6 +68,7 @@ class Dataset(torch.utils.data.Dataset):
 
         return {
             'index' : index,
+            'q_id' : example['qid'],
             'question' : question,
             'target' : target,
             'passages' : passages,
@@ -120,7 +121,9 @@ class Collator(object):
 
     def __call__(self, batch):
         assert(batch[0]['target'] != None)
+        q_ids = [ex['q_id'] for ex in batch]
         index = torch.tensor([ex['index'] for ex in batch])
+        index_info = {'index':index, 'q_ids':q_ids}
         target = [ex['target'] for ex in batch]
         target = self.tokenizer.batch_encode_plus(
             target,
@@ -142,7 +145,7 @@ class Collator(object):
                                                      self.tokenizer,
                                                      self.text_maxlength)
         passage_tags = [a['tags'] for a in batch]
-        return (index, target_ids, target_mask, passage_ids, passage_masks, passage_tags)
+        return (index_info, target_ids, target_mask, passage_ids, passage_masks, passage_tags)
 
 def load_data(data_path=None, global_rank=-1, world_size=-1):
     assert data_path
@@ -183,7 +186,9 @@ class RetrieverCollator(object):
         self.num_neg_ctxs = num_neg_ctxs
 
     def __call__(self, batch):
+        q_ids = [ex['q_id'] for ex in batch]
         index = torch.tensor([ex['index'] for ex in batch])
+        index_info = {'index':index, 'q_ids':q_ids}
 
         question = [ex['question'] for ex in batch]
         question = self.tokenizer.batch_encode_plus(
@@ -240,7 +245,7 @@ class RetrieverCollator(object):
         )
         passage_ids = passage_ids.squeeze(0)
         passage_masks = passage_masks.squeeze(0)
-        return (index, question_ids, question_mask, passage_ids, passage_masks, meta_dict)
+        return (index_info, question_ids, question_mask, passage_ids, passage_masks, meta_dict)
 
 class TextDataset(torch.utils.data.Dataset):
     def __init__(self,

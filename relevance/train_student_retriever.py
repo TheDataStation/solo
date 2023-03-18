@@ -78,7 +78,7 @@ class Teacher:
         self.emb_precom_dict = {}
         with torch.no_grad():
             for batch in tqdm(dataloader, desc='Teacher precomputing', total=num_batches):
-                (indexes, question_ids, question_mask, context_ids, context_mask, meta_lst) = batch
+                (index_info, question_ids, question_mask, context_ids, context_mask, meta_lst) = batch
                 question_encoded, passage_encoded = self.model(
                     question_ids=question_ids.cuda(),
                     question_mask=question_mask.cuda(),
@@ -86,13 +86,13 @@ class Teacher:
                     passage_mask=context_mask.cuda(),
                     encode_only=True,
                 ) 
-                assert 1 == len(indexes)
+                assert 1 == len(index_info['index'])
                 emb_info = {
                     'q_emb':question_encoded[0].cpu(),
                     'ctx_emb':passage_encoded[0].cpu(),
                 }
-                sample_index = int(indexes[0])
-                self.emb_precom_dict[sample_index] = emb_info
+                q_id = index_info['q_ids'][0]
+                self.emb_precom_dict[q_id] = emb_info
         
         emb_dir = os.path.dirname(opt.teacher_precompute_file)
         if not os.path.isdir(emb_dir):
