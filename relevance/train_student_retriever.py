@@ -28,6 +28,7 @@ from tqdm import tqdm
 import torch.nn as nn
 import torch.nn.functional as F
 import datetime
+import glob
 
 class Teacher:
     def __init__(self, model):
@@ -104,24 +105,28 @@ class Teacher:
    
     
     def read_teacher_embeddings(self, train_examples, tokenizer):
-        emb_file = opt.teacher_precompute_file
-        if not os.path.isfile(emb_file):
+        emb_file_lst = glob.glob(opt.teacher_precompute_file)
+        if len(emb_file_lst) == 0:
             self.precompute_teacher_embeddings(train_examples, tokenizer)
         else:
+            self.emb_precom_dict = {}
             logger.info('Reading teacher precomputed embeddings')
-            with open(emb_file, 'rb') as f:
-                self.emb_precom_dict = pickle.load(f)
+            for emb_file in emb_file_lst:
+                with open(emb_file, 'rb') as f:
+                    part_emb_dict = pickle.load(f)
+                    self.emb_precom_dict.update(part_emb_dict)
   
         
     def get_batch_embs(self, batch):
         emb_dict = self.emb_precom_dict
         question_vector_lst = []
         passage_vector_lst = []
-        indexes = batch[0].cpu().numpy().tolist()
+        index_info = batch[0]
+        q_id_lst = index_info['q_ids']
         meta_dict = batch[-1]
         batch_sample_ctx_idxes = meta_dict['sample_ctx_idxes']
-        for batch_idx, sample_index in enumerate(indexes):
-            emb_data = emb_dict[sample_index]
+        for batch_idx, q_id in enumerate(q_id_lst):
+            emb_data = emb_dict[q_id]
             question_vector = emb_data['q_emb'].view(1, -1)
             question_vector_lst.append(question_vector)
             all_ctx_vector = emb_data['ctx_emb']
