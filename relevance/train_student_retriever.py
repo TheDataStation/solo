@@ -89,8 +89,8 @@ class Teacher:
                 ) 
                 assert 1 == len(index_info['index'])
                 emb_info = {
-                    'q_emb':question_encoded[0].cpu(),
-                    'ctx_emb':passage_encoded[0].cpu(),
+                    'q_emb':question_encoded.cpu(),
+                    'ctx_emb':passage_encoded.cpu(),
                 }
                 q_id = index_info['q_ids'][0]
                 self.emb_precom_dict[q_id] = emb_info
