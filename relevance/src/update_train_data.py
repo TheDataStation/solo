@@ -55,8 +55,8 @@ def update_data(is_train, input_file, retr_file, output_file):
             num_2 = len(example['hard_negative_ctxs'])
             if num_1 == 0 or num_2 == 0:
                 continue
-            
-            if (num_1 + num_2) > MAX_CTX_NUM:
+           
+            if (retr_data is not None) and ((num_1 + num_2) > MAX_CTX_NUM):
                 PART_NUM = MAX_CTX_NUM // 2
                 part_pos_ctxs = example['positive_ctxs'][:PART_NUM]
                 part_neg_ctxs = example['hard_negative_ctxs'][:PART_NUM]
@@ -71,11 +71,11 @@ def update_data(is_train, input_file, retr_file, output_file):
                 example['positive_ctxs'] = part_pos_ctxs
                 example['hard_negative_ctxs'] = part_neg_ctxs
 
-            num_pos = len(example['positive_ctxs'])
-            num_neg = len(example['hard_negative_ctxs'])
-         
-            if (num_pos + num_neg) != MAX_CTX_NUM:
-                assert False, 'error'
+                num_pos = len(example['positive_ctxs'])
+                num_neg = len(example['hard_negative_ctxs'])
+             
+                if (num_pos + num_neg) != MAX_CTX_NUM:
+                    assert False, 'error'
             
             updated_example = {
             'qid':'q_' + str(offset),
@@ -108,6 +108,13 @@ def update_data(is_train, input_file, retr_file, output_file):
     print('output is written to %s' % output_file)
 
 def main():
+    update_data(True,
+        '../data/squad/squad1-train.json',
+        None,
+        '../data/squad/train.jsonl'
+    )
+
+def main_1():
     update_data(True,
                 '../data/trivia_qa/trivia-train.json',
                 '../data/TQA/train_retr_student_float_16.json',

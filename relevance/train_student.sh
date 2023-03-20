@@ -10,8 +10,9 @@ python train_student_retriever.py \
 --n_context 100 \
 --total_steps 20000 \
 --scheduler_steps 30000 \
---teacher_precompute_file "./data/teacher_precompute_triviaqa.pl" \
+--teacher_precompute_file "./data/teacher_precom_emb/teacher_precompute_triviaqa.pl" \
 --distill_temperature 6 \
 --distill_weight 0.5 \
+--dropout 0.2 \
 --num_train_neg_ctxs 25 \
 --num_eval_neg_ctxs 15 \
