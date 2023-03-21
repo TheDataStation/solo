@@ -293,7 +293,7 @@ if __name__ == "__main__":
     options.add_retriever_options()
     options.add_optim_options()
     opt = options.parse()
-    torch.manual_seed(opt.seed)
+    #torch.manual_seed(opt.seed)
     src.slurm.init_distributed_mode(opt)
     src.slurm.init_signal_handler()
 
