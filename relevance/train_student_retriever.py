@@ -157,7 +157,7 @@ def train(model, optimizer, scheduler, global_step,
         #num_workers=10, 
         collate_fn=collator_train,
     )
-    distill_loss_fn = nn.MSELoss()
+    distill_loss_fn = nn.KLDivLoss(reduction="batchmean", log_target=True) #nn.MSELoss()
     loss, curr_loss = 0.0, 0.0
     epoch = 0
     num_batch = len(train_dataloader)
@@ -185,8 +185,9 @@ def train(model, optimizer, scheduler, global_step,
             total_correct_count += correct_count
             
             student_logits = model.calc_logits(student_score, opt.distill_temperature)
-            distill_loss = distill_loss_fn(student_logits, teacher_logits) 
-            train_loss = distill_loss * opt.distill_weight + student_loss * (1 - opt.distill_weight)
+            distill_loss = distill_loss_fn(student_logits, teacher_logits)
+            scaled_distill_loss = distill_loss * pow(opt.distill_temperature, 2)
+            train_loss = scaled_distill_loss * opt.distill_weight + student_loss * (1 - opt.distill_weight)
             
             train_loss.backward()
             

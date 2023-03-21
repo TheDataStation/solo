@@ -13,6 +13,6 @@ python train_student_retriever.py \
 --teacher_precompute_file "./data/teacher_precom_emb/teacher_precompute_triviaqa.pl" \
 --distill_temperature 6 \
 --distill_weight 0.5 \
---dropout 0.2 \
+--dropout 0.1 \
 --num_train_neg_ctxs 25 \
 --num_eval_neg_ctxs 15 \
