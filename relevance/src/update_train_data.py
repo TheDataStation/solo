@@ -1,6 +1,7 @@
 import json
 from tqdm import tqdm
 import os
+import random
 
 def get_retr_ctxs(retr_item):
     ctx_lst = retr_item['ctxs']
@@ -108,11 +109,14 @@ def update_data(is_train, input_file, retr_file, output_file):
     print('output is written to %s' % output_file)
 
 def main():
+    '''
     update_data(True,
         '../data/squad/squad1-train.json',
         None,
         '../data/squad/train.jsonl'
     )
+    '''
+    sample_train()
 
 def main_1():
     update_data(True,
@@ -126,6 +130,18 @@ def main_1():
                 None,
                 '../data/trivia_qa/dev_merged.jsonl'
     )
+
+def sample_train():
+    data = []
+    with open('../data/trivia_qa/train_0.jsonl') as f:
+        for line in tqdm(f):
+            data.append(line)
+    
+    out_data = random.sample(data, 1000)
+    with open('../data/trivia_qa/train_1000.jsonl', 'w') as f_o:
+        for out_line in out_data:
+            f_o.write(out_line)
+     
 
 if __name__ == '__main__':
     main()

@@ -68,7 +68,7 @@ class Dataset(torch.utils.data.Dataset):
 
         return {
             'index' : index,
-            'q_id' : example.get('qid', index),
+            'q_id' : example['qid'],
             'question' : question,
             'target' : target,
             'passages' : passages,
