@@ -11,7 +11,7 @@ python train_student_retriever.py \
 --total_steps 20000 \
 --scheduler_steps 30000 \
 --teacher_precompute_file "./data/teacher_precom_emb/teacher_precompute_triviaqa.pl" \
---distill_temperature 6 \
+--distill_temperature 3 \
 --distill_weight 0.5 \
 --dropout 0.1 \
 --num_train_neg_ctxs 25 \

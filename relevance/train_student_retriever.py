@@ -203,9 +203,10 @@ def train(model, optimizer, scheduler, global_step,
             logger.info('epoch=%d loss=%f step=%d/%d' % (epoch, train_loss.item(), 
                         epoch_step, num_batch))    
 
-        evaluate(model, dev_dataset, collator_eval, opt, epoch)
-        src.util.save(model, optimizer, scheduler, global_step, best_eval_loss, 
-                      opt, dir_path, f"epoch-{epoch}")
+            if global_step % 500 == 0:
+                evaluate(model, dev_dataset, collator_eval, opt, epoch)
+                src.util.save(model, optimizer, scheduler, global_step, best_eval_loss, 
+                          opt, dir_path, f"epoch-{epoch}-global_step-{global_step}")
     
     logger.info('best_eval_loss= best_eval_epoch=' % (best_eval_loss, best_eval_epoch))
         
