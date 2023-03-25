@@ -571,7 +571,7 @@ def get_batch_data(fusion_examples):
     
 def get_score_info(model, batch_data, dataset):
     with torch.no_grad():
-        (idx, _, _, context_ids, context_mask, _) = batch_data
+        (index_info, _, _, context_ids, context_mask, _) = batch_data
         model.reset_score_storage()
         outputs = model.generate(
             input_ids=context_ids.cuda(),
@@ -582,9 +582,10 @@ def get_score_info(model, batch_data, dataset):
         )
         crossattention_scores, score_states = model.get_crossattention_scores(context_mask.cuda())
         num_passages = crossattention_scores.shape[1]
-        batch_examples = [] 
+        batch_examples = []
+        batch_idxes = index_info['index'] 
         for k, _ in enumerate(outputs):
-            example = dataset.data[idx[k]]
+            example = dataset.data[batch_idxes[k]]
             example['ctxs'] = example['ctxs'][:num_passages]
             batch_examples.append(example)
     context_mask = context_mask.to(crossattention_scores.device)

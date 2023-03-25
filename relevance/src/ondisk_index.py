@@ -87,7 +87,7 @@ def index_data(index_file, data_file, index_out_dir, block_size=5000000):
             index_ivf.set_direct_map_type(faiss.DirectMap.Hashtable)
             pos = idx + block_size
             block_p_ids = np.int64(np.array(p_ids[idx:pos]))
-            block_p_embs = np.float16(p_embs[idx:pos])
+            block_p_embs = p_embs[idx:pos]
             index.add_with_ids(block_p_embs, block_p_ids)
             block_file_name = os.path.join(index_out_dir, 'block_%d.index' % bno)
             faiss.write_index(index, block_file_name)

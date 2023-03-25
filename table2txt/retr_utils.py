@@ -62,9 +62,10 @@ def group_passages(passage_lst):
     return table_lst, table_dict 
 
 
-def update_min_tables(item, top_n, min_tables):
-    assert(top_n >= 25)
+def update_min_tables(item, num_top_tables, min_tables):
+    assert(num_top_tables >= 25)
     passage_lst = item['ctxs']
+    top_n = min(num_top_tables, len(passage_lst))
     top_passage_lst = passage_lst[:top_n]
     table_lst = [a['tag']['table_id'] for a in top_passage_lst]
     table_set = set(table_lst)
@@ -154,7 +155,7 @@ def process_train(train_data, top_n, table_dict, strategy, min_tables):
             #else:
             #    continue
 
-        assert(len(item['ctxs']) == top_n) 
+        #assert(len(item['ctxs']) == top_n) 
         updated_train_data.append(item)
 
     tag_data_text(updated_train_data, table_dict, strategy)
