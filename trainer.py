@@ -112,7 +112,7 @@ def get_fusion_query_args(work_dir, dataset, question_dir):
     return query_args
 
 def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
-    model_path = os.path.join(work_dir, 'models/tqa_retriever')
+    model_path = os.path.join(work_dir, 'models/student_tqa_retriever_step_29500')
     index_dir = os.path.join(work_dir, 'index/on_disk_index_%s_rel_graph' % dataset) 
     index_file = os.path.join(index_dir, 'populated.index')
     passage_file = os.path.join(index_dir, 'passages.jsonl')
@@ -122,7 +122,8 @@ def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
     min_tables = int(config['min_tables'])
     max_retr = int(config['max_retr'])
     question_maxlength = int(config['question_maxlength'])
-    retr_args = argparse.Namespace(model_path=model_path,
+    retr_args = argparse.Namespace( is_student=True,
+                                    model_path=model_path,
                                     index_dir=index_dir,
                                     index_file=index_file,
                                     passage_file=passage_file,

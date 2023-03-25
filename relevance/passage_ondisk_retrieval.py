@@ -37,8 +37,8 @@ def retrieve_data(opt, index, data, model, tokenizer, f_o):
     model.eval()
     with torch.no_grad():
         for batch in tqdm(dataloader):
-            (idxes, _, _, question_ids, question_mask, _) = batch
-            out_emb = model.embed_text(
+            (index_info, _, _, question_ids, question_mask, _) = batch
+            out_emb = model.question_encoder.embed_text(
                 text_ids=question_ids.to(opt.device).view(-1, question_ids.size(-1)), 
                 text_mask=question_mask.to(opt.device).view(-1, question_ids.size(-1)), 
                 apply_mask=model.config.apply_question_mask,
@@ -49,7 +49,7 @@ def retrieve_data(opt, index, data, model, tokenizer, f_o):
                                       min_tables=opt.min_tables, max_retr=opt.max_retr)
             assert(1 == len(result_lst))
             item_result = result_lst[0]
-            data_item = data[idxes[0]]
+            data_item = data[index_info['index'][0]]
             ctxs_num = len(item_result)
             data_item['ctxs'] =[
                 {
@@ -65,6 +65,7 @@ def retrieve_data(opt, index, data, model, tokenizer, f_o):
     #logger.info(f'Questions embeddings shape: {embedding.size()}')
 
 def main(opt, index_obj=None):
+    assert opt.is_student is not None
     src.slurm.init_distributed_mode(opt)
     args = opt
     if os.path.exists(args.output_path):
@@ -74,13 +75,12 @@ def main(opt, index_obj=None):
     src.util.init_logger(is_main=True)
     tokenizer = transformers.BertTokenizerFast.from_pretrained('bert-base-uncased')
     data = src.data.load_data(opt.data)
-    model_class = src.model.Retriever
-    model = model_class.from_pretrained(opt.model_path)
-
+    
+    model = src.util.load_pretrained_retriever(opt.is_student, opt.model_path)
     model.cuda()
     model.eval()
-    #if not opt.no_fp16:
-    #    model = model.half()
+    if not opt.no_fp16:
+        model = model.half()
 
     if index_obj is None:
         index = OndiskIndexer(args.index_file, args.passage_file)
@@ -106,6 +106,7 @@ def read_passages(data_file):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--index_file', type=str)
+    parser.add_argument('--is_student', required=True, type=int)
     parser.add_argument('--passage_file', type=str)
     parser.add_argument('--data', required=True, type=str, default=None, 
                         help=".json file containing question and answers, similar format to reader data")

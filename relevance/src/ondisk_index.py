@@ -10,6 +10,7 @@ import json
 import argparse
 import glob
 import math
+import time
 
 class OndiskIndexer:
     def __init__(self, index_file, passage_file):
@@ -51,9 +52,12 @@ class OndiskIndexer:
         self.index.nprobe = n_probe
         batch_dists, batch_p_ids = self.index.search(query, top_n)
         item_result = []
+
         p_id_lst = batch_p_ids[0]
         p_dist_lst = batch_dists[0]
         for idx, p_id in enumerate(p_id_lst):
+            if p_id == -1: #faiss may return -1 if there are not enough elements in an nlist
+                continue
             passage_info = self.passage_dict[int(p_id)]
             out_item = {
                 'p_id':p_id,
@@ -70,7 +74,6 @@ def index_data(index_file, data_file, index_out_dir, block_size=5000000):
     print('start indexing passages')
     bno = 0
     block_fnames = []
-    
     emb_file_lst = glob.glob(data_file)
     emb_file_lst.sort()
     for emb_file in emb_file_lst: 
@@ -80,10 +83,11 @@ def index_data(index_file, data_file, index_out_dir, block_size=5000000):
         print('creating block indexes')
         for idx in range(0, N, block_size):
             index = faiss.read_index(index_file)
-            index.set_direct_map_type(faiss.DirectMap.Hashtable)
+            index_ivf = faiss.extract_index_ivf(index)
+            index_ivf.set_direct_map_type(faiss.DirectMap.Hashtable)
             pos = idx + block_size
             block_p_ids = np.int64(np.array(p_ids[idx:pos]))
-            block_p_embs = np.float32(p_embs[idx:pos])
+            block_p_embs = np.float16(p_embs[idx:pos])
             index.add_with_ids(block_p_embs, block_p_ids)
             block_file_name = os.path.join(index_out_dir, 'block_%d.index' % bno)
             faiss.write_index(index, block_file_name)
@@ -113,9 +117,9 @@ def get_index_options(num_vecs):
         num_train = min(num_train, num_vecs)
         factory_string = 'IVF%s,Flat' % num_clusters
     else:
-        num_clusters = 4096
-        factory_string = 'IVF%s,Flat' % num_clusters
-        num_train = num_clusters * 1024
+        num_clusters = 65536 
+        factory_string = 'OPQ64_768,IVF%s,PQ64' % num_clusters
+        num_train = num_clusters * 256
         num_train = min(num_train, num_vecs)
     return (factory_string, num_train)
     
@@ -186,7 +190,7 @@ def create_train(data_file, index_file):
     num_vecs = get_num_vecs(emb_file_lst)
     #print('num_vecs=%d' % num_vecs)
     factory_string, num_train = get_index_options(num_vecs)
-    #print('factory_string=%s, num_train=%d' % (factory_string, num_train))     
+    print('factory_string=%s, num_train=%d' % (factory_string, num_train))     
 
     train_emb_lst = []
     for emb_file in emb_file_lst:
@@ -209,9 +213,14 @@ def create_train(data_file, index_file):
     
     D = train_all_embs.shape[1]
     index = faiss.index_factory(D, factory_string, faiss.METRIC_INNER_PRODUCT)
-   
+    index_ivf = faiss.extract_index_ivf(index)
+    cls_index = faiss.index_cpu_to_all_gpus(faiss.IndexFlatL2(index_ivf.d))
+    index_ivf.clustering_index = cls_index  
     print('training index')
+    t1 = time.time()
     index.train(train_all_embs)
+    t2 = time.time()
+    print('train time = %d' % (t2 - t1))
     print('wrting trained index to [%s]' % index_file)
     faiss.write_index(index, index_file) 
 
@@ -231,12 +240,15 @@ def main(args):
          
     os.mkdir(index_out_dir)
     dataset_dir = os.path.join(args.work_dir, 'open_table_discovery/table2txt/dataset/')
-    exptr_dir = os.path.join(dataset_dir, args.dataset, args.experiment)
+    exptr_dir = os.path.join(dataset_dir, args.dataset, args.experiment, 'emb')
     data_file = os.path.join(exptr_dir, args.emb_file)
     trained_index_file = os.path.join(index_out_dir, 'trained.index')
     create_train(data_file, trained_index_file)
+    t1 = time.time()
     index_data(trained_index_file, data_file, index_out_dir)
-    
+    t2 = time.time()
+    print('Indexing time = %d' % (t2 - t1))
+
     msg_info = {
         'state':True,
         'index_dir':index_out_dir
