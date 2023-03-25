@@ -176,7 +176,8 @@ def main(args, is_main):
 
     log_file = os.path.join(output_dir, 'log.txt')
     logger = src.util.init_logger(is_main, opt.is_distributed, log_file)
-   
+    logger.setLevel(logging.INFO)
+
     out_files = glob.glob(opt.output_path + '*') 
     if len(out_files) > 0:
         msg_txt = '(%s*) already exists' % opt.output_path

@@ -9,8 +9,6 @@ from src import ondisk_index
 import shutil
 import json
 from trainer import read_config
-from multiprocessing import Pool as ProcessPool
-import math
 
 StateImportCSV = 'import_csv'
 StateGenTriples = 'gen_triples'
@@ -59,11 +57,13 @@ def get_graph_args(work_dir, dataset, config):
     return graph_args
 
 def get_encoder_args(model_path, show_progress=True):
-    encoder_args = argparse.Namespace(passages=None, 
+    encoder_args = argparse.Namespace(is_student=True,
+                                      passages=None, 
                                       output_path=None,
+                                      output_batch_size=1000000,
                                       shard_id=0,
                                       num_shards=1,
-                                      per_gpu_batch_size=32,
+                                      per_gpu_batch_size=1000,
                                       passage_maxlength=200,
                                       model_path=model_path,
                                       no_fp16=False,
@@ -194,11 +194,12 @@ def main():
     if not check_encode_space(triple_file):
         print('Encoding is stopped.')
         return
-     
+    
     print('\nEncoding triples')
-    encode_triples(args.work_dir, triple_file, num_triples, config['num_encode_workers'], EmbFileSuffix)
-    update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
-   
+    encode_triples(args.work_dir, triple_file, EmbFileSuffix)
+    #update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
+  
+    return 
     #Creating index  
     create_index(pipe_state_info, pipe_sate_file, args, triple_file, EmbFileSuffix) 
 
@@ -233,58 +234,16 @@ def create_index(pipe_state_info, pipe_sate_file, args, triple_file, emb_file_su
     print('\nIndexing done')
      
 
-def encode_triples(work_dir, graph_file, num_triples, num_encode_workers, emb_file_suffix):
-    part_file_lst = split_triples(graph_file, num_triples, num_encode_workers)
-    encoder_model = os.path.join(work_dir, 'models/tqa_retriever')
+def encode_triples(work_dir, graph_file, emb_file_suffix):
+    print('Encoding %s' % graph_file)
+    encoder_model = os.path.join(work_dir, 'models/student_tqa_retriever_step_29500')
     out_emb_file_lst = []
-    part_info_lst = []
-    for part_idx, part_file in enumerate(part_file_lst):
-        part_info = {
-            'file_name':part_file,
-            'encoder_model':encoder_model,
-            'emb_file_suffix':emb_file_suffix,
-            'show_progress':(part_idx == 0)
-        }
-        part_info_lst.append(part_info)
-    
-    multi_process = True
-    if multi_process:
-        work_pool = ProcessPool(num_encode_workers)
-        for out_emb_file in tqdm(work_pool.imap_unordered(encode_part_trples, part_info_lst), total=len(part_info_lst)):
-            out_emb_file_lst.append(out_emb_file)
-    else:
-        for part_info in part_info_lst:
-            out_emb_file = encode_part_trples(part_info)
-            out_emb_file_lst.append(out_emb_file)
-    return out_emb_file_lst
-
-def encode_part_trples(part_info):
-    part_file = part_info['file_name']
-    encoder_model = part_info['encoder_model']
-    emb_file_suffix = part_info['emb_file_suffix']
-
-    print('Encoding %s' % os.path.basename(part_file))
-    encoder_args = get_encoder_args(encoder_model, part_info['show_progress'])
-    encoder_args.passages = part_file
-    encoder_args.output_path = part_file + emb_file_suffix
+    encoder_args = get_encoder_args(encoder_model, show_progress=False)
+    encoder_args.passages = graph_file
+    encoder_args.output_path = graph_file + emb_file_suffix
     passage_encoder.main(encoder_args, is_main=False) 
-    os.remove(part_file)
-    return encoder_args.output_path
- 
-def split_triples(triple_file, num_triples, num_workers):
-    out_file_prefix = triple_file + '_part_'
-    part_file_lst = glob.glob(out_file_prefix + '*')
-    if len(part_file_lst) > 0:
-        cmd = 'rm ' + out_file_prefix + '*'
-        os.system(cmd)
-    batch_size = int(num_triples / num_workers) + (1 if num_triples % num_workers else 0)
-    cmd = 'split -l %d %s %s' % (batch_size, triple_file, out_file_prefix)
-    os.system(cmd)
-    part_file_lst = glob.glob(out_file_prefix + '*')
-    part_file_lst.sort()
-    assert(len(part_file_lst) > 0)
-    return part_file_lst 
 
+ 
 def get_unit_size():
     return (1024.0 * 1024.0 * 1024.0) 
 
