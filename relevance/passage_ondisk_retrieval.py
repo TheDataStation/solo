@@ -45,7 +45,7 @@ def retrieve_data(opt, index, data, model, tokenizer, f_o):
                 extract_cls=model.config.extract_cls,
             )
             query_emb = out_emb.cpu().numpy()
-            result_lst = index.search(query_emb, top_n=opt.n_docs, n_probe=128, 
+            result_lst = index.search(query_emb, top_n=opt.n_docs, n_probe=512, 
                                       min_tables=opt.min_tables, max_retr=opt.max_retr)
             assert(1 == len(result_lst))
             item_result = result_lst[0]
