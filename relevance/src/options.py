@@ -117,6 +117,8 @@ class Options():
         self.parser.add_argument('--patience_steps', type=int, default=10)
         self.parser.add_argument('--eval_freq', type=int, default=1000)
         self.parser.add_argument('--save_freq', type=int, default=1000)
+        self.parser.add_argument('--debug', type=int, default=0)
+        self.parser.add_argument('--patience_epochs', type=int, default=2)
 
     def print_options(self, opt):
         message = '\n'
