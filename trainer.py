@@ -112,24 +112,30 @@ def get_fusion_query_args(work_dir, dataset, question_dir):
     return query_args
 
 def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
-    model_path = os.path.join(work_dir, 'models/student_tqa_retriever_step_29500')
+    student_model_path = os.path.join(work_dir, 'models/student_tqa_retriever_step_29500')
+    teacher_model_path = os.path.join(work_dir, 'models/tqa_retriever')
     index_dir = os.path.join(work_dir, 'index/on_disk_index_%s_rel_graph' % dataset) 
     index_file = os.path.join(index_dir, 'populated.index')
     passage_file = os.path.join(index_dir, 'passages.jsonl')
     query_file = os.path.join(question_dir, 'fusion_query.jsonl')
     output_path = os.path.join(out_retr_dir, 'fusion_retrieved.jsonl')
     top_n = int(config['retr_top_n'])
+    max_tables = int(config['max_tables'])
+    max_triple_per_table = int(config['max_triple_per_table'])
     min_tables = int(config['min_tables'])
     max_retr = int(config['max_retr'])
     question_maxlength = int(config['question_maxlength'])
-    retr_args = argparse.Namespace( is_student=True,
-                                    model_path=model_path,
+    retr_args = argparse.Namespace( 
+                                    student_model_path=student_model_path,
+                                    teacher_model_path=teacher_model_path,
                                     index_dir=index_dir,
                                     index_file=index_file,
                                     passage_file=passage_file,
                                     data=query_file,
                                     output_path=output_path,
                                     n_docs=top_n,
+                                    max_tables=max_tables,
+                                    max_triple_per_table=max_triple_per_table,
                                     min_tables=min_tables,
                                     max_retr=max_retr,
                                     question_maxlength=question_maxlength,
@@ -276,7 +282,7 @@ def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, co
     strategy = 'rel_graph'
     top_n = int(config['retr_top_n'])
     min_tables = int(config['min_tables'])
-    updated_retr_data = process_func(retr_data, top_n, table_dict, strategy, min_tables)
+    updated_retr_data = process_func(retr_data, table_dict, strategy)
     out_file = os.path.join(out_retr_dir, 'fusion_retrieved_tagged.jsonl') 
     with open(out_file, 'w') as f:
         for item in tqdm(updated_retr_data):
