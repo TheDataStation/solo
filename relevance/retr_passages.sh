@@ -14,15 +14,16 @@ then
     query_file=${sql_data_dir}/${mode}/fusion_query.jsonl
     out_file=${sql_data_dir}/${mode}/${expr}/fusion_retrieved.jsonl
 else
-    query_file=~/code/data/${dataset}/query/${mode}/fusion_query.jsonl
-    out_file=~/code/data/${dataset}/query/${mode}/${expr}/fusion_retrieved.jsonl
+    query_file=~/code/table_discovery_project/data/${dataset}/query/${mode}/fusion_query.jsonl
+    out_file=~/code/table_discovery_project/data/${dataset}/query/${mode}/${expr}/fusion_retrieved.jsonl
 fi     
 python ./passage_ondisk_retrieval.py \
-    --model_path ~/code/models/tqa_retriever \
-    --index_file ./data/on_disk_index_${dataset}_${expr}/populated.index \
-    --passage_file ./data/on_disk_index_${dataset}_${expr}/${file_name} \
+    --student_model_path ~/code/table_discovery_project/models/student_tqa_retriever_step_29500 \
+    --teacher_model_path ~/code/table_discovery_project/models/tqa_retriever \
+    --index_file ~/code/table_discovery_project/index/on_disk_index_${dataset}_${expr}/populated.index \
+    --passage_file ~/code/table_discovery_project/index/on_disk_index_${dataset}_${expr}/${file_name} \
     --data ${query_file} \
     --output_path ${out_file} \
-    --n-docs 100 \
+    --n-docs 2000 \
     --min_tables 5 \
-    --max_retr 1000
+    --max_retr 10000
