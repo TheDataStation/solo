@@ -107,11 +107,17 @@ def teacher_rerank(opt, model, passage_collator, question_ids, question_mask, da
     
         scores = model.calc_score(question_emb, passage_embeddings)
         sorted_idxes = torch.argsort(-scores, 1).view(-1)
-    
-    #sorted_ctx_lst = [ctx_lst[idx] for idx in sorted_idxes]  
-    data_item['retr_tables'] = table_lst
-    data_item['sorted_table_idxes'] = sorted_idxes.cpu().numpy().tolist()
-
+   
+    sorted_idx_lst = sorted_idxes.cpu().numpy()
+    top_idx_lst = sorted_idx_lst[:opt.max_tables]
+    top_table_lst = [table_lst[idx] for idx in top_idx_lst]
+   
+    item_top_ctx_lst = [] 
+    for top_table in top_table_lst:
+        table_ctx_lst = table_dict[top_table]
+        table_top_ctx_lst = table_ctx_lst[:opt.max_triple_per_table]
+        item_top_ctx_lst.extend(table_top_ctx_lst)
+    data_item['ctxs'] = item_top_ctx_lst
 
 def get_model(is_student, model_path, no_fp16):
     model = src.util.load_pretrained_retriever(is_student, model_path)
@@ -164,13 +170,15 @@ if __name__ == '__main__':
     parser.add_argument('--data', required=True, type=str, default=None, 
                         help=".json file containing question and answers, similar format to reader data")
     parser.add_argument('--output_path', type=str, default=None, help='Results are written to output_path')
-    parser.add_argument('--n-docs', type=int, default=100, help="Number of documents to retrieve per questions")
+    parser.add_argument('--n-docs', type=int, default=2000, help="Number of documents to retrieve per questions")
     parser.add_argument('--student_model_path', type=str)
     parser.add_argument('--teacher_model_path', type=str) 
     parser.add_argument('--no_fp16', action='store_true', help="inference in fp32")
     parser.add_argument('--question_maxlength', type=int, default=50, help="Maximum number of tokens in a question")
-    parser.add_argument('--min_tables', type=int, default=10, help='number of tables at least to retrieve')
-    parser.add_argument('--max_retr', type=int, default=10000, help='maximum number of vectors to retrieve')
+    parser.add_argument('--max_tables', type=int, default=100)
+    parser.add_argument('--max_triple_per_table', type=int, default=5) 
+    parser.add_argument('--min_tables', type=int, default=5) 
+    parser.add_argument('--max_retr', type=int, default=100000, help='maximum number of vectors to retrieve')
 
     args = parser.parse_args()
     main(args)
