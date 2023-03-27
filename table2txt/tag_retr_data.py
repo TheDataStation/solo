@@ -12,16 +12,15 @@ def get_args():
     parser.add_argument('--table_expr', type=str)
     parser.add_argument('--strategy', type=str)
     parser.add_argument('--mode', type=str)
-    parser.add_argument('--top_n', type=int, default=100)
-    parser.add_argument('--min_tables', type=int, default=5)
+    parser.add_argument('--synthetic', type=int)
     args = parser.parse_args()
     return args
 
 def get_data_dir(args):
-    if args.mode == 'test':
-        data_dir = '/home/cc/code/data/%s/query/%s/%s' % (args.dataset, args.mode, args.table_expr) 
+    if not args.synthetic:
+        data_dir = '/home/cc/code/table_discovery_project/data/%s/query/%s/%s' % (args.dataset, args.mode, args.table_expr) 
     else:
-        dataset_dir = '/home/cc/code/open_table_discovery/table2question/dataset/'
+        dataset_dir = '/home/cc/code/table_discovery_project/open_table_discovery/table2question/dataset/'
         data_dir = os.path.join(dataset_dir, '%s/sql_data/%s/%s' % (args.dataset, args.mode, args.table_expr))
     return data_dir
 
@@ -68,11 +67,11 @@ def output_data(args, out_dev_file):
     else:
         raise ValueError('Unknown mode (%s)' % args.mode)
 
-    updated_retr_data = process_func(retr_data, args.top_n, table_dict, args.strategy, args.min_tables)
+    updated_retr_data = process_func(retr_data, table_dict, args.strategy)
     write_data(updated_retr_data, out_dev_file)
 
 def read_tables(args):
-    table_file = '/home/cc/code/data/%s/tables/tables.jsonl' % args.dataset
+    table_file = '/home/cc/code/table_discovery_project/data/%s/tables/tables.jsonl' % args.dataset
     table_dict = {}
     with open(table_file) as f:
         for line in tqdm(f):
