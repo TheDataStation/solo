@@ -117,7 +117,7 @@ def get_index_options(num_vecs):
         num_train = min(num_train, num_vecs)
         factory_string = 'IVF%s,Flat' % num_clusters
     else:
-        num_clusters = 4096 
+        num_clusters = 8192
         factory_string = 'IVF%s,PQ64' % num_clusters
         num_train = num_clusters * 1024
         num_train = min(num_train, num_vecs)
