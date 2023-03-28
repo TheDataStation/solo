@@ -31,7 +31,8 @@ import torch.nn.functional as F
 import glob
 import datetime
 
-#logging.basicConfig(level=logging.ERROR)
+
+logging.basicConfig(level=logging.ERROR)
 
 Num_Answers = 1
 global_steps = 0
@@ -212,7 +213,7 @@ def log_metrics(epoc, metric_rec,
     str_info += 'time=%.2f total=%.2f %d/%d' % (time_used, total_time, itr, num_batch)
     if loss is not None:
         str_info += ' global_steps=%d' % global_steps
-    logger.info(str_info)
+    print(str_info)
     return batch_sorted_idxes
 
 def bnn_predict_2(model, batch_data, fusion_scores, fusion_states, passage_masks):

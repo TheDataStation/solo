@@ -69,7 +69,7 @@ def output_data(args, out_dev_file):
     else:
         raise ValueError('Unknown mode (%s)' % args.mode)
 
-    updated_retr_data = process_func(retr_data, args.top_n, table_dict, args.strategy, args.min_tables)
+    updated_retr_data = process_func(retr_data, args.top_n, table_dict, args.strategy)
     write_data(updated_retr_data, out_dev_file)
 
 def read_tables(args):
