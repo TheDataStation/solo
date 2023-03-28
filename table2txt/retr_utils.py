@@ -97,7 +97,7 @@ def collect_passages(item):
             neg_lst.append(passage_info)
     return pos_lst, neg_lst
 
-def process_train(train_data, top_n, table_dict, strategy, max_ctx_per_table=5):
+def process_train(train_data, top_n, table_dict, strategy, max_ctx_per_table=10):
     updated_train_data = []
     for item in tqdm(train_data):
         truncate_passages(item, top_n, max_ctx_per_table)
