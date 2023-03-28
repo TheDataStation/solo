@@ -157,7 +157,7 @@ def get_train_args(train_itr, work_dir, dataset, checkpoint_dir,
                                     model_path=os.path.join(work_dir, 'models/tqa_reader_base'),
                                     train_data=train_file,
                                     eval_data=eval_file,
-                                    n_context=int(config['retr_top_n']),
+                                    n_context=int(config['train_n_context']),
                                     per_gpu_batch_size=int(config['train_batch_size']),
                                     per_gpu_eval_batch_size=int(config['eval_batch_size']),
                                     cuda=0,
@@ -277,9 +277,8 @@ def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, co
             retr_data.append(item)
 
     strategy = 'rel_graph'
-    top_n = int(config['retr_top_n'])
-    min_tables = int(config['min_tables'])
-    updated_retr_data = process_func(retr_data, table_dict, strategy)
+    rerank_top_n = int(config['rerank_retr_top_n'])
+    updated_retr_data = process_func(retr_data, rerank_top_n, table_dict, strategy)
     out_file = os.path.join(out_retr_dir, 'fusion_retrieved_tagged.jsonl') 
     with open(out_file, 'w') as f:
         for item in tqdm(updated_retr_data):
