@@ -10,7 +10,7 @@ synthetic=$5
 if [ ${synthetic} = "1" ]
 then
     sql_expr=sql_data
-    sql_data_dir=~/code/open_table_discovery/table2question/dataset/${dataset}/${sql_expr}
+    sql_data_dir=~/code/table_discovery_project/open_table_discovery/table2question/dataset/${dataset}/${sql_expr}
     query_file=${sql_data_dir}/${mode}/fusion_query.jsonl
     out_file=${sql_data_dir}/${mode}/${expr}/fusion_retrieved.jsonl
 else
@@ -24,6 +24,6 @@ python ./passage_ondisk_retrieval.py \
     --passage_file ~/code/table_discovery_project/index/on_disk_index_${dataset}_${expr}/${file_name} \
     --data ${query_file} \
     --output_path ${out_file} \
-    --n-docs 2000 \
+    --n-docs 1500 \
     --min_tables 5 \
-    --max_retr 10000
+    --max_retr 5000

@@ -120,8 +120,6 @@ def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
     query_file = os.path.join(question_dir, 'fusion_query.jsonl')
     output_path = os.path.join(out_retr_dir, 'fusion_retrieved.jsonl')
     top_n = int(config['retr_top_n'])
-    max_tables = int(config['max_tables'])
-    max_triple_per_table = int(config['max_triple_per_table'])
     min_tables = int(config['min_tables'])
     max_retr = int(config['max_retr'])
     question_maxlength = int(config['question_maxlength'])
@@ -134,8 +132,6 @@ def get_retr_args(work_dir, dataset, question_dir, out_retr_dir, config):
                                     data=query_file,
                                     output_path=output_path,
                                     n_docs=top_n,
-                                    max_tables=max_tables,
-                                    max_triple_per_table=max_triple_per_table,
                                     min_tables=min_tables,
                                     max_retr=max_retr,
                                     question_maxlength=question_maxlength,
@@ -189,6 +185,7 @@ def count_lines(data_file):
     return count
 
 def sql2question(mode, sql_dir, work_dir, dataset, train_itr=None):
+    torch.cuda.empty_cache()
     if train_itr is None:
         print('translating %s sql to question' % mode)
     else:
