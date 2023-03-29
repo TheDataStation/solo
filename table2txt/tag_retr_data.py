@@ -19,6 +19,7 @@ def get_args():
     return args
 
 def get_data_dir(args):
+    assert args.synthetic is not None
     if not args.synthetic:
         data_dir = '/home/cc/code/table_discovery_project/data/%s/query/%s/%s' % (args.dataset, args.mode, args.table_expr) 
     else:
@@ -69,7 +70,7 @@ def output_data(args, out_dev_file):
     else:
         raise ValueError('Unknown mode (%s)' % args.mode)
 
-    updated_retr_data = process_func(retr_data, args.top_n, table_dict, args.strategy)
+    updated_retr_data = process_func(retr_data, args.top_n, table_dict, args.strategy, args.min_tables)
     write_data(updated_retr_data, out_dev_file)
 
 def read_tables(args):
