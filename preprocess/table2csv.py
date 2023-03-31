@@ -15,13 +15,13 @@ def read_small_table_set(data_file):
 
 def read_table(args):
     data_file = '/home/cc/code/table_discovery_project/data/%s/tables/tables.jsonl' % args.dataset
-    #small_table_set = read_small_table_set(args.input_tables)
+    small_table_set = read_small_table_set(args.input_tables)
     with open(data_file) as f:
         for line in f:
             table_data = json.loads(line)
             table_id = table_data['tableId']
-            #if table_id not in small_table_set:
-            #    continue
+            if table_id not in small_table_set:
+                continue
             yield table_data
 
 def main():
