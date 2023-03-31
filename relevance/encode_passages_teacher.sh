@@ -1,4 +1,4 @@
-full_file_name=./data/wiki.jsonl
+full_file_name=~/code/table_discovery_project/index/on_disk_index_nq_tables_rel_graph/passages.jsonl
 out_file_name=./data/wiki_embeddings_teacher_float16/embeddings
 python generate_passage_embeddings.py \
     --is_student 0 \

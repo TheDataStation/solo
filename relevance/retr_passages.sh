@@ -26,4 +26,4 @@ python ./passage_ondisk_retrieval.py \
     --output_path ${out_file} \
     --n-docs 1500 \
     --min_tables 5 \
-    --max_retr 5000
+    --max_retr 10000

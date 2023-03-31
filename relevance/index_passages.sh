@@ -8,6 +8,7 @@ exptr=$2
 emb_file=$3
 
 python ./src/ondisk_index.py \
+    --work_dir "/home/cc/code/table_discovery_project" \
     --dataset ${dataset} \
     --experiment ${exptr} \
     --emb_file ${emb_file} \
