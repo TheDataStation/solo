@@ -176,6 +176,14 @@ def generate_queries(sql_dir, mode, table_lst, num_queries, stat_info, sql_dict)
     f_o_src, f_o_tar, f_o_meta = create_sql_file(sql_dir)
     write_query(mode, query_lst, f_o_src, f_o_tar, f_o_meta)
 
+def is_title_outlier(table, stat_info):
+    key_name = '_title_outlier_flag_'
+    if key_name not in table:
+        title_size = get_text_size(table['documentTitle'])
+        outlier_upper = stat_info['cell_outlier'][1]
+        table[key_name] = (title_size > outlier_upper)
+    return table[key_name]  
+
 def sample_query(table, col_ent_data, col_lst, stat_info):
     table_id = table['tableId']
     row_data = table['rows']
@@ -187,7 +195,12 @@ def sample_query(table, col_ent_data, col_lst, stat_info):
         agg_op = ''
     agg_op_idx = SqlQuery.agg_ops.index(agg_op)
     
-    title = table['documentTitle'].strip()
+    title_is_outier = is_title_outlier(table, stat_info)
+    if title_is_outier:
+        title = ''
+    else:
+        title = table['documentTitle'].strip()
+
     all_cond_cols = [a for a in col_lst if a != sel_col]
     if title != '':
         cond_col_num_lst = [0, 1, 2, 3] # the sql cond may include the title as ('about', =, Title)
@@ -212,7 +225,7 @@ def sample_query(table, col_ent_data, col_lst, stat_info):
                     sql_cond_lst.append(sql_cond)
     
         if (len(sql_cond_lst) > 0) and (title != ''):
-            title_cond_prob = 1 / (1 + len(sql_cond_lst))
+            title_cond_prob = 1 / (3 + len(sql_cond_lst))
             use_title_cond = bernoulli.rvs(title_cond_prob, size=1)[0]
             if use_title_cond > 0:
                 sql_cond = [None, 0, title]
