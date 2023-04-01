@@ -80,7 +80,7 @@ def read_train_tables(data_dir, dataset):
     with open(data_file) as f:
         for line in tqdm(f):
             item = json.loads(line)
-        train_table_dict[item['table_id']] = 1
+            train_table_dict[item['table_id']] = 1
     
     table_file = '../data/%s/tables/tables.jsonl' % dataset
     table_dict = {}
