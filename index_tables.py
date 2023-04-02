@@ -167,7 +167,7 @@ def main():
             return
         else:
             pipe_triple_file = './table2txt/dataset/%s/rel_graph/passages.jsonl' % args.dataset
-            create_index(pipe_state_info, pipe_sate_file, args, pipe_triple_file, EmbFileSuffix)
+            create_index(pipe_state_info, pipe_sate_file, args, pipe_triple_file)
             return
              
     if args.tables_csv_exists:
@@ -222,8 +222,11 @@ def create_index(pipe_state_info, pipe_sate_file, args, triple_file):
     index_dir = msg_info['index_dir']
     assert(os.path.isdir(index_dir))
     shutil.move(triple_file, index_dir)
-    for out_emb_file in out_emb_file_lst:
-        os.remove(out_emb_file)
+    
+    y_or_n = input('Delete embedding file %s (y/n)' % emb_file_pattern)
+    if y_or_n == 'y':
+        for out_emb_file in out_emb_file_lst:
+            os.remove(out_emb_file)
     
     print('\nIndexing done')
      

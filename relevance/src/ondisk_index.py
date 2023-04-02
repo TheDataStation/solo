@@ -207,7 +207,6 @@ def create_train(data_file, index_file):
         train_emb_lst.append(train_emb)
 
     train_all_embs = np.vstack(train_emb_lst)
-    train_all_embs = np.float32(train_all_embs)
    
     #print('number of traing vectors = %d' % len(train_all_embs))
     
