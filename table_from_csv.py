@@ -36,7 +36,7 @@ def read_table(arg_info):
         if arg_info['file_name_title']:
             table_title = file_name
     if table_id == '':
-        table_id = file_name + ' - ' + str(uuid.uuid4())
+        table_id = file_name + '_' + str(uuid.uuid4())
     table = {
         'columns':None,
         'rows':[],
@@ -59,8 +59,8 @@ def read_table(arg_info):
     if table_meta is not None:
         meta_col_names = table_meta.get('col_names', None)
         if meta_col_names is not None:
-            if(len(col_name_lst) == len(meta_col_names)):
-                col_name_lst = meta_col_names
+            assert len(col_name_lst) == len(meta_col_names)
+            col_name_lst = meta_col_names
     
     table['columns'] = [{'text':col_name} for col_name in col_name_lst]
     

@@ -14,7 +14,7 @@ StateImportCSV = 'import_csv'
 StateGenTriples = 'gen_triples'
 StateEncode = 'encode'
 StateIndex = 'index'
-EmbFileSuffix = '_embeddings'
+EmbFileTag = '_embeddings'
 
 def get_state_file(dataset):
     return 'index_state_%s.json' % dataset 
@@ -84,13 +84,18 @@ def exists_tables_csv(dataset_dir):
     csv_file_lst = glob.glob(csv_file_pattern, recursive=True)
     return len(csv_file_lst) > 0
 
+def get_emb_file_pattern(work_dir, dataset):
+    emb_file = os.path.join(work_dir, 'open_table_discovery/table2txt/dataset', 
+                            dataset, 'rel_graph', 'emb', '*%s*' % EmbFileTag)
+    return emb_file
+
 def confirm(args):
     dataset_dir = os.path.join(args.work_dir, 'data', args.dataset)
     tables_file = os.path.join(dataset_dir, 'tables/tables.jsonl')
     passage_dir = os.path.join(args.work_dir, 'open_table_discovery/table2txt/dataset', 
                                 args.dataset, 'rel_graph')
     passage_file = os.path.join(passage_dir, 'passages.jsonl') 
-    emb_file = os.path.join(passage_dir, '*_embeddings_*')
+    emb_file = get_emb_file_pattern(args.work_dir, args.dataset) 
     index_dir = os.path.join(args.work_dir, 'index/on_disk_index_%s_rel_graph' % args.dataset)     
  
     check_data_lst = [] 
@@ -188,34 +193,22 @@ def main():
     else:
         update_state(pipe_state_info, StateGenTriples, True, pipe_sate_file)
     num_triples = msg_info['num_triples'] 
-   
-    print('\nComputing space for encoding') 
     triple_file = msg_info['out_file']
-    if not check_encode_space(triple_file):
-        print('Encoding is stopped.')
-        return
-    
     print('\nEncoding triples')
-    encode_triples(args.work_dir, triple_file, EmbFileSuffix)
-    #update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
-  
-    return 
-    #Creating index  
-    create_index(pipe_state_info, pipe_sate_file, args, triple_file, EmbFileSuffix) 
-
-def create_index(pipe_state_info, pipe_sate_file, args, triple_file, emb_file_suffix):
-    emb_file_pattern = 'table2txt/dataset/%s/rel_graph/*%s_00' % (args.dataset, emb_file_suffix)
-    out_emb_file_lst = glob.glob(emb_file_pattern) 
-    if len(out_emb_file_lst) == 0:
-        print('There is no triple embedding files')
-        return
-
-    print('\nComputing space for creating disk index')
-    if not check_index_space(out_emb_file_lst):
-        print('Creating disk index is stopped.')
-        return
+    encode_triples(args.work_dir, triple_file)
+    update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
     
-    print('\nCreating disk index')
+    #Creating index  
+    create_index(pipe_state_info, pipe_sate_file, args, triple_file) 
+
+def create_index(pipe_state_info, pipe_sate_file, args, triple_file):
+    emb_file_pattern = get_emb_file_pattern(args.work_dir, args.dataset) 
+    out_emb_file_lst = glob.glob(emb_file_pattern) 
+    
+    if len(out_emb_file_lst) == 0:
+        raise ValueError('There is no triple embedding files')
+    
+    print('\nCreating index')
     index_args = get_index_args(args.work_dir, args.dataset, '*' + emb_file_suffix + '_*')
     msg_info = ondisk_index.main(index_args)
     if pipe_state_info is not None:
@@ -234,60 +227,19 @@ def create_index(pipe_state_info, pipe_sate_file, args, triple_file, emb_file_su
     print('\nIndexing done')
      
 
-def encode_triples(work_dir, graph_file, emb_file_suffix):
+def encode_triples(work_dir, graph_file):
     print('Encoding %s' % graph_file)
     encoder_model = os.path.join(work_dir, 'models/student_tqa_retriever_step_29500')
     out_emb_file_lst = []
     encoder_args = get_encoder_args(encoder_model, show_progress=False)
     encoder_args.passages = graph_file
-    encoder_args.output_path = graph_file + emb_file_suffix
+    passage_dir = os.path.dirname(graph_file)
+    base_name = os.path.basename(graph_file)
+    emb_dir = os.path.join(passage_dir, 'emb')
+    if not os.path.isdir(emb_dir):
+        os.makedirs(emb_dir)
+    encoder_args.output_path = os.path.join(emb_dir, base_name + EmbFileTag)
     passage_encoder.main(encoder_args, is_main=False) 
-
- 
-def get_unit_size():
-    return (1024.0 * 1024.0 * 1024.0) 
-
-def get_file_size(triple_file):
-    file_gb = os.path.getsize(triple_file) / get_unit_size() 
-    return file_gb
-
-def get_free_space(triple_file):
-    _, _, free_space = shutil.disk_usage(triple_file)
-    free_gb = free_space / get_unit_size()
-    return free_gb
-
-def check_encode_space(triple_file):
-    triple_size = get_file_size(triple_file)
-    free_space = get_free_space(triple_file)
-    needed_space = triple_size * 6
-    return check_space(free_space, needed_space, 'Encoding')   
-
-def check_index_space(out_emb_file_lst):
-    emb_size = 0
-    file_name_lst = []
-    for emb_file in out_emb_file_lst:
-        file_name = emb_file
-        if not file_name.endswith('_00'):
-            file_name = emb_file + '_00'
-        emb_part_size = get_file_size(file_name)
-        emb_size += emb_part_size
-        file_name_lst.append(file_name)
-
-    free_space = get_free_space(file_name_lst[0])
-    needed_space = emb_size * 3.6
-    return check_space(free_space, needed_space, 'Creating disk index') 
-
-def check_space(free_space, needed_space, stage):
-    if free_space < needed_space:
-        msg = 'Free disk space (%.2f GB) is less than recommended %.2f GB. %s will fail. Continue?(y/n)' % \
-              (free_space, needed_space, stage)
-        user_opt = ''
-        while user_opt not in ['y', 'n']:
-            user_opt = input(msg)
-            user_opt = user_opt.strip().lower()
-        return user_opt == 'y'
-    else:
-        return True 
 
 def get_args():
     parser = argparse.ArgumentParser()
