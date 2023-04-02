@@ -60,7 +60,7 @@ def get_encoder_args(model_path, show_progress=True):
     encoder_args = argparse.Namespace(is_student=True,
                                       passages=None, 
                                       output_path=None,
-                                      output_batch_size=1000000,
+                                      output_batch_size=500000,
                                       shard_id=0,
                                       num_shards=1,
                                       per_gpu_batch_size=1000,
@@ -71,7 +71,8 @@ def get_encoder_args(model_path, show_progress=True):
                                      )
     return encoder_args
 
-def get_index_args(work_dir, dataset, emb_file):
+def get_index_args(work_dir, dataset):
+    emb_file = get_emb_file_pattern(work_dir, dataset)
     index_args = argparse.Namespace(work_dir=work_dir,
                                     dataset=dataset,
                                     experiment='rel_graph',
@@ -209,7 +210,7 @@ def create_index(pipe_state_info, pipe_sate_file, args, triple_file):
         raise ValueError('There is no triple embedding files')
     
     print('\nCreating index')
-    index_args = get_index_args(args.work_dir, args.dataset, '*' + emb_file_suffix + '_*')
+    index_args = get_index_args(args.work_dir, args.dataset)
     msg_info = ondisk_index.main(index_args)
     if pipe_state_info is not None:
         if not msg_info['state']:
