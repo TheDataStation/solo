@@ -33,8 +33,8 @@ import json
 
 logger = None
 
-queue_token_tensor = queue.Queue()
-queue_output = queue.Queue()
+queue_token_tensor = queue.Queue(3)
+queue_output = queue.Queue(3)
 queue_output_stat = queue.Queue()
 opt = None
 g_title_prefix='title:'
@@ -105,7 +105,8 @@ def embed_passages(model, retriever):
     total = 0
     output_part_idx = 0
     output_data = [[], [], 0]
-    
+
+    t1 = time.time()    
     while True:
         batch_data = queue_token_tensor.get() 
         #t2 = time.time()
@@ -126,7 +127,7 @@ def embed_passages(model, retriever):
          
         total += len(ids)
         
-        if total % 10000 == 0:
+        if total % (2 * opt.per_gpu_batch_size) == 0:
             logger.info('Encoded passages %d', total)
         
         if output_data[2] >= opt.output_batch_size:
@@ -141,7 +142,8 @@ def embed_passages(model, retriever):
         start_output_threading(output_data, output_part_idx)
         output_part_idx += 1
         output_data = [[], [], 0]
-    
+    t2 = time.time()
+    print('encode time ', t2-t1) 
     return output_part_idx 
 
 
