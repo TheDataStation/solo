@@ -56,14 +56,14 @@ def get_graph_args(work_dir, dataset, config):
                                     )
     return graph_args
 
-def get_encoder_args(model_path, show_progress=True):
+def get_encoder_args(model_path, config, show_progress=True):
     encoder_args = argparse.Namespace(is_student=True,
                                       passages=None, 
                                       output_path=None,
                                       output_batch_size=500000,
                                       shard_id=0,
                                       num_shards=1,
-                                      per_gpu_batch_size=1000,
+                                      per_gpu_batch_size=config['encode_batch_size'],
                                       passage_maxlength=200,
                                       model_path=model_path,
                                       no_fp16=False,
@@ -196,7 +196,7 @@ def main():
     num_triples = msg_info['num_triples'] 
     triple_file = msg_info['out_file']
     print('\nEncoding triples')
-    encode_triples(args.work_dir, triple_file)
+    encode_triples(args.work_dir, triple_file, config)
     update_state(pipe_state_info, StateEncode, True, pipe_sate_file)
     
     #Creating index  
@@ -231,11 +231,11 @@ def create_index(pipe_state_info, pipe_sate_file, args, triple_file):
     print('\nIndexing done')
      
 
-def encode_triples(work_dir, graph_file):
+def encode_triples(work_dir, graph_file, config):
     print('Encoding %s' % graph_file)
     encoder_model = os.path.join(work_dir, 'models/student_tqa_retriever_step_29500')
     out_emb_file_lst = []
-    encoder_args = get_encoder_args(encoder_model, show_progress=False)
+    encoder_args = get_encoder_args(encoder_model, config, show_progress=False)
     encoder_args.passages = graph_file
     passage_dir = os.path.dirname(graph_file)
     base_name = os.path.basename(graph_file)
