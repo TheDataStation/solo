@@ -15,7 +15,7 @@ To try the system, follow the following steps,
 ## 1. Setup
 ### 1.1. System requirements
 
-Ubuntu 18.04(or above). GPU that supports CUDA 11.0 (above) is needed.
+Ubuntu 18.04(or above). GPU that supports CUDA 11.0 (above) and pytorch 1.12.1 is needed.
 
 If possible, use solid state drive (SSD). Disk storage should be more than 200 G if you want to try all data released. 
 
