@@ -1,6 +1,5 @@
-# S2LD, Data Discovery using Natural Language Questions via a Self-Supervised Approach
-This is the repository for the paper [Data Discovery using Natural Language Questions via a Self-Supervised Approach](https://arxiv.org/abs/2301.03560).
-S2LD is a self-supervised data discovery system that finds tables among a large collection given natural language questions. It automatically generates training dataset from the target table collection and then trains the relevance model.
+# Solo, Data Discovery using Natural Language Questions via a Self-Supervised Approach
+Solo is a self-supervised data discovery system that finds tables among a large collection given natural language questions. It automatically generates training dataset from the target table collection and then trains the relevance model.
 The system consists of two separated stages:
 
 Offline stage 
@@ -16,7 +15,7 @@ To try the system, follow the following steps,
 ## 1. Setup
 ### 1.1. System requirements
 
-Ubuntu 18.04(or above). GPU that supports CUDA 10.0 (above) is needed.
+Ubuntu 18.04(or above). GPU that supports CUDA 11.0 (above) is needed.
 
 If possible, use solid state drive (SSD). Disk storage should be more than 200 G if you want to try all data released. 
 
@@ -75,7 +74,7 @@ e) Download data
     
    The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by updating "train_batch_size" in file "system.config". 
    
-   By default, Incremental Training each time generates a dataset with 1,200 questions.
+   By default, Incremental Training each time generates a dataset with 1,500 questions.
    
    If you want to retrain on "fetaqa" or "nq_tables", download the data first by "./get_data.sh". 
    
@@ -98,15 +97,15 @@ e) Download data
    The script always loads the recent model (by create time), 
    so if you want to use the pretrained models, move the other model in some other directory.
     
-## 5. Interactive demo 
-   We use jupyter notebook to show the demo application.
-   The user inputs the dataset and also a question and then top 5 tables are returned and displayed. 
-   3 example questions are list for fetaqa. To try the demo, follow the steps,
+## 5. Interactive Web application 
+   The system provides a web interface.
+   The user inputs a question and then top 5 tables are returned and displayed. 
+   To try the application, follow the steps,
 
-### 5.1. Start demo server 
+### 5.1. Start web server 
    run the script
    ```   bash
-   ./run_demo.sh <dataset>
+   ./run_server.sh <dataset>
    ```
    If the script is run a local machine where you can use a browser on it, 
    open "http://127.0.0.1:5000" and then go to section 5.3

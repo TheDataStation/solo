@@ -12,11 +12,10 @@ sudo make install
 cd ${cur_dir}
 sudo rm -rf downloads
 
-bash prep_env.sh
-cd sql2question
+source prep_env.sh
+cd ${cur_dir}/sql2question
 bash prep_env.sh
 cd ${work_dir}
 mkdir -p index
 cd ${cur_dir}
 ln -s ${work_dir}/index data
-sudo apt-get -y install jupyter-notebook
