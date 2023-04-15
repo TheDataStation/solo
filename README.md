@@ -44,16 +44,16 @@ e) Download models
    ```
 f) Download data
 
-   There are two datasets, "fetaqa" which is smaller and "nq_tables" which is much larger. 
+   There are 3 datasets, "fetaqa", "nq_tables" and "chicago_open". 
    "fetaqa" is recommended to try.
    To download, run
    ```   bash
-   ./get_data.sh fetaqa
+   ./get_data.sh <dataset>
    ```
    Each dataset is corresponding to a directory "<work_dir>/data/<dataset>". 
 
 ## 2. Index tables
-   We provide indexed "fetaqa" and "nq_tables" by the "get_data.sh" script. 
+   We provide indexed "fetaqa", "nq_tables" and "chicago_open" by the "get_data.sh" script. 
    You can ignore this if you don't want to try indexing.
    
    To index a new dataset (table collection), create 2 diretories,
