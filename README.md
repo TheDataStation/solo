@@ -94,7 +94,7 @@ f) Download data
    ```   bash
    ./test.sh <dataset>
    ```
-   We have pretrained models for "fetaqa" and "nq_tables" in 
+   We have pretrained models for "fetaqa" , "nq_tables" and "chicago_open" in 
    "<work_dir>/models/\<dataset\>" with file name "\<dataset\>_relevance.pt". 
    If you retrain "fetaqa" or "nq_tables", "<work_dir>/models/\<dataset\>" will have a best model for each training. 
    The script always loads the recent model (by create time), 
@@ -106,9 +106,9 @@ f) Download data
    To try the application, follow the steps,
 
 ### 5.1. Start web server 
-   run the script
+   run the script with the dataset chicago_open
    ```   bash
-   ./run_server.sh <dataset>
+   ./run_server.sh chicago_open
    ```
    If the script is run a local machine where you can use a browser on it, 
    open "http://127.0.0.1:5000" and then go to section 5.3
@@ -121,5 +121,10 @@ f) Download data
    Then on client, open "http://127.0.0.1:5000".
     
 ### 5.3. Try demo 
-   Type a question to try.
+   Type a question to try, e.g.
    
+   What are the business hours of Employment Resource Center at Howard?
+
+
+
+     
