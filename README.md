@@ -17,7 +17,7 @@ To try the system, follow the following steps,
 
 Ubuntu 18.04(or above). GPU that supports CUDA 11.0 (above) and pytorch 1.12.1 is needed.
 
-If possible, use solid state drive (SSD). Disk storage should be more than 200 G if you want to try all data released. 
+If possible, use solid state drive (SSD). Disk storage should be more than 300 G if you want to try all data released. 
 
 ### 1.2. Prepare enviroment
 a) Install Conda from https://docs.conda.io/en/latest/
