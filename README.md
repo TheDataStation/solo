@@ -106,7 +106,7 @@ f) Download data
    To try the application, follow the steps,
 
 ### 5.1. Start web server 
-   run the script with the dataset chicago_open
+   run the script with the dataset "chicago_open"
    ```   bash
    ./run_server.sh chicago_open
    ```
@@ -114,7 +114,7 @@ f) Download data
    open "http://127.0.0.1:5000" and then go to section 5.3
    
 ### 5.2. Client setting 
-   If demo server is on a remote machine, do port routing on the client machine by runing the following script,
+   If the server is on a remote machine, do port routing on the client machine by runing the following script,
    ```   bash
    ssh -N -f -L 127.0.0.1:5000:127.0.0.1:5000 <user>@<remote server>
    ```
@@ -127,4 +127,3 @@ f) Download data
 
 
 
-     
