@@ -8,7 +8,7 @@ Offline stage
 
 Online stage
 
-   A user asks a question and it will return top 5 tables that most likely answers the question.
+   A user asks a question and the system returns top 5 tables that most likely answers the question.
 
 To try the system, follow the following steps,
 
