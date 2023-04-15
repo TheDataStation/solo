@@ -69,7 +69,7 @@ f) Download data
    ```   bash
    ./index.sh <dataset>
    ```
-   You can also reindex "fetaqa" and "nq_tables" by running the script.
+   You can also reindex these 3 datasets by running the script.
 
 ## 3. Train
    We provide pretrained models for "fetaqa" and "nq_talbes" and 
