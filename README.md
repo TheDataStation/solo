@@ -36,6 +36,7 @@ c) Create a new session using *tmux* or *screen*
 d) Go to the "open_table_discovery" directory and run the following script in the new session.
    ```   bash
    ./setup.sh
+   conda activate s2ld
    ```
 e) Download models
    ```   bash
