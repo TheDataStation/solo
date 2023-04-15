@@ -3,17 +3,12 @@ if [ "$#" -ne 1 ]; then
   exit
 fi
 dataset=$1
-if [ "${dataset}" != "fetaqa" ]; then
-    echo "only fetaqa supported right now, please use ./get_data.sh fetaqa"
-    exit
-fi
-server=$2
 work_dir="$(dirname "$PWD")"
 data_dir=${work_dir}/data
 mkdir -p ${data_dir}
 cd ${data_dir}
 rm -f ${dataset}.tar
-wget https://storage.googleapis.com/open_data_123/fetaqa_data/fetaqa.tar
+wget https://storage.googleapis.com/open_data_123/${dataset}_data/${dataset}.tar
 rm -rf ${dataset}
 tar -xf ${dataset}.tar
 rm ${dataset}.tar
