@@ -20,26 +20,28 @@ Ubuntu 18.04(or above). GPU that supports CUDA 11.0 (above) is needed.
 If possible, use solid state drive (SSD). Disk storage should be more than 200 G if you want to try all data released. 
 
 ### 1.2. Prepare enviroment
+a) Install Conda from https://docs.conda.io/en/latest/
 
-a) Make sure the repository directory "open_table_discovery" in an empty work directory <work_dir>
+b) Make sure the repository directory "open_table_discovery" in an empty work directory <work_dir>
  
    A lot of data and other code will be downloaded to <work_dir>. If <work_dir> has other child directories, there may be some collisions. After <work_dir> is created, move the "open_table_discovery" directory in <work_dir> 
    
-b) Create a new session using *tmux* or *screen*
+c) Create a new session using *tmux* or *screen*
    ```   bash
    tmux new -s [session name] or screen -S [session name] 
    ```
    It takes time to run the following scripts, so it is better to create a session.
 
-c) Go to the "open_table_discovery" directory and run the following script in the new session.
+
+d) Go to the "open_table_discovery" directory and run the following script in the new session.
    ```   bash
    ./setup.sh
    ```
-d) Download models
+e) Download models
    ```   bash
    ./get_models.sh
    ```
-e) Download data
+f) Download data
 
    There are two datasets, "fetaqa" which is smaller and "nq_tables" which is much larger. 
    "fetaqa" is recommended to try.
