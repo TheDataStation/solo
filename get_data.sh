@@ -20,9 +20,9 @@ rm -rf ${index_dir}
 mkdir ${index_dir}
 cd ${index_dir}
 rm -f merged_index.ivfdata
-wget https://storage.googleapis.com/open_data_123/${dataset}_data/index/merged_index.ivfdata
+wget https://storage.googleapis.com/open_data_123/${dataset}_data/${index_dir}/merged_index.ivfdata
 rm -f passages.jsonl
-wget https://storage.googleapis.com/open_data_123/${dataset}_data/index/passages.jsonl
+wget https://storage.googleapis.com/open_data_123/${dataset}_data/${index_dir}/passages.jsonl
 rm -f populated.index
-wget https://storage.googleapis.com/open_data_123/${dataset}_data/index/populated.index 
+wget https://storage.googleapis.com/open_data_123/${dataset}_data/${index_dir}/populated.index 
 
