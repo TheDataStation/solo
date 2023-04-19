@@ -277,7 +277,7 @@ def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, co
             retr_data.append(item)
 
     strategy = 'rel_graph'
-    if is_train:
+    if mode != 'test':
         rerank_top_n = int(config['rel_num_train'])
     else:
         rerank_top_n = int(config['rel_num_test'])
