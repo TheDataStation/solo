@@ -117,7 +117,7 @@ def get_test_args(work_dir, dataset, retr_test_dir, config, args):
                                     fusion_retr_model=retr_model,
                                     train_data=None,
                                     eval_data=eval_file,
-                                    n_context=int(config['retr_top_n']),
+                                    n_context=int(config['rel_num_test']),
                                     per_gpu_batch_size=config['train_batch_size'],
                                     per_gpu_eval_batch_size=config['eval_batch_size'],
                                     cuda=0,
