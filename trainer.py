@@ -277,7 +277,10 @@ def retr_triples(mode, work_dir, dataset, question_dir, table_dict, is_train, co
             retr_data.append(item)
 
     strategy = 'rel_graph'
-    rerank_top_n = int(config['rerank_retr_top_n'])
+    if is_train:
+        rerank_top_n = int(config['rel_num_train'])
+    else:
+        rerank_top_n = int(config['rel_num_test'])
     min_tables = int(config['min_tables'])
     updated_retr_data = process_func(retr_data, rerank_top_n, table_dict, strategy, min_tables)
     out_file = os.path.join(out_retr_dir, 'fusion_retrieved_tagged.jsonl') 
