@@ -1,3 +1,4 @@
+eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
 conda create -y --name s2ld python=3.7.9
 conda activate s2ld
 conda install -y -c pytorch faiss-gpu
