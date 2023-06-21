@@ -45,7 +45,7 @@ e) Download models
 f) Download data
 
    There are 3 datasets, "fetaqa", "nq_tables" and "chicago_open". 
-   "fetaqa" is recommended to try.
+   "chicago_open" is recommended to try.
    To download, run
    ```   bash
    ./get_data.sh <dataset>
