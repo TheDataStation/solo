@@ -22,7 +22,7 @@ If possible, use solid state drive (SSD). Disk storage should be more than 300 G
 ### 1.2. Prepare enviroment
 a) Install Conda from https://docs.conda.io/en/latest/
 
-b) Make sure the repository directory "open_table_discovery" in an empty work directory <work_dir>
+b) Make sure the repository directory "solo" in an empty work directory <work_dir>
  
    A lot of data and other code will be downloaded to <work_dir>. If <work_dir> has other child directories, there may be some collisions. After <work_dir> is created, move the "open_table_discovery" directory in <work_dir> 
    
