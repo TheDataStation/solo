@@ -7,4 +7,7 @@ cd ${work_dir}
 mkdir -p index
 cd ${cur_dir}
 ln -s ${work_dir}/index data
-ln -s ${work_dir}/solo open_table_discovery
+cd ${work_dir}
+if [ ! -d "open_table_discovery" ]; then
+    ln -s solo open_table_discovery
+fi
