@@ -20,11 +20,12 @@ Ubuntu 18.04(or above). GPU that supports CUDA 11.0 (above) and pytorch 1.12.1 i
 If possible, use solid state drive (SSD). Disk storage should be more than 300 G if you want to try all data released. 
 
 ### 1.2. Prepare enviroment
-a) Install Conda from https://docs.conda.io/en/latest/
+a) Make sure Conda is installed
+   Type 'conda' in terminal, if "command not found", install Conda from https://docs.conda.io/en/latest/
 
 b) Make sure the repository directory "solo" in an empty work directory <work_dir>
  
-   A lot of data and other code will be downloaded to <work_dir>. If <work_dir> has other child directories, there may be some collisions. After <work_dir> is created, move the "open_table_discovery" directory in <work_dir> 
+   A lot of data and other code will be downloaded to <work_dir>. If <work_dir> has other child directories, there may be some collisions. After <work_dir> is created, move the "solo" directory in <work_dir> 
    
 c) Create a new session using *tmux* or *screen*
    ```   bash
@@ -33,7 +34,7 @@ c) Create a new session using *tmux* or *screen*
    It takes time to run the following scripts, so it is better to create a session.
 
 
-d) Go to the "open_table_discovery" directory and run the following script in the new session.
+d) Go to the "solo" directory and run the following script in the new session.
    ```   bash
    ./setup.sh
    conda activate s2ld
