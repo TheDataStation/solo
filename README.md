@@ -21,6 +21,7 @@ If possible, use solid state drive (SSD). Disk storage should be more than 300 G
 
 ### 1.2. Prepare enviroment
 a) Make sure Conda is installed
+
    Type 'conda' in terminal, if "command not found", install Conda from https://docs.conda.io/en/latest/
 
 b) Make sure the repository directory "solo" in an empty work directory <work_dir>
