@@ -25,8 +25,3 @@ rm -f passages.jsonl
 wget https://storage.googleapis.com/open_data_123/${dataset}_data/${index_dir}/passages.jsonl
 rm -f populated.index
 wget https://storage.googleapis.com/open_data_123/${dataset}_data/${index_dir}/populated.index
-index_store_dir=$PWD
-index_create_dir=/home/cc/code/table_discovery_project/index/${index_dir}
-mkdir -p ${index_create_dir}
-cd ${index_create_dir}
-ln -s ${index_store_dir}/merged_index.ivfdata
