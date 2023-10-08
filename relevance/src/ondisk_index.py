@@ -14,7 +14,7 @@ import time
 
 class OndiskIndexer:
     def __init__(self, index_file, passage_file):
-        self.index = faiss.read_index(index_file)
+        self.index = faiss.read_index(index_file, faiss.IO_FLAG_ONDISK_SAME_DIR)
         self.passage_dict = self.load_passages(passage_file)
    
     def load_passages(self, passage_file):
