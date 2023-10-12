@@ -49,7 +49,7 @@ a) Install NVIDIA Container Toolkit
    
    Checkout https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
    
-   You can try step b) and c) first if are not sure it is installer or not 
+   You can try step b) and c) first if you are not sure it is installer or not 
 
 b) Load image
    ```   bash
