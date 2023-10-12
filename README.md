@@ -12,14 +12,15 @@ Online stage
 
 To try the system, follow the following steps,
 
-## 1. Setup
-### 1.1. System requirements
-
-Ubuntu 18.04(or above). GPU that supports CUDA 11.0 (above) and pytorch 1.12.1 is needed.
+## 1. Install
+We provide two options to install the system: install from repository (section 1.1) or load from docker image (section 1.2).
+System requirements: GPU that supports CUDA 11.0 (above)
 
 If possible, use solid state drive (SSD). Disk storage should be more than 300 G if you want to try all data released. 
 
-### 1.2. Prepare enviroment
+### 1.1. Install from repository
+In this option, the OS must be Ubuntu 18.04(or above)
+
 a) Make sure Conda is installed
 
    Type "conda" in terminal, if "command not found", install Conda from https://docs.conda.io/en/latest/
@@ -40,11 +41,40 @@ d) Go to the "solo" directory and run the following script in the new session.
    ./setup.sh
    conda activate s2ld
    ```
-e) Download models
+
+### 1.2. Load from docker image
+
+a) Install NVIDIA Container Toolkit
+   Checkout https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+   You can try step b) first if are not sure it is installer or not 
+
+b) Load image
+   ```   bash
+   wget https://storage.googleapis.com/open_data_123/solo_docker.tar
+   docker load -i solo_docker.tar
+   docker run --name solo_app --gpus all -it -d solo_docker
+   ```
+c) Start container
+   ```   bash
+   docker run --name solo_app --gpus all -it -d solo_docker
+   ```
+
+d) Connect to container
+   ```   bash
+   docker exec -it --user cc -w /home/cc/solo_work/solo solo_app bash
+   ```
+
+e) Update code
+   ```   bash
+   git pull
+   ```
+
+## 2. Model and Data
+a) Download models
    ```   bash
    ./get_models.sh
    ```
-f) Download data
+b) Download data
 
    There are 3 datasets, "fetaqa", "nq_tables" and "chicago_open". 
    "chicago_open" is recommended to try.
@@ -54,7 +84,7 @@ f) Download data
    ```
    Each dataset is corresponding to a directory "<work_dir>/data/<dataset>". 
 
-## 2. Index tables
+## 3. Index tables
    We provide indexed "fetaqa", "nq_tables" and "chicago_open" by the "get_data.sh" script. 
    You can ignore this if you don't want to try indexing.
    
@@ -73,7 +103,7 @@ f) Download data
    ```
    You can also reindex these 3 datasets by running the script.
 
-## 3. Train
+## 4. Train
    We provide pretrained models for "fetaqa" and "nq_talbes" and 
    you can ignore this if you just want to try table discovery (section 5).  
     
@@ -83,7 +113,7 @@ f) Download data
    
    If you want to retrain on "fetaqa" or "nq_tables", download the data first by "./get_data.sh". 
    
-   If you want to train on other dataset, index the table collection first (section 2). 
+   If you want to train on other dataset, index the table collection first (section 3). 
 
    To train the relevance model, run
    ```   bash
@@ -91,7 +121,7 @@ f) Download data
    ```
    After training, the best model will be deployed automatically to "<work_dir>/models/\<dataset\>" 
 
-## 4. Test
+## 5. Test
    This is used to evaluate the retrieval accuracy of "fetaqa" and "nq_tables"
    ```   bash
    ./test.sh <dataset>
@@ -102,12 +132,12 @@ f) Download data
    The script always loads the recent model (by create time), 
    so if you want to use the pretrained models, move the other model in some other directory.
     
-## 5. Interactive Web application 
+## 6. Interactive Web application 
    The system provides a web interface.
    The user inputs a question and then top 5 tables are returned and displayed. 
    To try the application, follow the steps,
 
-### 5.1. Start web server 
+### 6.1. Start web server 
    run the script with the dataset "chicago_open"
    ```   bash
    ./run_server.sh chicago_open
@@ -115,14 +145,14 @@ f) Download data
    If the script is run a local machine where you can use a browser on it, 
    open "http://127.0.0.1:5000" and then go to section 5.3
    
-### 5.2. Client setting 
+### 6.2. Client setting 
    If the server is on a remote machine, do port routing on the client machine by runing the following script,
    ```   bash
    ssh -N -f -L 127.0.0.1:5000:127.0.0.1:5000 <user>@<remote server>
    ```
    Then on client, open "http://127.0.0.1:5000".
     
-### 5.3. Try demo 
+### 6.3. Try demo 
    Type a question to try, e.g.
    
    What are the business hours of Employment Resource Center at Howard?
