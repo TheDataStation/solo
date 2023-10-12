@@ -48,7 +48,8 @@ d) Go to the "solo" directory and run the following script in the new session.
 a) Install NVIDIA Container Toolkit
    
    Checkout https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
-   You can try step b) first if are not sure it is installer or not 
+   
+   You can try step b) and c) first if are not sure it is installer or not 
 
 b) Load image
    ```   bash
