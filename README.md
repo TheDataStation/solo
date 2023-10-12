@@ -108,7 +108,7 @@ b) Download data
 
 ## 4. Train
    We provide pretrained models for "fetaqa" and "nq_talbes" and 
-   you can ignore this if you just want to try table discovery (section 5).  
+   you can ignore this if you just want to try table discovery (section 6).  
     
    The default batch size is 4, if the GPU memory is less than 24 G, use a smaller value (one by one) by updating "train_batch_size" in file "system.config". 
    
@@ -146,7 +146,7 @@ b) Download data
    ./run_server.sh chicago_open
    ```
    If the script is run a local machine where you can use a browser on it, 
-   open "http://127.0.0.1:5000" and then go to section 5.3
+   open "http://127.0.0.1:5000" and then go to section 6.3
    
 ### 6.2. Client setting 
    If the server is on a remote machine, do port routing on the client machine by runing the following script,
