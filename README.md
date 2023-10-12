@@ -61,11 +61,15 @@ c) Start container
    ```   bash
    docker run --name solo_app --gpus all -it -d solo_docker
    ```
+   You only need to do this once because it is running in background after started
+
+   User "docker ps" to double check the container "solo_app" is running. If not, do this step again
 
 d) Connect to container
    ```   bash
    docker exec -it --user cc -w /home/cc/solo_work/solo solo_app bash
    ```
+   You do this step every time you want to use the system 
 
 e) Update code
    ```   bash
