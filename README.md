@@ -61,7 +61,7 @@ c) Start container
    ```   bash
    docker run --name solo_app --gpus all -it -d solo_docker
    ```
-   You only need to do this once because it is running in background after started
+   You only need to do this step once because the container (solo_app) is running in background after started
 
    User "docker ps" to double check the container "solo_app" is running. If not, do this step again
 
