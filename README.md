@@ -14,6 +14,7 @@ To try the system, follow the following steps,
 
 ## 1. Install
 We provide two options to install the system: install from repository (section 1.1) or load from docker image (section 1.2).
+
 System requirements: GPU that supports CUDA 11.0 (above)
 
 If possible, use solid state drive (SSD). Disk storage should be more than 300 G if you want to try all data released. 
