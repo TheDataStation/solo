@@ -63,7 +63,7 @@ c) Start container
    ```
    You only need to do this step once because the container (solo_app) is running in background after started
 
-   User "docker ps" to double check the container "solo_app" is running. If not, do this step again
+   Use the command "docker ps" to double check the container "solo_app" is running.
 
    If you want to restart container, stop (this will undo all changes, e.g. models and data downloaded) and remove it first by
    ```   bash
