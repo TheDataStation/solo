@@ -59,11 +59,18 @@ b) Load image
    ```
 c) Start container
    ```   bash
-   docker run --name solo_app --gpus all -it -d solo_docker
+   docker run --network host --name solo_app --gpus all -it -d solo_docker
    ```
    You only need to do this step once because the container (solo_app) is running in background after started
 
    User "docker ps" to double check the container "solo_app" is running. If not, do this step again
+
+   If you want to restart container, stop (this will ubdo all changes, e.g. models and data downloaded) and remove it first by
+   ```   bash
+   docker stop solo_app
+   docker rm solo_app
+   ```
+   Then you can start container again
 
 d) Connect to container
    ```   bash
@@ -72,6 +79,7 @@ d) Connect to container
    You do this step every time you want to use the system 
 
 e) Update code
+   In docker container
    ```   bash
    git pull
    ```
