@@ -65,7 +65,7 @@ c) Start container
 
    User "docker ps" to double check the container "solo_app" is running. If not, do this step again
 
-   If you want to restart container, stop (this will ubdo all changes, e.g. models and data downloaded) and remove it first by
+   If you want to restart container, stop (this will undo all changes, e.g. models and data downloaded) and remove it first by
    ```   bash
    docker stop solo_app
    docker rm solo_app
