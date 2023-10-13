@@ -55,7 +55,6 @@ b) Load image
    ```   bash
    wget https://storage.googleapis.com/open_data_123/solo_docker.tar
    docker load -i solo_docker.tar
-   docker run --name solo_app --gpus all -it -d solo_docker
    ```
 c) Start container
    ```   bash
