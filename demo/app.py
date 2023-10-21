@@ -82,8 +82,8 @@ def query(input_data):
         rank += 1
         table_data['search_rank'] = rank
         
-    shutil.rmtree(query_dir)
-    shutil.rmtree(out_dir)
+    shutil.rmtree(query_dir, ignore_errors=True)
+    shutil.rmtree(out_dir, ignore_errors=True)
      
     return table_data_lst
 
