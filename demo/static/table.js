@@ -57,6 +57,12 @@ $('#query_cmd').click(function() {
 function export_table(rank) {
     table_id = 'top_table_' + rank
     caption = $($('#' + table_id).find('caption')[0]).text().trim()
+    if (caption.substr(0,3).toLowerCase() != 'top') {
+        alert('table caption must start with Top')
+        return
+    }
+    pos = caption.indexOf(':')
+    caption = caption.substring(pos + 1).trim()
     file_name = caption + '.csv'
     csv_data = get_table_csv(table_id)
     var blob = new Blob([csv_data], {type:'text/csv;charset=utf-8'})
