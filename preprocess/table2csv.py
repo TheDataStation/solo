@@ -3,8 +3,11 @@ import csv
 import argparse
 import os
 from tqdm import tqdm
+import random
 
 def read_small_table_set(data_file):
+    if data_file is None:
+        return None
     table_lst = []
     with open(data_file) as f:
         for line in f:
@@ -14,15 +17,22 @@ def read_small_table_set(data_file):
     return table_set
 
 def read_table(args):
-    data_file = '/home/cc/code/table_discovery_project/data/%s/tables/tables.jsonl' % args.dataset
+    data_file = '../data/%s/tables/tables.jsonl' % args.dataset
     small_table_set = read_small_table_set(args.input_tables)
+    
+    table_data_lst = []
     with open(data_file) as f:
         for line in f:
             table_data = json.loads(line)
             table_id = table_data['tableId']
-            if table_id not in small_table_set:
+            if (small_table_set is not None) and (table_id not in small_table_set):
                 continue
-            yield table_data
+            table_data_lst.append(table_data)
+    out_table_list = table_data_lst
+    if args.sample_size is not None:
+        table_data_sample = random.sample(table_data_lst, args.sample_size)
+        out_table_list = table_data_sample 
+    return out_table_list 
 
 def main():
     args = get_args()
@@ -35,15 +45,10 @@ def main():
         table_title = table['documentTitle']
         table_id = table['tableId']
         table_dir = os.path.join(args.output_dir)
-
-        out_file = os.path.join(table_dir, '%d.csv' % table_seq_no)
-        meta_file = os.path.join(table_dir, '%d.meta.json' % table_seq_no)
-        with open(meta_file, 'w') as f_m:
-            meta_info = {
-                'table_id':table_id,
-                'title':table_title
-            }
-            f_m.write(json.dumps(meta_info, indent=3))
+        
+        title_processed = table_title.replace('/', ' ')
+        file_name = f'{title_processed} - ID({table_id}).csv'
+        out_file = os.path.join(table_dir, file_name) 
 
         table_seq_no += 1
         with open(out_file, 'w') as f_o:
@@ -59,9 +64,10 @@ def main():
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str)
+    parser.add_argument('--dataset', type=str, required=True)
     parser.add_argument('--input_tables', type=str)
-    parser.add_argument('--output_dir', type=str)
+    parser.add_argument('--sample_size', type=int)
+    parser.add_argument('--output_dir', type=str, required=True)
     args = parser.parse_args()
     return args
 
