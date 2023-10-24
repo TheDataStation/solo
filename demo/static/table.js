@@ -30,7 +30,7 @@ $('#query_cmd').click(function() {
         return
     }
     $('#query_cmd').prop("disabled",true);
-
+    $("#load_span").addClass("loader");
     request = $.ajax({
           type: "POST",
           contentType: "application/json; charset=utf-8",
@@ -45,11 +45,13 @@ $('#query_cmd').click(function() {
         });
 
         $('#query_cmd').prop("disabled",false);
+        $("#load_span").removeClass("loader");
     });
 
     request.fail(function (xhr, status, err){
         alert(status + '_' + err)
         $('#query_cmd').prop("disabled",false);
+        $("#load_span").removeClass("loader");
     });
 
 });

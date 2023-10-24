@@ -9,6 +9,24 @@
     font-size: 10pt;
     line-height: 25px;
   }
+  .loader {
+    width: 36px;
+    height: 36px;
+    border: 5px solid lightgray;
+    border-bottom-color: white;
+    border-radius: 50%;
+    display: inline-block;
+    box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+  }
+  @keyframes rotation {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
   table {
       border-collapse: collapse;
       width: 300px;
@@ -39,7 +57,6 @@
       overflow-wrap: break-word;
       max-width: 150px;
   }
-}
 
 </style>
 </head>
@@ -71,8 +88,8 @@
 	</div>
 	</div>
 	<div style="padding: 30px"></div>
-  <div id='top_table_container'>
-    
+        <div><span id="load_span" style="position:fixed; left:50%"></span></div>
+  <div id='top_table_container'> 
   </div>
 
 </div>
