@@ -7,6 +7,9 @@ from multiprocessing import Pool as ProcessPool
 import uuid
 import glob
 import random
+import sys
+
+csv.field_size_limit(sys.maxsize)
 
 def get_out_file(args):
     data_dir = os.path.join(args.work_dir, 'data/%s/tables' % args.dataset)
