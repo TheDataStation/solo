@@ -199,7 +199,9 @@ def main(args, is_main):
         model_class = src.model.Retriever
     #model, _, _, _, _, _ = src.util.load(model_class, opt.model_path, opt)
     retriever = src.util.load_pretrained_retriever(opt.is_student, opt.model_path)
-    opt.passage_maxlength = retriever.config.passage_maxlength
+    if opt.passage_maxlength is None:
+        opt.passage_maxlength = retriever.config.passage_maxlength
+
     if not opt.is_student:
         if retriever.model.pooler is not None:
             retriever.model.pooler = None
@@ -236,7 +238,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_shards', type=int, default=1, help="Total number of shards")
     parser.add_argument('--per_gpu_batch_size', type=int, default=32, help="Batch size to encode passages")
     parser.add_argument('--output_batch_size', type=int, default=5000000, help="Batch size to output embeddings")
-    parser.add_argument('--passage_maxlength', type=int, default=200, help="Maximum number of tokens in a passage")
+    parser.add_argument('--passage_maxlength', type=int, help="Maximum number of tokens in a passage")
     parser.add_argument('--model_path', type=str, help="path to directory containing model weights and config file")
     parser.add_argument('--no_fp16', action='store_true', help="inference in fp32")
     args = parser.parse_args()
