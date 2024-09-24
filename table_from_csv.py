@@ -31,10 +31,16 @@ def read_table(arg_info):
     file_name = os.path.basename(os.path.splitext(csv_file)[0])
     table_title = '' 
     table_id = ''
+    sep_tag = '_SEP_'
     table_meta = read_meta(meta_file)
     if table_meta is not None:
         table_id = table_meta['table_id']
         table_title = table_meta['title']
+    else:
+        if sep_tag in file_name:
+            tag_info = file_name.split(sep_tag)
+            table_title = tag_info[0]
+            table_id = tag_info[1]
     if table_title == '':
         if arg_info['file_name_title']:
             table_title = file_name
