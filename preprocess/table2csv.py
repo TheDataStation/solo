@@ -31,25 +31,34 @@ def read_table(args):
     out_table_list = table_data_lst
     if args.sample_size is not None:
         table_data_sample = random.sample(table_data_lst, args.sample_size)
-        out_table_list = table_data_sample 
+        out_table_list = table_data_sample
     return out_table_list 
 
 def main():
     args = get_args()
     table_id_dict = {}
     table_seq_no = 0
-    
     table_seq_no = 0
+
+    table_dir = os.path.join(args.output_dir)
+    if not os.path.isdir(table_dir):
+        os.makedirs(table_dir)
+    else:
+        if len(os.listdir(table_dir)) > 0:
+            print(f'out dir {table_dir} not empty')
+            return
+    all_out_files = []
     for table in tqdm(read_table(args)):
         table_seq_no += 1
         table_title = table['documentTitle']
         table_id = table['tableId']
-        table_dir = os.path.join(args.output_dir)
-        
         title_processed = table_title.replace('/', ' ')
-        file_name = f'{title_processed} - ID({table_id}).csv'
-        out_file = os.path.join(table_dir, file_name) 
-
+        pos = table_id.rindex('-')
+        updated_table_id = table_id[pos+1:].strip()
+        file_name = f'{title_processed} - ID({updated_table_id}).csv'.strip()
+        file_name = update_file_name(file_name)
+        out_file = os.path.join(table_dir, file_name)
+        all_out_files.append(file_name)
         table_seq_no += 1
         with open(out_file, 'w') as f_o:
             columns = table['columns']
@@ -61,6 +70,19 @@ def main():
                 cells = row_item['cells']
                 cell_values = [a['text'] for a in cells] 
                 writer.writerow(cell_values)
+
+    for out_file in all_out_files:
+        if out_file[0] == '.':
+            print(out_file)
+
+def update_file_name(file_name):
+    pos = 0
+    while pos < len(file_name):
+        if file_name[pos] == '.':
+            pos += 1
+        else:
+            break
+    return file_name[pos:]  
 
 def get_args():
     parser = argparse.ArgumentParser()
