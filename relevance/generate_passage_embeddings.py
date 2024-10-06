@@ -106,7 +106,8 @@ def embed_passages(model, retriever):
     output_part_idx = 0
     output_data = [[], [], 0]
 
-    t1 = time.time()    
+    t1 = time.time()
+    enc_bar = tqdm(total=num_passages)
     while True:
         batch_data = queue_token_tensor.get() 
         #t2 = time.time()
@@ -124,11 +125,13 @@ def embed_passages(model, retriever):
         output_data[0].append(ids)
         output_data[1].append(embeddings)
         output_data[2] += len(ids)
-         
-        total += len(ids)
         
-        if total % (2 * opt.per_gpu_batch_size) == 0:
-            logger.info('Encoded passages %d', total)
+        enc_num = len(ids)
+        total += enc_num
+        enc_bar.update(enc_num)
+        
+        #if total % (2 * opt.per_gpu_batch_size) == 0:
+            #logger.info('Encoded passages %d', total)
         
         if output_data[2] >= opt.output_batch_size:
             start_output_threading(output_data, output_part_idx)
@@ -142,6 +145,7 @@ def embed_passages(model, retriever):
         start_output_threading(output_data, output_part_idx)
         output_part_idx += 1
         output_data = [[], [], 0]
+        enc_bar.update(num_passages - total)
     t2 = time.time()
     print('encode time ', t2-t1) 
     return output_part_idx 

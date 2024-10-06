@@ -260,6 +260,7 @@ def evaluate_train(opt, model, retr_model, dataset, fusion_batch):
     retr_model.train()
     return acc_lst
 
+# num_samples=0 is recommened so that output is deterministic
 def evaluate(epoc, model, retr_model, dataset, dataloader, tokenizer, opt, 
              model_tag=None, out_dir=None, model_file=None, num_samples=0):
     #logger.info('Start evaluation')

@@ -116,11 +116,17 @@ def get_index_options(num_vecs):
         num_train = 50 * num_clusters
         num_train = min(num_train, num_vecs)
         factory_string = 'IVF%s,Flat' % num_clusters
-    else:
+    elif num_vecs < 50 * unit:
         num_clusters = 4096
         factory_string = 'IVF%s,PQ384' % num_clusters
         num_train = num_clusters * 1024
         num_train = min(num_train, num_vecs)
+    else:
+        num_clusters = 12288
+        factory_string = 'IVF%s,PQ384' % num_clusters
+        num_train = num_clusters * 512
+        num_train = min(num_train, num_vecs)
+
     return (factory_string, num_train)
     
     '''
