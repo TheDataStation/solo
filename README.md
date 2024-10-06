@@ -117,7 +117,7 @@ b) Download data
    ```
    You can also reindex these 3 datasets by running the script.
 
-   Tricks:
+   **Tricks**:
    You can split a table by row into multiple small tables so that you can locate a small region in the original table. Remember to have the same file name (caption) for each small table and put them in seperate subfolders
    
 
