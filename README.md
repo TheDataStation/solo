@@ -117,8 +117,8 @@ b) Download data
    ```
    You can also reindex these 3 datasets by running the script.
 
-   **Customize table ID**
-   The system automatically assigns an ID for each table (the "tableId" field in each row of <work_dir>/data/\<dataset\>/tables/tables.jsonl). If you want to use your own table ID, you can folow the format "<caption>_SEP_<table ID>" for the name of each csv file. It is your responsibilty to make sure table ID is unique for all tables. You can read the code in table_from_csv.py to see details.
+   **Customize table ID**:
+   The system automatically assigns an ID for each table (the "tableId" field in each row of <work_dir>/data/\<dataset\>/tables/tables.jsonl). If you want to use your own table ID, you can folow the format <caption>_SEP_<table ID> for the name of each csv file. It is your responsibilty to make sure table ID is unique for all tables. You can read the code in table_from_csv.py to see details.
 
    **Tricks**:
    You can split a table by row into multiple small tables so that you can locate a small region in the original table. Make sure to use the same file name (caption) for each small table. You can put these small tables in seperate subfolders or just together if you customize the table ID
