@@ -110,12 +110,17 @@ b) Download data
    
    We expect each table is in csv format with the filename denoting the title (caption) 
    and all csv files are in "<work_dir>/data/\<dataset\>/tables_csv" or 
-   its offspring directories to allow same file names.
+   its offspring directories to allow same file names. 
    Then run the script
    ```   bash
    ./index.sh <dataset>
    ```
    You can also reindex these 3 datasets by running the script.
+
+   Tricks:
+   '''
+   You can split a table by row into multiple small tables so that you can locate a small region in the original table. Remember to have the same file name (caption) for each small table and put them in seperate subfolders
+   ''''
 
 ## 4. Train
    We provide pretrained models for "fetaqa" and "nq_talbes" and 
