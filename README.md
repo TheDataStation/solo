@@ -1,5 +1,5 @@
 # Solo: Data Discovery Using Natural Language Questions Via A Self-Supervised Approach
-This is the repository for the [paper](https://arxiv.org/abs/2301.03560) published at Sigmod 2024. Solo is a self-supervised data discovery system that finds tables among a large collection given natural language questions. It automatically generates training dataset from the target table collection and then trains the relevance model.
+This is the repository for the [paper](https://dl.acm.org/doi/10.1145/3626756) published at Sigmod 2024. Solo is a self-supervised data discovery system that finds tables among a large collection given natural language questions. It automatically generates training dataset from the target table collection and then trains the relevance model.
 The system consists of two stages:
 
 Offline stage 
