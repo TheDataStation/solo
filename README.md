@@ -28,7 +28,7 @@ a) Make sure Conda is installed
 
 b) Make sure the repository directory "solo" in an empty work directory <work_dir>
  
-   A lot of data and other code will be downloaded to <work_dir>. If <work_dir> has other child directories, there may be some collisions. After <work_dir> is created, move the "solo" directory in <work_dir> 
+   A lot of data and other code will be downloaded to <work_dir>. If <work_dir> contains other child directories, there may be some collisions. After <work_dir> is created, move the "solo" directory in <work_dir> 
    
 c) Create a new session using *tmux* or *screen*
    ```   bash
