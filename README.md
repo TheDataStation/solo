@@ -119,7 +119,7 @@ b) Download data
    **Customize table ID**:
    The system automatically assigns an ID for each table (the "tableId" field in each row of <work_dir>/data/\<dataset\>/tables/tables.jsonl). If you want to use your own table ID, you can follow the format <table_caption>\_SEP\_<table_ID> for the name of each csv file. It is your responsibilty to make sure table ID is unique, e.g. a GUID. You can customize the table ID for a subset of the tables and let the system assign others . For more details, read the code in the "table_from_csv.py" file.
 
-   **Tricks**:
+   **Discovery in more fine-granularity**:
    You can split a table by row into multiple small tables so that you can locate a small region in the original table given a relevant query. Make sure to use the same caption for each small table. You can put these small tables in seperate subfolders if using same file names or just together if you customize the table ID
 
 ## 4. Train
